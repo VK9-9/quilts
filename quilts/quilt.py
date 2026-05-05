@@ -115,9 +115,106 @@ def _build_tiled_grid(rows, cols, tile_size, tile_variation, n_patterns,
     return grid
 
 
+def _draw_border(ctx, width, height, border, quilt_x, quilt_y, quilt_w,
+                  quilt_h, style, colors, block_size):
+    """Draw a decorative border around the quilt area.
+
+    styles: solid, stripes, checkerboard, piano_keys
+    colors: list of (r,g,b) tuples (1 or 2 colors)
+    """
+    c1 = colors[0]
+    c2 = colors[1] if len(colors) > 1 else (0.95, 0.93, 0.90)
+
+    if style == "solid":
+        ctx.set_source_rgb(*c1)
+        # top
+        ctx.rectangle(0, 0, width, quilt_y)
+        ctx.fill()
+        # bottom
+        ctx.rectangle(0, quilt_y + quilt_h, width, height - quilt_y - quilt_h)
+        ctx.fill()
+        # left
+        ctx.rectangle(0, quilt_y, quilt_x, quilt_h)
+        ctx.fill()
+        # right
+        ctx.rectangle(quilt_x + quilt_w, quilt_y, width - quilt_x - quilt_w,
+                      quilt_h)
+        ctx.fill()
+
+    elif style == "stripes":
+        stripe_w = max(4, border // 4)
+        # draw full background in c1, then overlay stripes in c2
+        ctx.set_source_rgb(*c1)
+        ctx.rectangle(0, 0, width, height)
+        ctx.fill()
+        # cover quilt area with background so blocks draw clean
+        ctx.set_source_rgb(0.95, 0.93, 0.90)
+        ctx.rectangle(quilt_x, quilt_y, quilt_w, quilt_h)
+        ctx.fill()
+        # horizontal stripes on top and bottom
+        ctx.set_source_rgb(*c2)
+        for i in range(0, border, stripe_w * 2):
+            ctx.rectangle(0, i, width, stripe_w)
+            ctx.fill()
+            ctx.rectangle(0, quilt_y + quilt_h + i, width, stripe_w)
+            ctx.fill()
+        # vertical stripes on left and right
+        for i in range(0, border, stripe_w * 2):
+            ctx.rectangle(i, quilt_y, stripe_w, quilt_h)
+            ctx.fill()
+            ctx.rectangle(quilt_x + quilt_w + i, quilt_y, stripe_w, quilt_h)
+            ctx.fill()
+
+    elif style == "checkerboard":
+        sq = max(4, border // 3)
+        for sy in range(0, height, sq):
+            for sx in range(0, width, sq):
+                # skip quilt interior
+                if (quilt_x <= sx < quilt_x + quilt_w and
+                        quilt_y <= sy < quilt_y + quilt_h):
+                    continue
+                color = c1 if (sx // sq + sy // sq) % 2 == 0 else c2
+                ctx.set_source_rgb(*color)
+                ctx.rectangle(sx, sy, sq, sq)
+                ctx.fill()
+
+    elif style == "piano_keys":
+        key_w = max(6, block_size // 3)
+        # top edge
+        for i, kx in enumerate(range(quilt_x, quilt_x + quilt_w, key_w)):
+            ctx.set_source_rgb(*(c1 if i % 2 == 0 else c2))
+            ctx.rectangle(kx, 0, key_w, border)
+            ctx.fill()
+        # bottom edge
+        for i, kx in enumerate(range(quilt_x, quilt_x + quilt_w, key_w)):
+            ctx.set_source_rgb(*(c1 if i % 2 == 0 else c2))
+            ctx.rectangle(kx, quilt_y + quilt_h, key_w, border)
+            ctx.fill()
+        # left edge
+        for i, ky in enumerate(range(quilt_y, quilt_y + quilt_h, key_w)):
+            ctx.set_source_rgb(*(c1 if i % 2 == 0 else c2))
+            ctx.rectangle(0, ky, border, key_w)
+            ctx.fill()
+        # right edge
+        for i, ky in enumerate(range(quilt_y, quilt_y + quilt_h, key_w)):
+            ctx.set_source_rgb(*(c1 if i % 2 == 0 else c2))
+            ctx.rectangle(quilt_x + quilt_w, ky, border, key_w)
+            ctx.fill()
+        # corners solid
+        ctx.set_source_rgb(*c1)
+        for cx, cy in [(0, 0), (quilt_x + quilt_w, 0),
+                        (0, quilt_y + quilt_h),
+                        (quilt_x + quilt_w, quilt_y + quilt_h)]:
+            ctx.rectangle(cx, cy, border, border)
+            ctx.fill()
+
+
+BORDER_STYLES = ["solid", "stripes", "checkerboard", "piano_keys"]
+
+
 def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,
                  seed, output, border, max_patterns=None, max_colors=None,
-                 tile_size=None, tile_variation=0.05):
+                 tile_size=None, tile_variation=0.05, border_style=None):
     """Generate and render a quilt to an image file."""
     if seed is None:
         seed = random.randint(0, 2**31)
@@ -164,9 +261,16 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,
             cell_rng.shuffle(indices)
             cell["color_map"] = indices
 
+    # widen border when decorative style is active
+    if border_style is not None:
+        border = max(border, int(block_size * 0.75))
+
     # image dimensions
     width = cols * block_size + 2 * border
     height = rows * block_size + 2 * border
+    quilt_x, quilt_y = border, border
+    quilt_w = cols * block_size
+    quilt_h = rows * block_size
 
     # create surface
     surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, width, height)
@@ -176,6 +280,15 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,
     ctx.set_source_rgb(0.95, 0.93, 0.90)  # off-white linen background
     ctx.rectangle(0, 0, width, height)
     ctx.fill()
+
+    # decorative border
+    if border_style is not None:
+        # pick 2 border colors from palette
+        border_c1 = palette_colors[rng.randint(0, n_colors - 1)]
+        border_c2 = palette_colors[rng.randint(0, n_colors - 1)]
+        _draw_border(ctx, width, height, border, quilt_x, quilt_y,
+                     quilt_w, quilt_h, border_style,
+                     [border_c1, border_c2], block_size)
 
     # render blocks
     for r in range(rows):
