@@ -21,7 +21,9 @@ def analyze_categorical(ratings, param):
     """Return {value: (total, liked)} for a categorical/integer param."""
     buckets = defaultdict(lambda: [0, 0])
     for r in ratings:
-        val = r["params"][param]
+        val = r["params"].get(param)
+        if val is None:
+            continue
         buckets[val][0] += 1
         if r["liked"]:
             buckets[val][1] += 1
@@ -59,7 +61,8 @@ def print_report(ratings):
     print(f"Total: {n} ratings, {liked} liked ({liked/n*100:.1f}%)\n")
 
     # Categorical / integer params
-    for param in ["symmetry", "palette", "n_patterns", "n_colors", "rows"]:
+    for param in ["symmetry", "palette", "n_patterns", "n_colors", "rows",
+                   "border_style"]:
         print(f"--- {param} ---")
         buckets = analyze_categorical(ratings, param)
         for val in sorted(buckets, key=lambda v: (isinstance(v, str), v)):
