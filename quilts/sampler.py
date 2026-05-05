@@ -12,6 +12,7 @@ from sklearn.ensemble import GradientBoostingClassifier
 
 from palettes import PALETTES
 from layout import SYMMETRY_MODES
+from quilt import BORDER_STYLES
 
 PALETTE_NAMES = [p[0] for p in PALETTES]
 SYMMETRY_NAMES = list(SYMMETRY_MODES.keys())
@@ -49,6 +50,7 @@ def sample_random_params(rng=None):
         "n_colors": rng.randint(*PARAM_SPACE["n_colors"]),
         "tile_size": rng.randint(*PARAM_SPACE["tile_size"]),
         "tile_variation": round(rng.uniform(*PARAM_SPACE["tile_variation"]), 2),
+        "border_style": rng.choice(BORDER_STYLES) if rng.random() < 0.25 else "none",
         "seed": rng.randint(0, 2**31),
     }
 
@@ -63,6 +65,10 @@ def params_to_features(params):
     features.append(params["n_colors"])
     features.append(params["tile_size"])
     features.append(params["tile_variation"])
+    # one-hot border style (includes "none")
+    border_names = ["none"] + BORDER_STYLES
+    for b in border_names:
+        features.append(1.0 if params.get("border_style", "none") == b else 0.0)
     # one-hot symmetry
     for s in SYMMETRY_NAMES:
         features.append(1.0 if params["symmetry"] == s else 0.0)
@@ -88,7 +94,10 @@ def params_to_render_kwargs(params):
         "max_colors": params["n_colors"],
         "tile_size": params["tile_size"] if params["tile_size"] > 0 else None,
         "tile_variation": params["tile_variation"],
+        "border_style": params.get("border_style", "none"),
     }
+    if kwargs["border_style"] == "none":
+        kwargs["border_style"] = None
     return kwargs
 
 
@@ -182,9 +191,11 @@ class QuiltExplorer:
         """Return feature importances if model is trained."""
         if self.model is None:
             return None
+        border_names = ["none"] + BORDER_STYLES
         names = (
             ["rows", "chaos", "n_patterns", "n_colors",
              "tile_size", "tile_variation"]
+            + [f"brd_{b}" for b in border_names]
             + [f"sym_{s}" for s in SYMMETRY_NAMES]
             + [f"pal_{p}" for p in PALETTE_NAMES]
         )
