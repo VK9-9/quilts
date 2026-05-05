@@ -152,6 +152,113 @@ chaos 0-0.8, 12 palettes, n_patterns 1-7, n_colors 2-5, no diversity cap
 501-507: 14%
 ```
 
+### Changes after Round 2
+
+- Replaced 7 dead palettes (berry patch, cedar/moss, dusty rose, forest floor,
+  prairie, slate/sage, tidal pool) with: midnight garden, stained glass, frost,
+  deep sea, plum and gold, storm, mosaic, ember (18 total)
+- Narrowed: rows 14-19, n_colors 3-4
+- Added 5 block patterns: ohio_star, courthouse_steps, checkerboard_4x4,
+  card_trick, double_pinwheel (17 total)
+- Added 2 emergent blocks: diagonal, path_tile (19 total)
+- Added emergent symmetry mode (coordinated rotations for macro patterns:
+  zigzag, diamond, barn_raising, pinwheel_macro)
+- Added decorative border styles: solid, stripes, checkerboard, piano_keys
+  (~25% chance of appearing)
+
+---
+
+## Round 3 — ratings 508-783
+
+**Records:** 508-783 (276 ratings)
+**Overall:** 77/276 liked (27.9%)
+**Params:** rows/cols 14-19, symmetry 7 modes (+emergent), chaos 0-1.0,
+18 palettes (8 new replacements), n_patterns 1-2, n_colors 3-4,
+15% palette diversity cap, 19 block patterns, 4 border styles (~25%)
+
+### Key findings
+
+- **Like rate up significantly** — 27.9% vs 19.9% in Round 2. Narrowed params
+  and new features are working.
+- **Emergent layout validated** — 31% like rate (24/78), most-sampled mode.
+  Coordinated rotations creating macro patterns resonate.
+- **Mirror top symmetry at 34%** (12/35) but fewer samples than emergent.
+- **n_patterns converged** — 1 and 2 nearly identical (29% vs 27%). No longer
+  a differentiator.
+- **n_colors converged** — 3 and 4 nearly identical (27% vs 28%).
+- **Top palettes:** indigo dye (38%, 23/61), ocean breeze (38%, 13/34),
+  wildflower (36%, 13/36). Ocean breeze rose from 23% in Round 2.
+- **Dead palettes:** frost (0/6), midnight garden (0/6), sunset (0/6),
+  storm (0/2). Frost and midnight garden are new additions that failed.
+- **Borders are a net positive** — checkerboard (34%, 11/32) and piano_keys
+  (35%, 7/20) both beat no-border (27%, 51/187). Stripes weakest (15%, 2/13).
+- **Grid 16-17 sweet spot** — 32-33% like rate. 18 drops to 20%.
+- **Higher chaos still preferred** — liked mean 0.58 vs disliked 0.53.
+- **Indigo dye still over-exploited** — 22% of samples (61/276) vs expected
+  ~6% uniform. Model keeps favoring it despite diversity cap.
+
+### Palette detail
+
+| Palette | Shown | Liked | Rate |
+|---------|-------|-------|------|
+| indigo dye | 61 | 23 | 38% |
+| ocean breeze | 34 | 13 | 38% |
+| wildflower | 36 | 13 | 36% |
+| deep sea | 17 | 5 | 29% |
+| ember | 8 | 2 | 25% |
+| farmhouse | 8 | 2 | 25% |
+| spring garden | 12 | 3 | 25% |
+| flower | 20 | 5 | 25% |
+| northern lights | 17 | 4 | 24% |
+| winter sky | 21 | 5 | 24% |
+| patchwork classic | 10 | 2 | 20% |
+| stained glass | 10 | 2 | 20% |
+| plum and gold | 7 | 1 | 14% |
+| mosaic | 7 | 1 | 14% |
+| autumn harvest | 8 | 1 | 12% |
+| frost | 6 | 0 | 0% |
+| midnight garden | 6 | 0 | 0% |
+| sunset | 6 | 0 | 0% |
+| storm | 2 | 0 | 0% |
+
+### Border style detail
+
+| Style | Shown | Liked | Rate |
+|-------|-------|-------|------|
+| piano_keys | 20 | 7 | 35% |
+| checkerboard | 32 | 11 | 34% |
+| none | 187 | 51 | 27% |
+| solid | 24 | 6 | 25% |
+| stripes | 13 | 2 | 15% |
+
+### Symmetry detail
+
+| Mode | Shown | Liked | Rate |
+|------|-------|-------|------|
+| mirror | 35 | 12 | 34% |
+| emergent | 78 | 24 | 31% |
+| partial | 45 | 13 | 29% |
+| stripe | 24 | 6 | 25% |
+| flower | 20 | 5 | 25% |
+| none | 33 | 8 | 24% |
+| rotational | 41 | 9 | 22% |
+
+### Like rate trend (round 3 only)
+
+```
+508-532: 24%
+533-557: 36%
+558-582: 36%
+583-607: 16%
+608-632: 32%
+633-657: 36%
+658-682: 20%
+683-707: 20%
+708-732: 32%
+733-757: 32%
+758-783: 28%
+```
+
 ---
 
 ## Favorites
@@ -161,3 +268,6 @@ Standout quilts worth revisiting or using as seeds for future exploration.
 1. **winter sky / high chaos / none** — chaos=0.95, cols=18, n_colors=3,
    n_patterns=2, palette=winter sky, rows=18, symmetry=none, tile_size=0,
    tile_variation=0.3 (Round 2)
+2. **ocean breeze / piano keys / partial** — border_style=piano_keys, chaos=0.74,
+   cols=17, n_colors=4, n_patterns=1, palette=ocean breeze, rows=17,
+   symmetry=partial, tile_size=0, tile_variation=0.07 (Round 3)
