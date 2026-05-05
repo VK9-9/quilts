@@ -64,43 +64,6 @@ def rotate_patches(patches, cx, cy, rotation):
     return rotated
 
 
-def _make_tile_configs(tile_rows, tile_cols, n_all_patterns, n_colors,
-                       symmetry, chaos, rng, patterns_per_tile=2):
-    """Create a config for each tile position using the symmetry layout.
-
-    Each tile config has:
-      - allowed_patterns: list of pattern indices this tile uses
-      - color_map: shuffled palette indices
-      - rotation: base rotation applied to blocks
-    """
-    layout_fn = SYMMETRY_MODES[symmetry]
-    kwargs = {}
-    if symmetry == "partial":
-        kwargs["chaos"] = chaos
-    # use n_all_patterns as the "pattern" dimension for the tile layout
-    tile_grid = layout_fn(tile_rows, tile_cols, n_all_patterns, 1, rng,
-                          **kwargs)
-
-    configs = {}
-    for (tr, tc), cell in tile_grid.items():
-        # pick a small set of patterns for this tile, seeded deterministically
-        tile_rng = random.Random(cell["pattern"] * 7919 + cell["rotation"])
-        available = list(range(n_all_patterns))
-        tile_rng.shuffle(available)
-        allowed = available[:patterns_per_tile]
-
-        # color map
-        indices = list(range(n_colors))
-        tile_rng.shuffle(indices)
-
-        configs[(tr, tc)] = {
-            "allowed_patterns": allowed,
-            "color_map": indices,
-            "rotation": cell["rotation"],
-        }
-    return configs
-
-
 def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,
                  seed, output, border, max_patterns=None, max_colors=None,
                  tile_size=None):
@@ -115,56 +78,31 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,
         palette_colors = palette_colors[:max_colors]
     n_colors = len(palette_colors)
 
-    n_all_patterns = len(BLOCK_PATTERNS)
-
-    if tile_size is not None:
-        # tiled mode: lay out tiles, then fill blocks within each tile
-        tile_rows = math.ceil(rows / tile_size)
-        tile_cols = math.ceil(cols / tile_size)
-        ppt = min(max_patterns or 2, n_all_patterns)
-        tile_configs = _make_tile_configs(
-            tile_rows, tile_cols, n_all_patterns, n_colors,
-            symmetry, chaos, rng, patterns_per_tile=ppt,
-        )
-
-        grid = {}
-        for r in range(rows):
-            for c in range(cols):
-                tr, tc = r // tile_size, c // tile_size
-                cfg = tile_configs[(tr, tc)]
-                pat = rng.choice(cfg["allowed_patterns"])
-                grid[(r, c)] = {
-                    "pattern": pat,
-                    "color_map": cfg["color_map"],
-                    "rotation": (cfg["rotation"] + rng.randint(0, 3)) % 4,
-                }
+    n_patterns = len(BLOCK_PATTERNS)
+    if max_patterns is not None:
+        available = list(range(n_patterns))
+        rng.shuffle(available)
+        allowed = sorted(available[:max_patterns])
+        n_patterns = max_patterns
     else:
-        # flat mode (original behavior)
-        n_patterns = n_all_patterns
-        if max_patterns is not None:
-            available = list(range(n_all_patterns))
-            rng.shuffle(available)
-            allowed = sorted(available[:max_patterns])
-            n_patterns = max_patterns
-        else:
-            allowed = None
-        n_palettes = 1
+        allowed = None
+    n_palettes = 1
 
-        layout_fn = SYMMETRY_MODES[symmetry]
-        kwargs = {}
-        if symmetry == "partial":
-            kwargs["chaos"] = chaos
-        grid = layout_fn(rows, cols, n_patterns, n_palettes, rng, **kwargs)
+    layout_fn = SYMMETRY_MODES[symmetry]
+    kwargs = {}
+    if symmetry == "partial":
+        kwargs["chaos"] = chaos
+    grid = layout_fn(rows, cols, n_patterns, n_palettes, rng, **kwargs)
 
-        if allowed is not None:
-            for cell in grid.values():
-                cell["pattern"] = allowed[cell["pattern"]]
+    if allowed is not None:
+        for cell in grid.values():
+            cell["pattern"] = allowed[cell["pattern"]]
 
-        for key, cell in grid.items():
-            cell_rng = random.Random(cell["pattern"] * 1000 + cell["palette"])
-            indices = list(range(n_colors))
-            cell_rng.shuffle(indices)
-            cell["color_map"] = indices
+    for key, cell in grid.items():
+        cell_rng = random.Random(cell["pattern"] * 1000 + cell["palette"])
+        indices = list(range(n_colors))
+        cell_rng.shuffle(indices)
+        cell["color_map"] = indices
 
     # image dimensions
     width = cols * block_size + 2 * border
