@@ -473,6 +473,51 @@ def double_pinwheel(x, y, size, n_colors):
     return patches
 
 
+def diagonal(x, y, size, n_colors):
+    """Deterministic diagonal split — always TL-BR direction.
+
+    Unlike half_square_triangle, has no internal randomness so rotation
+    fully controls direction. Designed for emergent layout mode where
+    coordinated rotations create macro patterns (zigzags, diamonds, etc).
+    """
+    return [
+        ([(x, y), (x + size, y), (x, y + size)], 0),
+        ([(x + size, y), (x + size, y + size), (x, y + size)], 1 % n_colors),
+    ]
+
+
+def path_tile(x, y, size, n_colors):
+    """Truchet-style path tile — two diagonal bands connecting edge midpoint pairs.
+
+    Band 1 connects top midpoint to right midpoint (through upper-right).
+    Band 2 connects left midpoint to bottom midpoint (through lower-left).
+    Rotation changes which midpoints connect, creating continuous winding
+    paths when tiles are arranged with coordinated rotations.
+    """
+    cx, cy = x + size / 2, y + size / 2
+    w = size * 0.12  # band half-width
+
+    # band from top-midpoint to right-midpoint
+    # band from left-midpoint to bottom-midpoint
+    patches = [
+        # top-to-right band (trapezoid through upper-right area)
+        ([(cx - w, y), (cx + w, y),
+          (x + size, cy - w), (x + size, cy + w)], 0),
+        # left-to-bottom band (trapezoid through lower-left area)
+        ([(x, cy - w), (x, cy + w),
+          (cx + w, y + size), (cx - w, y + size)], 0),
+        # upper-left background triangle
+        ([(x, y), (cx - w, y), (x, cy - w)], 1 % n_colors),
+        # lower-right background triangle
+        ([(x + size, cy + w), (x + size, y + size), (cx + w, y + size)], 1 % n_colors),
+        # upper-right background (between the two bands)
+        ([(cx + w, y), (x + size, y), (x + size, cy - w)], 2 % n_colors),
+        # lower-left background (between the two bands)
+        ([(x, cy + w), (x, y + size), (cx - w, y + size)], 2 % n_colors),
+    ]
+    return patches
+
+
 # Registry of all block patterns
 BLOCK_PATTERNS = [
     half_square_triangle,
@@ -492,4 +537,6 @@ BLOCK_PATTERNS = [
     checkerboard_4x4,
     card_trick,
     double_pinwheel,
+    diagonal,
+    path_tile,
 ]

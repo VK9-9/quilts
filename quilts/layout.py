@@ -205,6 +205,78 @@ def layout_flower(rows, cols, n_patterns, n_palettes, rng):
     return grid
 
 
+def layout_emergent(rows, cols, n_patterns, n_palettes, rng):
+    """Emergent macro patterns via coordinated block rotations.
+
+    Uses a single block pattern and assigns rotations so that block edges
+    connect across boundaries, creating larger visual patterns that only
+    exist in the arrangement — no single block contains the macro shape.
+
+    Four macro templates:
+    - zigzag: alternating diagonal directions create chevron/zigzag paths
+    - diamond: rotations form concentric diamond rings from center
+    - barn_raising: concentric frames with quadrant-aware rotation
+    - pinwheel_macro: 2x2 pinwheel groups tiled across the grid
+    """
+    grid = {}
+
+    macro = rng.choice(['zigzag', 'diamond', 'barn_raising', 'pinwheel_macro'])
+    pat = rng.randint(0, n_patterns - 1)
+    pal = 0
+
+    mid_r = rows / 2
+    mid_c = cols / 2
+
+    for r in range(rows):
+        for c in range(cols):
+            if macro == 'zigzag':
+                # alternating cells flip diagonal → chevron paths
+                rotation = 0 if (r + c) % 2 == 0 else 1
+
+            elif macro == 'diamond':
+                # quadrant determines base rotation; Manhattan ring alternates
+                cr = r - mid_r
+                cc = c - mid_c
+                if cr <= 0 and cc >= 0:
+                    rotation = 0
+                elif cr >= 0 and cc >= 0:
+                    rotation = 1
+                elif cr >= 0 and cc <= 0:
+                    rotation = 2
+                else:
+                    rotation = 3
+                dist = abs(int(cr)) + abs(int(cc))
+                if dist % 2 == 1:
+                    rotation = (rotation + 2) % 4
+
+            elif macro == 'barn_raising':
+                # concentric rings from edge; quadrant rotation
+                ring = min(r, rows - 1 - r, c, cols - 1 - c)
+                if r < mid_r and c < mid_c:
+                    rotation = 0
+                elif r < mid_r:
+                    rotation = 1
+                elif c >= mid_c:
+                    rotation = 2
+                else:
+                    rotation = 3
+                if ring % 2 == 1:
+                    rotation = (rotation + 2) % 4
+
+            elif macro == 'pinwheel_macro':
+                # 2x2 groups, each cell rotated 90° from neighbors
+                lr, lc = r % 2, c % 2
+                rotation = [0, 1, 3, 2][lr * 2 + lc]
+
+            grid[(r, c)] = {
+                "pattern": pat,
+                "palette": pal,
+                "rotation": rotation,
+            }
+
+    return grid
+
+
 SYMMETRY_MODES = {
     "none": layout_none,
     "mirror": layout_mirror4,
@@ -212,4 +284,5 @@ SYMMETRY_MODES = {
     "stripe": layout_stripe,
     "partial": layout_partial,
     "flower": layout_flower,
+    "emergent": layout_emergent,
 }
