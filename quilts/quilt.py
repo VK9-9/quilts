@@ -65,7 +65,7 @@ def rotate_patches(patches, cx, cy, rotation):
 
 
 def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,
-                 seed, output, border):
+                 seed, output, border, max_patterns=None, max_colors=None):
     """Generate and render a quilt to an image file."""
     if seed is None:
         seed = random.randint(0, 2**31)
@@ -73,9 +73,19 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,
     print(f"Seed: {seed}")
 
     palette_colors = pick_palettes(palette_name, 1, rng)
+    if max_colors is not None:
+        palette_colors = palette_colors[:max_colors]
     n_colors = len(palette_colors)
 
     n_patterns = len(BLOCK_PATTERNS)
+    if max_patterns is not None:
+        # pick a random subset of pattern indices
+        available = list(range(len(BLOCK_PATTERNS)))
+        rng.shuffle(available)
+        allowed = sorted(available[:max_patterns])
+        n_patterns = max_patterns
+    else:
+        allowed = None
     n_palettes = 1  # single palette for now
 
     # build layout
@@ -84,6 +94,11 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,
     if symmetry == "partial":
         kwargs["chaos"] = chaos
     grid = layout_fn(rows, cols, n_patterns, n_palettes, rng, **kwargs)
+
+    # remap pattern indices to allowed subset
+    if allowed is not None:
+        for cell in grid.values():
+            cell["pattern"] = allowed[cell["pattern"]]
 
     # assign each cell a color_map: a shuffled list of palette indices
     # use deterministic seed from cell data so mirrored cells match
@@ -186,6 +201,10 @@ def main():
     parser.add_argument("--seed", type=int, default=None)
     parser.add_argument("--output", default="quilts/out.png")
     parser.add_argument("--border", type=int, default=20)
+    parser.add_argument("--n-patterns", type=int, default=None,
+                        help="Max block patterns to use (default: all)")
+    parser.add_argument("--n-colors", type=int, default=None,
+                        help="Max palette colors to use (default: all)")
     args = parser.parse_args()
 
     render_quilt(
@@ -198,6 +217,8 @@ def main():
         seed=args.seed,
         output=args.output,
         border=args.border,
+        max_patterns=args.n_patterns,
+        max_colors=args.n_colors,
     )
 
 
