@@ -92,7 +92,7 @@ def params_to_render_kwargs(params):
 class QuiltExplorer:
     """Active learning explorer for quilt aesthetics."""
 
-    def __init__(self, data_path="quilts/ratings.json"):
+    def __init__(self, data_path="ratings.json"):
         self.data_path = data_path
         self.ratings = []
         self._load()
