@@ -23,14 +23,14 @@ PALETTES = [
     ("winter sky", [
         "#191970", "#4169E1", "#B0C4DE", "#F8F8FF", "#708090",
     ]),
-    ("forest floor", [
-        "#2E4E1E", "#556B2F", "#8FBC8F", "#D2B48C", "#8B4513",
+    ("midnight garden", [
+        "#0D0D2B", "#2D572C", "#9B59B6", "#E8D5B7", "#1A1A40",
     ]),
-    ("berry patch", [
-        "#800020", "#C71585", "#FFB7C5", "#FFF0F5", "#4B0050",
+    ("stained glass", [
+        "#1B1B2F", "#C0392B", "#2980B9", "#F1C40F", "#1E8449",
     ]),
-    ("prairie", [
-        "#DAA520", "#F4A460", "#FFDEAD", "#FFFFF0", "#6B8E23",
+    ("frost", [
+        "#E8EFF5", "#A8C6DF", "#5B8FA8", "#2C3E50", "#D5E8D4",
     ]),
     ("indigo dye", [
         "#1A0533", "#3F00FF", "#7B68EE", "#E6E6FA", "#F5F5F5",
@@ -41,23 +41,23 @@ PALETTES = [
     ("spring garden", [
         "#FF69B4", "#98FB98", "#FFFFE0", "#DDA0DD", "#3CB371",
     ]),
-    ("slate and sage", [
-        "#708090", "#8A9A5B", "#C5C6C7", "#B2BEB5", "#2F4F4F",
+    ("deep sea", [
+        "#0C1445", "#1A5276", "#48C9B0", "#F5F5F5", "#0E6655",
     ]),
-    ("jewel box", [
-        "#0F5257", "#7B2D8B", "#C41E3A", "#DAA520", "#1B1B1B",
+    ("plum and gold", [
+        "#4A0E4E", "#7D3C98", "#F4D03F", "#FDEBD0", "#1A1A2E",
     ]),
-    ("tidal pool", [
-        "#006D6F", "#48D1CC", "#B0E0E6", "#F5F5F5", "#2E8B57",
+    ("storm", [
+        "#2C3E50", "#5D6D7E", "#AEB6BF", "#F2F3F4", "#1C2833",
     ]),
-    ("cedar and moss", [
-        "#4A3728", "#6B8E23", "#8FBC8F", "#D2B48C", "#2E4E1E",
+    ("mosaic", [
+        "#C0392B", "#2471A3", "#F39C12", "#1E8449", "#F8F9F9",
     ]),
     ("northern lights", [
         "#0B0B3B", "#1B8A6B", "#7FDBCA", "#C77DFF", "#F0F8FF",
     ]),
-    ("dusty rose", [
-        "#BC8F8F", "#C08081", "#F5E6E0", "#D2B48C", "#5C4033",
+    ("ember", [
+        "#1A0A00", "#8B3A0E", "#D4740E", "#FFC857", "#F5F0EB",
     ]),
 ]
 

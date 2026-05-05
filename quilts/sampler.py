@@ -18,13 +18,13 @@ SYMMETRY_NAMES = list(SYMMETRY_MODES.keys())
 
 # parameter ranges
 PARAM_SPACE = {
-    "rows": (14, 22),
-    "cols": (14, 22),
+    "rows": (14, 19),
+    "cols": (14, 19),
     "symmetry": SYMMETRY_NAMES,
     "chaos": (0.0, 1.0),
     "palette": PALETTE_NAMES,
     "n_patterns": (1, 2),
-    "n_colors": (2, 4),
+    "n_colors": (3, 4),
     "tile_size": (0, 10),       # 0 = no tiling
     "tile_variation": (0.0, 0.3),
 }

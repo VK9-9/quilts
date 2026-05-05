@@ -183,70 +183,30 @@ def chevron(x, y, size, n_colors):
 
 
 def star(x, y, size, n_colors):
-    """Eight-pointed star — center square rotated 45 degrees with corner kites."""
+    """Eight-pointed star — center diamond, 4 point triangles, 4 corner quads."""
     cx, cy = x + size / 2, y + size / 2
-    # inner square inset
-    d = size * 0.25
-    inner = [
-        (cx, y + d), (x + size - d, cy),
-        (cx, y + size - d), (x + d, cy),
-    ]
-    # center diamond
-    patches = [(inner, 0)]
-    # star points — triangles from each inner vertex to adjacent corners
-    corners = [
-        (x, y), (x + size, y),
-        (x + size, y + size), (x, y + size),
-    ]
-    for i in range(4):
-        patches.append((
-            [inner[i], corners[i], inner[(i + 1) % 4]],
-            1 % n_colors,
-        ))
-    # corner squares
-    patches.append(([(x, y), (cx, y + d), (x + d, cy), (x, y)], 0))
-    patches.append(([(x, y), (x + d, cy)], 0))  # degenerate, skip
-    # simpler: fill four corner triangles
-    patches = [(inner, 0)]
-    for i in range(4):
-        patches.append((
-            [inner[i], corners[i], inner[(i + 1) % 4]],
-            1 % n_colors,
-        ))
-    # background corner triangles
-    edges_mid = [(cx, y), (x + size, cy), (cx, y + size), (x, cy)]
-    for i in range(4):
-        patches.append((
-            [corners[i], edges_mid[i], corners[i]],
-            0,
-        ))
-    # Actually let me redo this cleanly
-    patches = []
-    # the star is 8 kite-shaped triangles radiating from center
-    # plus 4 corner squares
-    m = size * 0.25  # margin for inner square
-    # midpoints of each edge
-    mt = (cx, y)      # mid-top
-    mr = (x + size, cy)  # mid-right
-    mb = (cx, y + size)  # mid-bottom
-    ml = (x, cy)      # mid-left
+    m = size * 0.25
+    # edge midpoints
+    mt = (cx, y)
+    mr = (x + size, cy)
+    mb = (cx, y + size)
+    ml = (x, cy)
     # inner diamond vertices
     it = (cx, y + m)
     ir = (x + size - m, cy)
     ib = (cx, y + size - m)
     il = (x + m, cy)
-    # center diamond
-    patches.append(([it, ir, ib, il], 0))
-    # star points (triangles)
-    patches.append(([it, mt, ir], 1 % n_colors))
-    patches.append(([ir, mr, ib], 1 % n_colors))
-    patches.append(([ib, mb, il], 1 % n_colors))
-    patches.append(([il, ml, it], 1 % n_colors))
-    # corner squares
-    patches.append(([(x, y), mt, it, il], 2 % n_colors))
-    patches.append(([(x + size, y), mr, ir, it], 2 % n_colors))
-    patches.append(([(x + size, y + size), mb, ib, ir], 2 % n_colors))
-    patches.append(([(x, y + size), ml, il, ib], 2 % n_colors))
+    patches = [
+        ([it, ir, ib, il], 0),                            # center diamond
+        ([it, mt, ir], 1 % n_colors),                     # star points
+        ([ir, mr, ib], 1 % n_colors),
+        ([ib, mb, il], 1 % n_colors),
+        ([il, ml, it], 1 % n_colors),
+        ([(x, y), mt, it, il], 2 % n_colors),             # corner quads
+        ([(x + size, y), mr, ir, it], 2 % n_colors),
+        ([(x + size, y + size), mb, ib, ir], 2 % n_colors),
+        ([(x, y + size), ml, il, ib], 2 % n_colors),
+    ]
     return patches
 
 
@@ -321,6 +281,198 @@ def bow_tie(x, y, size, n_colors):
     return patches
 
 
+def ohio_star(x, y, size, n_colors):
+    """Ohio Star — 3x3 grid with center square, corner squares, and side triangles.
+
+    Uses 3 colors: corners, center, and star points.
+    """
+    s = size / 3
+    patches = []
+    for r in range(3):
+        for c in range(3):
+            px, py = x + c * s, y + r * s
+            if (r, c) in [(0, 0), (0, 2), (2, 0), (2, 2)]:
+                # corner squares
+                patches.append((
+                    [(px, py), (px + s, py), (px + s, py + s), (px, py + s)],
+                    0,
+                ))
+            elif (r, c) == (1, 1):
+                # center square
+                patches.append((
+                    [(px, py), (px + s, py), (px + s, py + s), (px, py + s)],
+                    2 % n_colors,
+                ))
+            else:
+                # side cells: split into two triangles (star points)
+                mid_x, mid_y = px + s / 2, py + s / 2
+                if r == 0:  # top
+                    patches.append(([(px, py), (px + s, py), (mid_x, py + s)], 1 % n_colors))
+                    patches.append(([(px, py), (mid_x, py + s), (px, py + s)], 0))
+                    patches.append(([(px + s, py), (px + s, py + s), (mid_x, py + s)], 0))
+                elif r == 2:  # bottom
+                    patches.append(([(px, py + s), (px + s, py + s), (mid_x, py)], 1 % n_colors))
+                    patches.append(([(px, py), (mid_x, py), (px, py + s)], 0))
+                    patches.append(([(mid_x, py), (px + s, py), (px + s, py + s)], 0))
+                elif c == 0:  # left
+                    patches.append(([(px, py), (px, py + s), (px + s, mid_y)], 1 % n_colors))
+                    patches.append(([(px, py), (px + s, mid_y), (px + s, py)], 0))
+                    patches.append(([(px, py + s), (px + s, py + s), (px + s, mid_y)], 0))
+                else:  # right
+                    patches.append(([(px + s, py), (px + s, py + s), (px, mid_y)], 1 % n_colors))
+                    patches.append(([(px, py), (px, mid_y), (px + s, py)], 0))
+                    patches.append(([(px, mid_y), (px, py + s), (px + s, py + s)], 0))
+    return patches
+
+
+def courthouse_steps(x, y, size, n_colors):
+    """Courthouse Steps — log cabin variant with symmetric strips on opposite sides.
+
+    Alternates two colors in concentric rectangular frames around a center.
+    """
+    patches = []
+    cs = size * 0.1  # center half-width
+    cx, cy = x + size / 2, y + size / 2
+    # center square
+    patches.append((
+        [(cx - cs, cy - cs), (cx + cs, cy - cs),
+         (cx + cs, cy + cs), (cx - cs, cy + cs)],
+        0,
+    ))
+
+    left, top, right, bottom = cx - cs, cy - cs, cx + cs, cy + cs
+    remaining = size / 2 - cs
+    n_rings = 4
+    sw = remaining / n_rings
+
+    for ring in range(n_rings):
+        ci = (ring % max(n_colors - 1, 1)) + 1 if n_colors > 1 else 0
+        ci2 = ((ring + 1) % max(n_colors - 1, 1)) + 1 if n_colors > 1 else 0
+
+        # top and bottom strips (same color)
+        patches.append((
+            [(left, top - sw), (right, top - sw),
+             (right, top), (left, top)],
+            ci,
+        ))
+        patches.append((
+            [(left, bottom), (right, bottom),
+             (right, bottom + sw), (left, bottom + sw)],
+            ci,
+        ))
+        top -= sw
+        bottom += sw
+
+        # left and right strips (different color)
+        patches.append((
+            [(left - sw, top), (left, top),
+             (left, bottom), (left - sw, bottom)],
+            ci2,
+        ))
+        patches.append((
+            [(right, top), (right + sw, top),
+             (right + sw, bottom), (right, bottom)],
+            ci2,
+        ))
+        left -= sw
+        right += sw
+
+    return patches
+
+
+def checkerboard_4x4(x, y, size, n_colors):
+    """4x4 checkerboard with diagonal splits in alternating cells.
+
+    Half the cells are solid squares, half are split diagonally into two colors.
+    Creates a complex interlocking texture.
+    """
+    s = size / 4
+    patches = []
+    for r in range(4):
+        for c in range(4):
+            px, py = x + c * s, y + r * s
+            if (r + c) % 2 == 0:
+                # solid square
+                patches.append((
+                    [(px, py), (px + s, py), (px + s, py + s), (px, py + s)],
+                    0,
+                ))
+            else:
+                # diagonal split
+                patches.append((
+                    [(px, py), (px + s, py), (px, py + s)],
+                    1 % n_colors,
+                ))
+                patches.append((
+                    [(px + s, py), (px + s, py + s), (px, py + s)],
+                    2 % n_colors,
+                ))
+    return patches
+
+
+def card_trick(x, y, size, n_colors):
+    """Card Trick — overlapping rotated squares creating an interlocking pattern.
+
+    Four overlapping triangles that create the illusion of layered cards.
+    Uses up to 4 colors.
+    """
+    cx, cy = x + size / 2, y + size / 2
+    q = size / 4  # quarter
+    # center square
+    patches = [
+        ([(cx - q, cy - q), (cx + q, cy - q),
+          (cx + q, cy + q), (cx - q, cy + q)], 0),
+    ]
+    # four "cards" — each is a triangle from center to a corner, clipped
+    # top-left card
+    patches.append(([(x, y), (cx, y), (cx, cy - q), (cx - q, cy - q), (cx - q, cy), (x, cy)], 1 % n_colors))
+    # top-right card
+    patches.append(([(cx, y), (x + size, y), (x + size, cy), (cx + q, cy), (cx + q, cy - q), (cx, cy - q)], 2 % n_colors))
+    # bottom-right card
+    patches.append(([(cx + q, cy), (x + size, cy), (x + size, y + size), (cx, y + size), (cx, cy + q), (cx + q, cy + q)], 3 % n_colors))
+    # bottom-left card
+    patches.append(([(x, cy), (cx - q, cy), (cx - q, cy + q), (cx, cy + q), (cx, y + size), (x, y + size)], 1 % n_colors))
+    return patches
+
+
+def double_pinwheel(x, y, size, n_colors):
+    """Double Pinwheel — nested pinwheels at two scales.
+
+    Outer quadrants each contain a smaller pinwheel, creating fractal-like depth.
+    """
+    patches = []
+    half = size / 2
+    cx, cy = x + size / 2, y + size / 2
+
+    # outer pinwheel triangles (color 0 and 1)
+    corners = [(x, y), (x + size, y), (x + size, y + size), (x, y + size)]
+    mids = [(cx, y), (x + size, cy), (cx, y + size), (x, cy)]
+    for i in range(4):
+        patches.append((
+            [corners[i], mids[i], (cx, cy)],
+            i % 2,
+        ))
+        patches.append((
+            [mids[i], corners[(i + 1) % 4], (cx, cy)],
+            (i + 1) % 2,
+        ))
+
+    # inner pinwheel (smaller, using colors 2 and 3)
+    q = size / 4
+    ic = [(cx - q, cy - q), (cx + q, cy - q), (cx + q, cy + q), (cx - q, cy + q)]
+    im = [(cx, cy - q), (cx + q, cy), (cx, cy + q), (cx - q, cy)]
+    for i in range(4):
+        patches.append((
+            [ic[i], im[i], (cx, cy)],
+            2 % n_colors,
+        ))
+        patches.append((
+            [im[i], ic[(i + 1) % 4], (cx, cy)],
+            3 % n_colors,
+        ))
+    return patches
+
+
 # Registry of all block patterns
 BLOCK_PATTERNS = [
     half_square_triangle,
@@ -335,4 +487,9 @@ BLOCK_PATTERNS = [
     diamond_in_square,
     cross,
     bow_tie,
+    ohio_star,
+    courthouse_steps,
+    checkerboard_4x4,
+    card_trick,
+    double_pinwheel,
 ]
