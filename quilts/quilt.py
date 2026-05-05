@@ -15,6 +15,7 @@ Options:
     --border N        Border/margin in pixels (default: 20)
 """
 import argparse
+import io
 import math
 import random
 import sys
@@ -253,7 +254,12 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,
                 ctx.close_path()
                 ctx.stroke()
 
-    # save
+    # save or return bytes
+    if output is None:
+        buf = io.BytesIO()
+        surface.write_to_png(buf)
+        buf.seek(0)
+        return buf.getvalue()
     os.makedirs(os.path.dirname(output) or ".", exist_ok=True)
     surface.write_to_png(output)
     print(f"Saved to {output} ({width}x{height})")
