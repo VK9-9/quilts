@@ -41,6 +41,24 @@ PALETTES = [
     ("spring garden", [
         "#FF69B4", "#98FB98", "#FFFFE0", "#DDA0DD", "#3CB371",
     ]),
+    ("slate and sage", [
+        "#708090", "#8A9A5B", "#C5C6C7", "#B2BEB5", "#2F4F4F",
+    ]),
+    ("jewel box", [
+        "#0F5257", "#7B2D8B", "#C41E3A", "#DAA520", "#1B1B1B",
+    ]),
+    ("tidal pool", [
+        "#006D6F", "#48D1CC", "#B0E0E6", "#F5F5F5", "#2E8B57",
+    ]),
+    ("cedar and moss", [
+        "#4A3728", "#6B8E23", "#8FBC8F", "#D2B48C", "#2E4E1E",
+    ]),
+    ("northern lights", [
+        "#0B0B3B", "#1B8A6B", "#7FDBCA", "#C77DFF", "#F0F8FF",
+    ]),
+    ("dusty rose", [
+        "#BC8F8F", "#C08081", "#F5E6E0", "#D2B48C", "#5C4033",
+    ]),
 ]
 
 

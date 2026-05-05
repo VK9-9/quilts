@@ -18,16 +18,19 @@ SYMMETRY_NAMES = list(SYMMETRY_MODES.keys())
 
 # parameter ranges
 PARAM_SPACE = {
-    "rows": (10, 24),
-    "cols": (10, 24),
+    "rows": (14, 22),
+    "cols": (14, 22),
     "symmetry": SYMMETRY_NAMES,
-    "chaos": (0.0, 0.8),
+    "chaos": (0.0, 1.0),
     "palette": PALETTE_NAMES,
-    "n_patterns": (1, 7),
-    "n_colors": (2, 5),
+    "n_patterns": (1, 2),
+    "n_colors": (2, 4),
     "tile_size": (0, 10),       # 0 = no tiling
     "tile_variation": (0.0, 0.3),
 }
+
+# max fraction of candidates that can use any single palette value
+MAX_PALETTE_FRAC = 0.15
 
 
 def sample_random_params(rng=None):
@@ -136,15 +139,28 @@ class QuiltExplorer:
 
         With probability explore_prob, returns fully random params.
         Otherwise, generates candidates and picks the one the model
-        predicts you'll like most.
+        predicts you'll like most, with a diversity cap on palette to
+        prevent over-exploitation.
         """
         rng = random.Random()
 
         if self.model is None or rng.random() < explore_prob:
             return sample_random_params(rng)
 
-        # generate candidates, pick best predicted
+        # generate candidates, pick best predicted (with diversity cap)
         candidates = [sample_random_params(rng) for _ in range(200)]
+
+        # enforce palette diversity: cap per-palette count
+        max_per_palette = max(1, int(len(candidates) * MAX_PALETTE_FRAC))
+        palette_counts = {}
+        filtered = []
+        for c in candidates:
+            pal = c["palette"]
+            palette_counts[pal] = palette_counts.get(pal, 0) + 1
+            if palette_counts[pal] <= max_per_palette:
+                filtered.append(c)
+        candidates = filtered if filtered else candidates
+
         X = np.array([params_to_features(c) for c in candidates])
         probs = self.model.predict_proba(X)[:, 1]
         best = int(np.argmax(probs))
