@@ -15,7 +15,8 @@ from layout import SYMMETRY_MODES
 from quilt import BORDER_STYLES, GRADIENT_MODES
 
 PALETTE_NAMES = [p[0] for p in PALETTES]
-SYMMETRY_NAMES = list(SYMMETRY_MODES.keys())
+_DROP_SYMMETRY = {"flower", "emergent"}
+SYMMETRY_NAMES = [s for s in SYMMETRY_MODES.keys() if s not in _DROP_SYMMETRY]
 
 # parameter ranges
 PARAM_SPACE = {
