@@ -209,9 +209,10 @@ def _cli():
     import json
 
     usage = """Usage:
-  python quilt_id.py decode <id>          decode ID → params JSON
-  python quilt_id.py encode <params.json> encode params file → ID
-  python quilt_id.py test                 run doctests
+  python quilt_id.py decode <id>           decode ID → params JSON
+  python quilt_id.py decode <id> --command print quilt.py render command
+  python quilt_id.py encode <params.json>  encode params file → ID
+  python quilt_id.py test                  run doctests
 """
     if len(sys.argv) < 2:
         print(usage)
@@ -224,7 +225,34 @@ def _cli():
             print("decode requires an ID argument")
             sys.exit(1)
         params = decode(sys.argv[2])
-        print(json.dumps(params, indent=2))
+        if "--command" in sys.argv:
+            parts = [
+                "python quilt.py",
+                f"--rows {params['rows']}",
+                f"--cols {params['cols']}",
+                f"--palette \"{params['palette']}\"",
+                f"--symmetry {params['symmetry']}",
+                f"--chaos {params['chaos']}",
+                f"--seed {params['seed']}",
+                f"--n-patterns {params['n_patterns']}",
+                f"--n-colors {params['n_colors']}",
+                f"--tile-size {params['tile_size']}",
+                f"--tile-variation {params['tile_variation']}",
+            ]
+            if params.get("border_style") and params["border_style"] != "none":
+                parts.append(f"--border-style {params['border_style']}")
+            if params.get("sash_width", 0) > 0:
+                parts.append(f"--sash-width {params['sash_width']}")
+            if params.get("cornerstones"):
+                parts.append("--cornerstones")
+            if params.get("mega_frac", 0.0) > 0.0:
+                parts.append(f"--mega-frac {params['mega_frac']}")
+            if params.get("plain_frac", 0.0) > 0.0:
+                parts.append(f"--plain-frac {params['plain_frac']}")
+            parts.append("--output out.png")
+            print(" \\\n  ".join(parts))
+        else:
+            print(json.dumps(params, indent=2))
 
     elif cmd == "encode":
         if len(sys.argv) < 3:
