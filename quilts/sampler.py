@@ -31,7 +31,7 @@ PARAM_SPACE = {
 }
 
 # max fraction of candidates that can use any single palette value
-MAX_PALETTE_FRAC = 0.15
+MAX_PALETTE_FRAC = 0.10
 
 
 def sample_random_params(rng=None):
@@ -51,7 +51,7 @@ def sample_random_params(rng=None):
         "tile_size": rng.randint(*PARAM_SPACE["tile_size"]),
         "tile_variation": round(rng.uniform(*PARAM_SPACE["tile_variation"]), 2),
         "border_style": rng.choice(BORDER_STYLES) if rng.random() < 0.25 else "none",
-        "sash_width": rng.choice([5, 8]) if rng.random() < 0.30 else 0,
+        "sash_width": 5 if rng.random() < 0.30 else 0,
         "color_gradient": rng.choice(GRADIENT_MODES) if rng.random() < 0.25 else "none",
         "mega_frac": round(rng.uniform(0.1, 0.25), 2) if rng.random() < 0.30 else 0.0,
         "seed": rng.randint(0, 2**31),
