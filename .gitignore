@@ -1,0 +1,6 @@
+*.pyc
+__pycache__/
+venv/
+quilts/ratings.json
+CLAUDE.md
+docs/
