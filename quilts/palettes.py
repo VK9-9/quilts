@@ -5,32 +5,20 @@ Colors within a palette are meant to coordinate like real quilting fabric select
 """
 
 PALETTES = [
-    ("autumn harvest", [
-        "#8B2500", "#D2691E", "#DAA520", "#F5DEB3", "#2F4F2F",
-    ]),
     ("ocean breeze", [
         "#1B3A5C", "#4682B4", "#87CEEB", "#F0F8FF", "#2E8B57",
     ]),
     ("wildflower", [
         "#8B008B", "#DA70D6", "#FFB6C1", "#FFFACD", "#228B22",
     ]),
-    ("farmhouse", [
-        "#8B0000", "#F5F5DC", "#2F4F4F", "#D2B48C", "#4A4A4A",
-    ]),
     ("winter sky", [
         "#191970", "#4169E1", "#B0C4DE", "#F8F8FF", "#708090",
-    ]),
-    ("stained glass", [
-        "#1B1B2F", "#C0392B", "#2980B9", "#F1C40F", "#1E8449",
     ]),
     ("indigo dye", [
         "#1A0533", "#3F00FF", "#7B68EE", "#E6E6FA", "#F5F5F5",
     ]),
     ("deep sea", [
         "#0C1445", "#1A5276", "#48C9B0", "#F5F5F5", "#0E6655",
-    ]),
-    ("plum and gold", [
-        "#4A0E4E", "#7D3C98", "#F4D03F", "#FDEBD0", "#1A1A2E",
     ]),
     ("storm", [
         "#2C3E50", "#5D6D7E", "#AEB6BF", "#F2F3F4", "#1C2833",
