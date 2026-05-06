@@ -22,13 +22,23 @@ the model learns your preferences and biases future suggestions.
 
 ## Quilt ID tool
 
-Each quilt is fully described by a 13-character base58 ID. Decode an ID
-back to its parameters, or encode a params file to an ID:
+Each quilt is fully described by a 13-character base58 ID. The ID is
+self-contained — no database needed to reproduce the image.
 
 ```bash
-python quilt_id.py decode 4Fzox25puRqsD
-python quilt_id.py encode params.json
+# Decode an ID → params JSON
+./quilt_id.py decode 4Fzox25puRqsD
+
+# Print the quilt.py command to regenerate the quilt
+./quilt_id.py decode 4Fzox25puRqsD --command
+
+# Encode a params JSON file → ID
+./quilt_id.py encode params.json
 ```
+
+The `--command` flag is useful when someone sends you IDs they like — decode
+it, optionally tweak the printed command, and re-run to regenerate or vary
+the design.
 
 ## Build the static gallery
 

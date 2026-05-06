@@ -1,5 +1,4 @@
 * Fabric textures
-* How should we use --tile-size?  Should it just repeat, or repeat with tiny variations?
 * Public webapp
 ** Show NxN grid of different families
 ** Then clicking on one takes you to a set of similar patterns
