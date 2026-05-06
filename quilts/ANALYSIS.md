@@ -266,6 +266,15 @@ chaos 0-0.8, 12 palettes, n_patterns 1-7, n_colors 2-5, no diversity cap
 - Added color gradient: ~25% chance, 4 modes (horizontal, vertical, diagonal, radial)
 - Removed stripes border style (consistently 0%)
 
+### Changes after Round 4
+
+- Dropped palettes: ember (0%), frost (8%), mosaic (8%)
+- Removed stripes border style (from BORDER_STYLES constant)
+- Narrowed sash to [5, 8]px only (3/6/7px hurt)
+- Removed horizontal and vertical gradient modes (dead or weak)
+- Lowered chaos range to 0–0.8
+- Added block scale mixing: `mega_frac` (~30% chance, 0.1–0.25 fraction of 2×2 mega-blocks)
+
 ---
 
 ## Round 4 — ratings 784-1157
@@ -386,6 +395,116 @@ color gradient (~25%, 4 modes)
 1109-1133: 28%
 1134-1157: 21%
 ```
+
+---
+
+## Round 5 — ratings 1158-1538
+
+**Records:** 1158-1538 (381 ratings)
+**Overall:** 146/381 liked (38.3%)
+**Params:** rows/cols 14-19, symmetry 7 modes, chaos 0-0.8, 15 palettes (dropped frost/mosaic/ember),
+n_patterns 1-2, n_colors 3-4, 15% palette diversity cap, 3 border styles (solid/checkerboard/piano_keys),
+sashing (~30%, 5 or 8px only), color gradient (~25%, diagonal/radial only), mega_frac (~30%, 0.1–0.25)
+
+### Key findings
+
+- **Like rate up to 38.3%** — best round yet. Round 5 param changes working.
+- **Rotational symmetry dominant** — 46% (57/124), clear winner this round. Was mediocre in earlier rounds.
+  Emergent dropped to 30% (14/47) — underperforming.
+- **Deep sea massively over-exploited** — 30.4% of round (116/381) vs expected ~7%. Diversity cap not
+  controlling it. Scored 47%, making model heavily prefer it.
+- **Top palettes:** northern lights 53% (8/15, small sample), deep sea 47% (54/116), autumn harvest 45%
+  (13/29), indigo dye 46% (22/48), wildflower 44% (15/34).
+- **Dead palettes:** spring garden 9% (1/11), patchwork classic 12% (1/8), midnight garden 20% (2/10),
+  sunset 17% (2/12). Ocean breeze dropped from 44% (R4) to 25% — surprising decline.
+- **mega_frac neutral** — flat across all values (37-39%). Adds visual variety without hurting like rate.
+- **sash_width=8 hurts badly** — 18% (7/38); sash=5 fine at 42% (28/67); no-sash 40%. Drop 8px.
+- **Color gradient declining** — radial slipped to 33% (24/72); diagonal 39% (17/44); none 40%. Both
+  modes slightly below baseline.
+- **Border styles all neutral** — checkerboard 40%, solid 40%, piano_keys 37%, none 37%. No signal.
+- **Chaos**: liked mean 0.49 vs disliked 0.43 — moderate chaos still preferred.
+- **Grid size**: rows 14 and 16 best at 44%; 17-19 range 33-36%.
+
+### Palette detail
+
+| Palette | Shown | Liked | Rate |
+|---------|-------|-------|------|
+| northern lights | 15 | 8 | 53% |
+| deep sea | 116 | 54 | 47% |
+| indigo dye | 48 | 22 | 46% |
+| autumn harvest | 29 | 13 | 45% |
+| wildflower | 34 | 15 | 44% |
+| storm | 17 | 6 | 35% |
+| plum and gold | 13 | 4 | 31% |
+| farmhouse | 10 | 3 | 30% |
+| stained glass | 11 | 3 | 27% |
+| winter sky | 11 | 3 | 27% |
+| ocean breeze | 36 | 9 | 25% |
+| midnight garden | 10 | 2 | 20% |
+| sunset | 12 | 2 | 17% |
+| patchwork classic | 8 | 1 | 12% |
+| spring garden | 11 | 1 | 9% |
+
+### Symmetry detail
+
+| Mode | Shown | Liked | Rate |
+|------|-------|-------|------|
+| rotational | 124 | 57 | 46% |
+| stripe | 38 | 15 | 39% |
+| mirror | 59 | 22 | 37% |
+| none | 52 | 18 | 35% |
+| partial | 41 | 15 | 37% |
+| emergent | 47 | 14 | 30% |
+| flower | 20 | 5 | 25% |
+
+### New params detail
+
+| mega_frac | Shown | Liked | Rate |
+|-----------|-------|-------|------|
+| 0.0 (none) | 216 | 84 | 39% |
+| ~0.1 | 52 | 19 | 37% |
+| ~0.2 | 113 | 43 | 38% |
+
+| sash_width | Shown | Liked | Rate |
+|------------|-------|-------|------|
+| 5px | 67 | 28 | 42% |
+| none | 276 | 111 | 40% |
+| 8px | 38 | 7 | 18% |
+
+| color_gradient | Shown | Liked | Rate |
+|----------------|-------|-------|------|
+| none | 265 | 105 | 40% |
+| diagonal | 44 | 17 | 39% |
+| radial | 72 | 24 | 33% |
+
+### Like rate trend (round 5 only)
+
+```
+1158-1182: 64%
+1183-1207: 24%
+1208-1232: 68%
+1233-1257: 40%
+1258-1282: 36%
+1283-1307: 48%
+1308-1332: 40%
+1333-1357: 32%
+1358-1382:  8%
+1383-1407: 40%
+1408-1432: 24%
+1433-1457: 24%
+1458-1482: 24%
+1483-1507: 48%
+1508-1532: 56%
+1533-1538: 33%
+```
+
+### Changes after Round 5
+
+- Dropped palettes: spring garden (9%), patchwork classic (12%), sunset (17%), midnight garden (20%)
+- Drop sash_width=8 (18%); keep only 5px
+- Tighten palette diversity cap (deep sea at 30.4%, cap not working)
+- Consider dropping emergent symmetry (30%) and flower (25%)
+- Color gradient marginal — consider dropping radial; keep only diagonal or remove entirely
 
 ---
 
