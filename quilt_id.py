@@ -203,6 +203,44 @@ def decode(qid):
     raise ValueError(f"Unknown quilt ID version: {version}")
 
 
+def _cli():
+    import sys
+    import json
+
+    usage = """Usage:
+  python quilt_id.py decode <id>          decode ID → params JSON
+  python quilt_id.py encode <params.json> encode params file → ID
+  python quilt_id.py test                 run doctests
+"""
+    if len(sys.argv) < 2:
+        print(usage)
+        sys.exit(1)
+
+    cmd = sys.argv[1]
+
+    if cmd == "decode":
+        if len(sys.argv) < 3:
+            print("decode requires an ID argument")
+            sys.exit(1)
+        params = decode(sys.argv[2])
+        print(json.dumps(params, indent=2))
+
+    elif cmd == "encode":
+        if len(sys.argv) < 3:
+            print("encode requires a params JSON file argument")
+            sys.exit(1)
+        with open(sys.argv[2], encoding="utf-8") as f:
+            params = json.load(f)
+        print(encode(params))
+
+    elif cmd == "test":
+        import doctest
+        doctest.testmod(verbose=True)
+
+    else:
+        print(usage)
+        sys.exit(1)
+
+
 if __name__ == "__main__":
-    import doctest
-    doctest.testmod(verbose=True)
+    _cli()
