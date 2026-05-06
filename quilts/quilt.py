@@ -212,7 +212,7 @@ def _draw_border(ctx, width, height, border, quilt_x, quilt_y, quilt_w,
 BORDER_STYLES = ["solid", "checkerboard", "piano_keys"]
 
 
-GRADIENT_MODES = ["diagonal", "radial"]
+GRADIENT_MODES = ["diagonal"]
 
 
 def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,
