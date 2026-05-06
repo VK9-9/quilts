@@ -1,0 +1,25 @@
+* Fabric textures
+* How should we use --tile-size?  Should it just repeat, or repeat with tiny variations?
+* Public webapp
+** Show 4x4 grid and let the user click on the top N they like
+** Each round, use the info to update a user-specific model
+** Do they need to identify themselves?
+* New Patterns
+** Blah
+* Quilting design ideas
+** Block scale mixing
+*** Most of the grid at one block size, but scattered 2x2 "mega-blocks" rendered at double scale. Adds visual hierarchy and breaks regularity.
+** Value contrast control
+*** Deliberately bias light colors to one region and dark colors to another (top/bottom, center/edge). Currently palette colors are assigned randomly — intentional value distribution could improve composition.
+** Palette pairing
+*** Use two coordinated palettes in different grid regions rather than one palette everywhere. E.g. warm palette in center, cool palette at edges.
+* Rounds
+** Round7
+*** New palettes
+*** Two-palette mixing
+**** Pick two palettes and assign to different regions (top/bottom, diagonal split, checkerboard of regions). Palette interaction has never been explored.
+*** Quilt-level color wash
+**** Shift which palette colors are chosen based on each block's position — warm colors cluster in one corner, cool in another. Operates at composition level rather than within individual blocks.
+*** Asymmetric grid
+**** Vary row heights or column widths — creates a "strippy quilt" feel very different from the current uniform grid.
+* Bugs
