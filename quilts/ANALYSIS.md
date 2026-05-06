@@ -508,6 +508,117 @@ sashing (~30%, 5 or 8px only), color gradient (~25%, diagonal/radial only), mega
 
 ---
 
+## Round 6 — ratings 1539-1914
+
+**Records:** 1539-1914 (376 ratings)
+**Overall:** 95/376 liked (25.3%)
+**Params:** rows/cols 14-19, symmetry 5 modes (none/mirror/rotational/stripe/partial),
+chaos 0-0.8, 11 palettes, n_patterns 1-2, n_colors 3-4, 10% palette diversity cap,
+3 border styles (solid/checkerboard/piano_keys, ~25%), sash (~30%, 5px only),
+color gradient (~25%, diagonal only), mega_frac (~30%, 0.1–0.25),
+plain_frac (~30%, 0.1–0.4), cornerstones (~50% when sash active)
+
+### Key findings
+
+- **Like rate dropped to 25.3%** — down from 38.3% in Round 5. Two new params
+  (cornerstones, plain_frac) expanded the search space, temporarily disrupting the
+  model's exploitation signal. Model needs more data to learn the new param effects.
+- **Trend: strong start, weak finish** — opened at 40%+ for first 5 windows, then
+  collapsed to 8-12% in the final stretch. Classic over-exploitation crash pattern.
+- **Wildflower top palette** — 36% (21/59). Deep sea 33% (33/101), ocean breeze 26%,
+  indigo dye 25%. All holding well.
+- **Bottom 4 palettes weak all round:** farmhouse 9% (1/11), autumn harvest 6% (1/16),
+  stained glass 6% (1/17), plum and gold 6% (1/18). Drop all four.
+- **Sash strongly negative** — 0px = 28%, 5px = 17%. Even the 5px "good" width from
+  R5 is now a negative. Cut sash probability sharply.
+- **Cornerstones neutral** — True=27%, False=24%. Slight positive edge, keep as-is.
+- **mega_frac positive signal** — off=22%, on=30%. Clear positive now after R5's flat
+  signal. Keep at current probability.
+- **plain_frac positive** — off=22%, on=29%. New param validated in first round.
+- **Diagonal gradient weak** — 21% vs none=27%. Not earning its keep. Drop entirely.
+
+### Palette detail
+
+| Palette | Shown | Liked | Rate |
+|---------|-------|-------|------|
+| wildflower | 59 | 21 | 36% |
+| deep sea | 101 | 33 | 33% |
+| ocean breeze | 42 | 11 | 26% |
+| indigo dye | 48 | 12 | 25% |
+| storm | 34 | 8 | 24% |
+| northern lights | 20 | 4 | 20% |
+| winter sky | 10 | 2 | 20% |
+| farmhouse | 11 | 1 | 9% |
+| autumn harvest | 16 | 1 | 6% |
+| stained glass | 17 | 1 | 6% |
+| plum and gold | 18 | 1 | 6% |
+
+### Symmetry detail
+
+| Mode | Shown | Liked | Rate |
+|------|-------|-------|------|
+| rotational | 119 | 37 | 31% |
+| stripe | 77 | 19 | 25% |
+| none | 53 | 14 | 26% |
+| mirror | 64 | 13 | 20% |
+| partial | 63 | 12 | 19% |
+
+### New params detail
+
+| sash_width | Shown | Liked | Rate |
+|------------|-------|-------|------|
+| 0px (none) | 274 | 78 | 28% |
+| 5px | 102 | 17 | 17% |
+
+| cornerstones | Shown | Liked | Rate |
+|------------|-------|-------|------|
+| True | 164 | 45 | 27% |
+| False | 212 | 50 | 24% |
+
+| mega_frac | Shown | Liked | Rate |
+|-----------|-------|-------|------|
+| 0.0 (off) | 218 | 48 | 22% |
+| >0.0 (on) | 158 | 47 | 30% |
+
+| plain_frac | Shown | Liked | Rate |
+|------------|-------|-------|------|
+| 0.0 (off) | 207 | 46 | 22% |
+| >0.0 (on) | 169 | 49 | 29% |
+
+| color_gradient | Shown | Liked | Rate |
+|----------------|-------|-------|------|
+| none | 273 | 73 | 27% |
+| diagonal | 103 | 22 | 21% |
+
+### Like rate trend (round 6 only)
+
+```
+1539-1563: 44%
+1564-1588: 40%
+1589-1613: 36%
+1614-1638: 32%
+1639-1663: 36%
+1664-1688: 24%
+1689-1713: 24%
+1714-1738: 16%
+1739-1763: 36%
+1764-1788:  8%
+1789-1813: 28%
+1814-1838: 12%
+1839-1863:  8%
+1864-1888: 20%
+1889-1914: 14%
+```
+
+### Changes after Round 6
+
+- Dropped palettes: farmhouse (9%), autumn harvest (6%), stained glass (6%),
+  plum and gold (6%) — 7 palettes remain
+- Cut sash probability: 30% → 10% (5px clearly a negative this round)
+- Dropped color_gradient entirely — diagonal at 21% vs 27% baseline, no longer worth the noise
+
+---
+
 ## Favorites
 
 Standout quilts worth revisiting or using as seeds for future exploration.
