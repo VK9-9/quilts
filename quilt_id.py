@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Compact identifier for quilt parameter sets.
 
 Encodes all parameters needed to reproduce a quilt into a short base58 string.
