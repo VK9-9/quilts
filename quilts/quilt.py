@@ -218,7 +218,8 @@ GRADIENT_MODES = ["diagonal"]
 def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,
                  seed, output, border, max_patterns=None, max_colors=None,
                  tile_size=None, tile_variation=0.05, border_style=None,
-                 sash_width=0, color_gradient=None, mega_frac=0.0):
+                 sash_width=0, color_gradient=None, mega_frac=0.0,
+                 cornerstones=False):
     """Generate and render a quilt to an image file."""
     if seed is None:
         seed = random.randint(0, 2**31)
@@ -319,8 +320,10 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,
     ctx.fill()
 
     # sash background — fill quilt area with sash color; blocks draw on top
+    sash_color_idx = None
     if sash > 0:
-        sash_color = palette_colors[rng.randint(0, n_colors - 1)]
+        sash_color_idx = rng.randint(0, n_colors - 1)
+        sash_color = palette_colors[sash_color_idx]
         ctx.set_source_rgb(*sash_color)
         ctx.rectangle(quilt_x, quilt_y, quilt_w, quilt_h)
         ctx.fill()
@@ -360,6 +363,18 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,
                 for pt in poly[1:]:
                     ctx.line_to(*pt)
                 ctx.close_path()
+                ctx.fill()
+
+    # cornerstones — contrasting squares at sash intersections
+    if sash > 0 and cornerstones and n_colors > 1:
+        other = [i for i in range(n_colors) if i != sash_color_idx]
+        cs_color = palette_colors[rng.choice(other)]
+        ctx.set_source_rgb(*cs_color)
+        for cr in range(rows - 1):
+            for cc in range(cols - 1):
+                cx = border + cc * stride + block_size
+                cy = border + cr * stride + block_size
+                ctx.rectangle(cx, cy, sash, sash)
                 ctx.fill()
 
     # grid lines (seam lines between blocks) — skipped when sashing is active
