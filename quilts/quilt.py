@@ -219,7 +219,7 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,
                  seed, output, border, max_patterns=None, max_colors=None,
                  tile_size=None, tile_variation=0.05, border_style=None,
                  sash_width=0, color_gradient=None, mega_frac=0.0,
-                 cornerstones=False):
+                 cornerstones=False, plain_frac=0.0):
     """Generate and render a quilt to an image file."""
     if seed is None:
         seed = random.randint(0, 2**31)
@@ -286,6 +286,14 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,
             cell["color_map"] = [cm[(i + shift) % n_colors]
                                   for i in range(n_colors)]
 
+    # plain blocks: random cells rendered as solid color (no pattern)
+    plain_cells = set()
+    if plain_frac > 0.0:
+        for r in range(rows):
+            for c in range(cols):
+                if rng.random() < plain_frac:
+                    plain_cells.add((r, c))
+
     # mega-blocks: greedily select non-overlapping 2x2 regions
     mega_tl = set()       # top-left corners of mega-blocks
     mega_covered = set()  # all 4 cells covered by mega-blocks
@@ -346,6 +354,14 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,
             cell = grid[(r, c)]
             bx = border + c * stride
             by = border + r * stride
+
+            if (r, c) in plain_cells:
+                ci = cell["color_map"][0]
+                ctx.set_source_rgb(*palette_colors[ci])
+                ctx.rectangle(bx, by, block_size, block_size)
+                ctx.fill()
+                continue
+
             cx_block = bx + block_size / 2
             cy_block = by + block_size / 2
 
@@ -443,7 +459,7 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,
     ctx.set_line_width(0.5)
     for r in range(rows):
         for c in range(cols):
-            if (r, c) in mega_covered:
+            if (r, c) in mega_covered or (r, c) in plain_cells:
                 continue
             cell = grid[(r, c)]
             bx = border + c * stride
