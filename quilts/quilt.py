@@ -218,7 +218,7 @@ GRADIENT_MODES = ["diagonal", "radial"]
 def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,
                  seed, output, border, max_patterns=None, max_colors=None,
                  tile_size=None, tile_variation=0.05, border_style=None,
-                 sash_width=0, color_gradient=None):
+                 sash_width=0, color_gradient=None, mega_frac=0.0):
     """Generate and render a quilt to an image file."""
     if seed is None:
         seed = random.randint(0, 2**31)
@@ -285,6 +285,18 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,
             cell["color_map"] = [cm[(i + shift) % n_colors]
                                   for i in range(n_colors)]
 
+    # mega-blocks: greedily select non-overlapping 2x2 regions
+    mega_tl = set()       # top-left corners of mega-blocks
+    mega_covered = set()  # all 4 cells covered by mega-blocks
+    if mega_frac > 0.0 and rows >= 2 and cols >= 2:
+        candidates = [(r, c) for r in range(rows - 1) for c in range(cols - 1)]
+        rng.shuffle(candidates)
+        for r, c in candidates:
+            covers = {(r, c), (r + 1, c), (r, c + 1), (r + 1, c + 1)}
+            if not covers & mega_covered and rng.random() < mega_frac:
+                mega_tl.add((r, c))
+                mega_covered |= covers
+
     # widen border when decorative style is active
     if border_style is not None:
         border = max(border, int(block_size * 0.75))
@@ -322,10 +334,12 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,
                      quilt_w, quilt_h, border_style,
                      [border_c1, border_c2], block_size)
 
-    # render blocks
+    # render blocks (skip cells covered by mega-blocks)
     stride = block_size + sash
     for r in range(rows):
         for c in range(cols):
+            if (r, c) in mega_covered:
+                continue
             cell = grid[(r, c)]
             bx = border + c * stride
             by = border + r * stride
@@ -349,15 +363,22 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,
                 ctx.fill()
 
     # grid lines (seam lines between blocks) — skipped when sashing is active
+    # interior seam lines of mega-blocks are also skipped
+    mega_skip_rows = {r + 1 for r, _ in mega_tl}
+    mega_skip_cols = {c + 1 for _, c in mega_tl}
     if sash == 0:
         ctx.set_source_rgba(0, 0, 0, 0.15)
         ctx.set_line_width(1.0)
         for r in range(rows + 1):
+            if r in mega_skip_rows:
+                continue
             y = border + r * stride
             ctx.move_to(border, y)
             ctx.line_to(border + quilt_w, y)
             ctx.stroke()
         for c in range(cols + 1):
+            if c in mega_skip_cols:
+                continue
             x = border + c * stride
             ctx.move_to(x, border)
             ctx.line_to(x, border + quilt_h)
@@ -378,11 +399,37 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,
             ctx.line_to(x, border + quilt_h)
             ctx.stroke()
 
-    # patch seam lines (within blocks)
+    # render mega-blocks (after grid lines so they paint over interior seams)
+    mega_size = 2 * block_size + sash
+    for (mr, mc) in mega_tl:
+        cell = grid[(mr, mc)]
+        bx = border + mc * stride
+        by = border + mr * stride
+        cx_block = bx + mega_size / 2
+        cy_block = by + mega_size / 2
+
+        pattern_fn = BLOCK_PATTERNS[cell["pattern"]]
+        patches = pattern_fn(bx, by, mega_size, n_colors)
+        patches = rotate_patches(patches, cx_block, cy_block, cell["rotation"])
+
+        color_map = cell["color_map"]
+        for poly, color_idx in patches:
+            ci = color_map[color_idx % n_colors]
+            r_c, g_c, b_c = palette_colors[ci]
+            ctx.set_source_rgb(r_c, g_c, b_c)
+            ctx.move_to(*poly[0])
+            for pt in poly[1:]:
+                ctx.line_to(*pt)
+            ctx.close_path()
+            ctx.fill()
+
+    # patch seam lines (within blocks) — skip mega-covered, draw mega seams after
     ctx.set_source_rgba(0, 0, 0, 0.08)
     ctx.set_line_width(0.5)
     for r in range(rows):
         for c in range(cols):
+            if (r, c) in mega_covered:
+                continue
             cell = grid[(r, c)]
             bx = border + c * stride
             by = border + r * stride
@@ -400,6 +447,24 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,
                     ctx.line_to(*pt)
                 ctx.close_path()
                 ctx.stroke()
+
+    for (mr, mc) in mega_tl:
+        cell = grid[(mr, mc)]
+        bx = border + mc * stride
+        by = border + mr * stride
+        cx_block = bx + mega_size / 2
+        cy_block = by + mega_size / 2
+
+        pattern_fn = BLOCK_PATTERNS[cell["pattern"]]
+        patches = pattern_fn(bx, by, mega_size, n_colors)
+        patches = rotate_patches(patches, cx_block, cy_block, cell["rotation"])
+
+        for poly, _ in patches:
+            ctx.move_to(*poly[0])
+            for pt in poly[1:]:
+                ctx.line_to(*pt)
+            ctx.close_path()
+            ctx.stroke()
 
     # save or return bytes
     if output is None:
