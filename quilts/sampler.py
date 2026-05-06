@@ -53,6 +53,7 @@ def sample_random_params(rng=None):
         "tile_variation": round(rng.uniform(*PARAM_SPACE["tile_variation"]), 2),
         "border_style": rng.choice(BORDER_STYLES) if rng.random() < 0.25 else "none",
         "sash_width": 5 if rng.random() < 0.30 else 0,
+        "cornerstones": rng.random() < 0.50,
         "color_gradient": rng.choice(GRADIENT_MODES) if rng.random() < 0.25 else "none",
         "mega_frac": round(rng.uniform(0.1, 0.25), 2) if rng.random() < 0.30 else 0.0,
         "seed": rng.randint(0, 2**31),
@@ -71,6 +72,7 @@ def params_to_features(params):
     features.append(params["tile_variation"])
     features.append(params.get("sash_width", 0))
     features.append(params.get("mega_frac", 0.0))
+    features.append(1.0 if params.get("cornerstones", False) else 0.0)
     # one-hot color gradient (includes "none")
     grad_names = ["none"] + GRADIENT_MODES
     for g in grad_names:
@@ -108,6 +110,7 @@ def params_to_render_kwargs(params):
         "sash_width": params.get("sash_width", 0),
         "color_gradient": params.get("color_gradient", "none"),
         "mega_frac": params.get("mega_frac", 0.0),
+        "cornerstones": params.get("cornerstones", False),
     }
     if kwargs["border_style"] == "none":
         kwargs["border_style"] = None
@@ -128,12 +131,12 @@ class QuiltExplorer:
 
     def _load(self):
         if os.path.exists(self.data_path):
-            with open(self.data_path) as f:
+            with open(self.data_path, encoding="utf-8") as f:
                 self.ratings = json.load(f)
 
     def _save(self):
         os.makedirs(os.path.dirname(self.data_path) or ".", exist_ok=True)
-        with open(self.data_path, "w") as f:
+        with open(self.data_path, "w", encoding="utf-8") as f:
             json.dump(self.ratings, f, indent=2)
 
     def add_rating(self, params, liked):
@@ -210,7 +213,7 @@ class QuiltExplorer:
         grad_names = ["none"] + GRADIENT_MODES
         names = (
             ["rows", "chaos", "n_patterns", "n_colors",
-             "tile_size", "tile_variation", "sash_width", "mega_frac"]
+             "tile_size", "tile_variation", "sash_width", "mega_frac", "cornerstones"]
             + [f"grad_{g}" for g in grad_names]
             + [f"brd_{b}" for b in border_names]
             + [f"sym_{s}" for s in SYMMETRY_NAMES]
