@@ -214,7 +214,8 @@ BORDER_STYLES = ["solid", "stripes", "checkerboard", "piano_keys"]
 
 def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,
                  seed, output, border, max_patterns=None, max_colors=None,
-                 tile_size=None, tile_variation=0.05, border_style=None):
+                 tile_size=None, tile_variation=0.05, border_style=None,
+                 sash_width=0):
     """Generate and render a quilt to an image file."""
     if seed is None:
         seed = random.randint(0, 2**31)
@@ -265,12 +266,13 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,
     if border_style is not None:
         border = max(border, int(block_size * 0.75))
 
-    # image dimensions
-    width = cols * block_size + 2 * border
-    height = rows * block_size + 2 * border
+    # image dimensions (sashing adds gaps between blocks)
+    sash = sash_width
+    quilt_w = cols * block_size + max(0, cols - 1) * sash
+    quilt_h = rows * block_size + max(0, rows - 1) * sash
+    width = quilt_w + 2 * border
+    height = quilt_h + 2 * border
     quilt_x, quilt_y = border, border
-    quilt_w = cols * block_size
-    quilt_h = rows * block_size
 
     # create surface
     surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, width, height)
@@ -280,6 +282,13 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,
     ctx.set_source_rgb(0.95, 0.93, 0.90)  # off-white linen background
     ctx.rectangle(0, 0, width, height)
     ctx.fill()
+
+    # sash background — fill quilt area with sash color; blocks draw on top
+    if sash > 0:
+        sash_color = palette_colors[rng.randint(0, n_colors - 1)]
+        ctx.set_source_rgb(*sash_color)
+        ctx.rectangle(quilt_x, quilt_y, quilt_w, quilt_h)
+        ctx.fill()
 
     # decorative border
     if border_style is not None:
@@ -291,11 +300,12 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,
                      [border_c1, border_c2], block_size)
 
     # render blocks
+    stride = block_size + sash
     for r in range(rows):
         for c in range(cols):
             cell = grid[(r, c)]
-            bx = border + c * block_size
-            by = border + r * block_size
+            bx = border + c * stride
+            by = border + r * stride
             cx_block = bx + block_size / 2
             cy_block = by + block_size / 2
 
@@ -315,33 +325,34 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,
                 ctx.close_path()
                 ctx.fill()
 
-    # grid lines (seam lines between blocks)
-    ctx.set_source_rgba(0, 0, 0, 0.15)
-    ctx.set_line_width(1.0)
-    for r in range(rows + 1):
-        y = border + r * block_size
-        ctx.move_to(border, y)
-        ctx.line_to(border + cols * block_size, y)
-        ctx.stroke()
-    for c in range(cols + 1):
-        x = border + c * block_size
-        ctx.move_to(x, border)
-        ctx.line_to(x, border + rows * block_size)
-        ctx.stroke()
+    # grid lines (seam lines between blocks) — skipped when sashing is active
+    if sash == 0:
+        ctx.set_source_rgba(0, 0, 0, 0.15)
+        ctx.set_line_width(1.0)
+        for r in range(rows + 1):
+            y = border + r * stride
+            ctx.move_to(border, y)
+            ctx.line_to(border + quilt_w, y)
+            ctx.stroke()
+        for c in range(cols + 1):
+            x = border + c * stride
+            ctx.move_to(x, border)
+            ctx.line_to(x, border + quilt_h)
+            ctx.stroke()
 
     # tile boundary lines (heavier seams between tiles)
     if tile_size is not None:
         ctx.set_source_rgba(0, 0, 0, 0.4)
         ctx.set_line_width(2.5)
         for tr in range(math.ceil(rows / tile_size) + 1):
-            y = border + min(tr * tile_size, rows) * block_size
+            y = border + min(tr * tile_size, rows) * stride
             ctx.move_to(border, y)
-            ctx.line_to(border + cols * block_size, y)
+            ctx.line_to(border + quilt_w, y)
             ctx.stroke()
         for tc in range(math.ceil(cols / tile_size) + 1):
-            x = border + min(tc * tile_size, cols) * block_size
+            x = border + min(tc * tile_size, cols) * stride
             ctx.move_to(x, border)
-            ctx.line_to(x, border + rows * block_size)
+            ctx.line_to(x, border + quilt_h)
             ctx.stroke()
 
     # patch seam lines (within blocks)
@@ -350,8 +361,8 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,
     for r in range(rows):
         for c in range(cols):
             cell = grid[(r, c)]
-            bx = border + c * block_size
-            by = border + r * block_size
+            bx = border + c * stride
+            by = border + r * stride
             cx_block = bx + block_size / 2
             cy_block = by + block_size / 2
 
