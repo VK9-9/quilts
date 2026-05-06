@@ -29,9 +29,6 @@ PALETTES = [
     ("stained glass", [
         "#1B1B2F", "#C0392B", "#2980B9", "#F1C40F", "#1E8449",
     ]),
-    ("frost", [
-        "#E8EFF5", "#A8C6DF", "#5B8FA8", "#2C3E50", "#D5E8D4",
-    ]),
     ("indigo dye", [
         "#1A0533", "#3F00FF", "#7B68EE", "#E6E6FA", "#F5F5F5",
     ]),
@@ -50,14 +47,8 @@ PALETTES = [
     ("storm", [
         "#2C3E50", "#5D6D7E", "#AEB6BF", "#F2F3F4", "#1C2833",
     ]),
-    ("mosaic", [
-        "#C0392B", "#2471A3", "#F39C12", "#1E8449", "#F8F9F9",
-    ]),
     ("northern lights", [
         "#0B0B3B", "#1B8A6B", "#7FDBCA", "#C77DFF", "#F0F8FF",
-    ]),
-    ("ember", [
-        "#1A0A00", "#8B3A0E", "#D4740E", "#FFC857", "#F5F0EB",
     ]),
 ]
 

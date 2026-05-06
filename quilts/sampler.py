@@ -22,7 +22,7 @@ PARAM_SPACE = {
     "rows": (14, 19),
     "cols": (14, 19),
     "symmetry": SYMMETRY_NAMES,
-    "chaos": (0.0, 1.0),
+    "chaos": (0.0, 0.8),
     "palette": PALETTE_NAMES,
     "n_patterns": (1, 2),
     "n_colors": (3, 4),
@@ -51,7 +51,7 @@ def sample_random_params(rng=None):
         "tile_size": rng.randint(*PARAM_SPACE["tile_size"]),
         "tile_variation": round(rng.uniform(*PARAM_SPACE["tile_variation"]), 2),
         "border_style": rng.choice(BORDER_STYLES) if rng.random() < 0.25 else "none",
-        "sash_width": rng.randint(3, 8) if rng.random() < 0.30 else 0,
+        "sash_width": rng.choice([5, 8]) if rng.random() < 0.30 else 0,
         "color_gradient": rng.choice(GRADIENT_MODES) if rng.random() < 0.25 else "none",
         "seed": rng.randint(0, 2**31),
     }
