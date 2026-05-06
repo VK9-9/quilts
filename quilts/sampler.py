@@ -12,7 +12,7 @@ from sklearn.ensemble import GradientBoostingClassifier
 
 from palettes import PALETTES
 from layout import SYMMETRY_MODES
-from quilt import BORDER_STYLES, GRADIENT_MODES
+from quilt import BORDER_STYLES
 
 PALETTE_NAMES = [p[0] for p in PALETTES]
 _DROP_SYMMETRY = {"flower", "emergent"}
@@ -52,9 +52,9 @@ def sample_random_params(rng=None):
         "tile_size": rng.randint(*PARAM_SPACE["tile_size"]),
         "tile_variation": round(rng.uniform(*PARAM_SPACE["tile_variation"]), 2),
         "border_style": rng.choice(BORDER_STYLES) if rng.random() < 0.25 else "none",
-        "sash_width": 5 if rng.random() < 0.30 else 0,
+        "sash_width": 5 if rng.random() < 0.10 else 0,
         "cornerstones": rng.random() < 0.50,
-        "color_gradient": rng.choice(GRADIENT_MODES) if rng.random() < 0.25 else "none",
+        "color_gradient": "none",
         "mega_frac": round(rng.uniform(0.1, 0.25), 2) if rng.random() < 0.30 else 0.0,
         "plain_frac": round(rng.uniform(0.1, 0.4), 2) if rng.random() < 0.30 else 0.0,
         "seed": rng.randint(0, 2**31),
@@ -75,10 +75,6 @@ def params_to_features(params):
     features.append(params.get("mega_frac", 0.0))
     features.append(params.get("plain_frac", 0.0))
     features.append(1.0 if params.get("cornerstones", False) else 0.0)
-    # one-hot color gradient (includes "none")
-    grad_names = ["none"] + GRADIENT_MODES
-    for g in grad_names:
-        features.append(1.0 if params.get("color_gradient", "none") == g else 0.0)
     # one-hot border style (includes "none")
     border_names = ["none"] + BORDER_STYLES
     for b in border_names:
@@ -213,12 +209,10 @@ class QuiltExplorer:
         if self.model is None:
             return None
         border_names = ["none"] + BORDER_STYLES
-        grad_names = ["none"] + GRADIENT_MODES
         names = (
             ["rows", "chaos", "n_patterns", "n_colors",
              "tile_size", "tile_variation", "sash_width", "mega_frac", "plain_frac",
              "cornerstones"]
-            + [f"grad_{g}" for g in grad_names]
             + [f"brd_{b}" for b in border_names]
             + [f"sym_{s}" for s in SYMMETRY_NAMES]
             + [f"pal_{p}" for p in PALETTE_NAMES]
