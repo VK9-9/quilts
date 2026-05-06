@@ -528,6 +528,17 @@ def main():
                         help="Blocks per tile side (e.g. 5 for 5x5 tiles)")
     parser.add_argument("--tile-variation", type=float, default=0.05,
                         help="Fraction of blocks perturbed per tile (default: 0.05)")
+    parser.add_argument("--border-style", default=None,
+                        choices=BORDER_STYLES,
+                        help="Decorative border style (default: none)")
+    parser.add_argument("--sash-width", type=int, default=0,
+                        help="Sash width in px between blocks (default: 0)")
+    parser.add_argument("--cornerstones", action="store_true",
+                        help="Draw cornerstone squares at sash intersections")
+    parser.add_argument("--mega-frac", type=float, default=0.0,
+                        help="Fraction of 2x2 mega-blocks (default: 0.0)")
+    parser.add_argument("--plain-frac", type=float, default=0.0,
+                        help="Fraction of plain solid-color blocks (default: 0.0)")
     args = parser.parse_args()
 
     render_quilt(
@@ -544,6 +555,11 @@ def main():
         max_colors=args.n_colors,
         tile_size=args.tile_size,
         tile_variation=args.tile_variation,
+        border_style=args.border_style,
+        sash_width=args.sash_width,
+        cornerstones=args.cornerstones,
+        mega_frac=args.mega_frac,
+        plain_frac=args.plain_frac,
     )
 
 
