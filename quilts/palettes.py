@@ -17,26 +17,14 @@ PALETTES = [
     ("farmhouse", [
         "#8B0000", "#F5F5DC", "#2F4F4F", "#D2B48C", "#4A4A4A",
     ]),
-    ("sunset", [
-        "#FF4500", "#FF6347", "#FFD700", "#FFF8DC", "#4B0082",
-    ]),
     ("winter sky", [
         "#191970", "#4169E1", "#B0C4DE", "#F8F8FF", "#708090",
-    ]),
-    ("midnight garden", [
-        "#0D0D2B", "#2D572C", "#9B59B6", "#E8D5B7", "#1A1A40",
     ]),
     ("stained glass", [
         "#1B1B2F", "#C0392B", "#2980B9", "#F1C40F", "#1E8449",
     ]),
     ("indigo dye", [
         "#1A0533", "#3F00FF", "#7B68EE", "#E6E6FA", "#F5F5F5",
-    ]),
-    ("patchwork classic", [
-        "#B22222", "#1E3A5F", "#F5F5DC", "#DAA520", "#2F4F4F",
-    ]),
-    ("spring garden", [
-        "#FF69B4", "#98FB98", "#FFFFE0", "#DDA0DD", "#3CB371",
     ]),
     ("deep sea", [
         "#0C1445", "#1A5276", "#48C9B0", "#F5F5F5", "#0E6655",
