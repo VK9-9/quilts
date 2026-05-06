@@ -212,10 +212,13 @@ def _draw_border(ctx, width, height, border, quilt_x, quilt_y, quilt_w,
 BORDER_STYLES = ["solid", "stripes", "checkerboard", "piano_keys"]
 
 
+GRADIENT_MODES = ["horizontal", "vertical", "diagonal", "radial"]
+
+
 def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,
                  seed, output, border, max_patterns=None, max_colors=None,
                  tile_size=None, tile_variation=0.05, border_style=None,
-                 sash_width=0):
+                 sash_width=0, color_gradient=None):
     """Generate and render a quilt to an image file."""
     if seed is None:
         seed = random.randint(0, 2**31)
@@ -261,6 +264,26 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,
             indices = list(range(n_colors))
             cell_rng.shuffle(indices)
             cell["color_map"] = indices
+
+    # color gradient — rotate each cell's color_map by a position-based offset
+    # shift=0 → original colors; shift=1 → next palette color becomes primary
+    if color_gradient is not None and n_colors > 1:
+        mid_r, mid_c = (rows - 1) / 2, (cols - 1) / 2
+        for (r, c), cell in grid.items():
+            if color_gradient == "horizontal":
+                t = c / max(cols - 1, 1)
+            elif color_gradient == "vertical":
+                t = r / max(rows - 1, 1)
+            elif color_gradient == "diagonal":
+                t = (r + c) / max(rows + cols - 2, 1)
+            elif color_gradient == "radial":
+                dr = (r - mid_r) / max(mid_r, 1)
+                dc = (c - mid_c) / max(mid_c, 1)
+                t = min(1.0, math.sqrt(dr * dr + dc * dc))
+            shift = round(t * (n_colors - 1))
+            cm = cell["color_map"]
+            cell["color_map"] = [cm[(i + shift) % n_colors]
+                                  for i in range(n_colors)]
 
     # widen border when decorative style is active
     if border_style is not None:
