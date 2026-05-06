@@ -56,6 +56,7 @@ def sample_random_params(rng=None):
         "cornerstones": rng.random() < 0.50,
         "color_gradient": rng.choice(GRADIENT_MODES) if rng.random() < 0.25 else "none",
         "mega_frac": round(rng.uniform(0.1, 0.25), 2) if rng.random() < 0.30 else 0.0,
+        "plain_frac": round(rng.uniform(0.1, 0.4), 2) if rng.random() < 0.30 else 0.0,
         "seed": rng.randint(0, 2**31),
     }
 
@@ -72,6 +73,7 @@ def params_to_features(params):
     features.append(params["tile_variation"])
     features.append(params.get("sash_width", 0))
     features.append(params.get("mega_frac", 0.0))
+    features.append(params.get("plain_frac", 0.0))
     features.append(1.0 if params.get("cornerstones", False) else 0.0)
     # one-hot color gradient (includes "none")
     grad_names = ["none"] + GRADIENT_MODES
@@ -110,6 +112,7 @@ def params_to_render_kwargs(params):
         "sash_width": params.get("sash_width", 0),
         "color_gradient": params.get("color_gradient", "none"),
         "mega_frac": params.get("mega_frac", 0.0),
+        "plain_frac": params.get("plain_frac", 0.0),
         "cornerstones": params.get("cornerstones", False),
     }
     if kwargs["border_style"] == "none":
@@ -213,7 +216,8 @@ class QuiltExplorer:
         grad_names = ["none"] + GRADIENT_MODES
         names = (
             ["rows", "chaos", "n_patterns", "n_colors",
-             "tile_size", "tile_variation", "sash_width", "mega_frac", "cornerstones"]
+             "tile_size", "tile_variation", "sash_width", "mega_frac", "plain_frac",
+             "cornerstones"]
             + [f"grad_{g}" for g in grad_names]
             + [f"brd_{b}" for b in border_names]
             + [f"sym_{s}" for s in SYMMETRY_NAMES]
