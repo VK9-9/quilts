@@ -51,6 +51,7 @@ def sample_random_params(rng=None):
         "tile_size": rng.randint(*PARAM_SPACE["tile_size"]),
         "tile_variation": round(rng.uniform(*PARAM_SPACE["tile_variation"]), 2),
         "border_style": rng.choice(BORDER_STYLES) if rng.random() < 0.25 else "none",
+        "sash_width": rng.randint(3, 8) if rng.random() < 0.30 else 0,
         "seed": rng.randint(0, 2**31),
     }
 
@@ -65,6 +66,7 @@ def params_to_features(params):
     features.append(params["n_colors"])
     features.append(params["tile_size"])
     features.append(params["tile_variation"])
+    features.append(params.get("sash_width", 0))
     # one-hot border style (includes "none")
     border_names = ["none"] + BORDER_STYLES
     for b in border_names:
@@ -95,6 +97,7 @@ def params_to_render_kwargs(params):
         "tile_size": params["tile_size"] if params["tile_size"] > 0 else None,
         "tile_variation": params["tile_variation"],
         "border_style": params.get("border_style", "none"),
+        "sash_width": params.get("sash_width", 0),
     }
     if kwargs["border_style"] == "none":
         kwargs["border_style"] = None
@@ -194,7 +197,7 @@ class QuiltExplorer:
         border_names = ["none"] + BORDER_STYLES
         names = (
             ["rows", "chaos", "n_patterns", "n_colors",
-             "tile_size", "tile_variation"]
+             "tile_size", "tile_variation", "sash_width"]
             + [f"brd_{b}" for b in border_names]
             + [f"sym_{s}" for s in SYMMETRY_NAMES]
             + [f"pal_{p}" for p in PALETTE_NAMES]
