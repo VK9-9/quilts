@@ -5,10 +5,8 @@
 ** Each round, use the info to update a user-specific model
 ** Do they need to identify themselves?
 * New Patterns
-** Blah
+**
 * Quilting design ideas
-** Block scale mixing
-*** Most of the grid at one block size, but scattered 2x2 "mega-blocks" rendered at double scale. Adds visual hierarchy and breaks regularity.
 ** Value contrast control
 *** Deliberately bias light colors to one region and dark colors to another (top/bottom, center/edge). Currently palette colors are assigned randomly — intentional value distribution could improve composition.
 ** Palette pairing
