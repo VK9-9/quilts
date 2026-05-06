@@ -259,6 +259,134 @@ chaos 0-0.8, 12 palettes, n_patterns 1-7, n_colors 2-5, no diversity cap
 758-783: 28%
 ```
 
+### Changes after Round 3
+
+- Dropped 4 dead palettes (frost, midnight garden, sunset, storm from R3) — kept storm as it recovered to 34% in R4
+- Added sashing: ~30% chance, 3–8px width, colored strips between blocks
+- Added color gradient: ~25% chance, 4 modes (horizontal, vertical, diagonal, radial)
+- Removed stripes border style (consistently 0%)
+
+---
+
+## Round 4 — ratings 784-1157
+
+**Records:** 784-1157 (374 ratings)
+**Overall:** 116/374 liked (31.0%)
+**Params:** rows/cols 14-19, symmetry 7 modes, chaos 0-1.0, 18 palettes,
+n_patterns 1-2, n_colors 3-4, 15% palette diversity cap, 19 block patterns,
+3 border styles (solid/checkerboard/piano_keys, ~25%), sashing (~30%, 3-8px),
+color gradient (~25%, 4 modes)
+
+### Key findings
+
+- **Like rate up again** — 31.0% vs 27.9% in Round 3. Trend continues upward.
+- **Emergent still top symmetry** — 36% (30/84). None close behind at 35% (18/51).
+  Flower continues to underperform at 23% (9/39).
+- **n_patterns flipped back to 1** — 34% vs 26% for n_patterns=2. May interact
+  with new features (sashing, gradient); simpler quilts win more often.
+- **n_colors flipped back to 3** — 36% vs 26% for 4. Clear signal now.
+- **Ocean breeze now top palette** — 44% (22/50), up from 38%. Indigo dye
+  39% (28/71), wildflower 39% (16/41).
+- **Storm recovered strongly** — 34% (13/38), up from 0% in Round 3 (only 2 samples).
+- **Dead palettes**: ember (0/9), frost (8%), mosaic (8%), sunset (9%),
+  patchwork classic (11%).
+- **Solid border jumped to 48%** (13/27) — now best border style.
+  Checkerboard still strong at 38%. Piano_keys dropped to 29%. Stripes still 0%.
+- **Grid size**: rows=15 new sweet spot at 39% (29/75). 16 dropped to 25%.
+- **Chaos signal reversed** — liked mean 0.51 vs disliked 0.54. Lower chaos
+  now slightly preferred (opposite of Rounds 1-3).
+- **Sashing net negative overall** — 27% with sash vs 33% without. Width matters:
+  5px (39%) and 8px (40%) competitive; 3px (12%), 6px (14%), 7px (19%) hurt.
+- **Color gradient**: radial is the standout at 35% (44/125, large sample).
+  Horizontal dead (0/8), vertical weak (12%). Diagonal neutral (27%).
+
+### Palette detail
+
+| Palette | Shown | Liked | Rate |
+|---------|-------|-------|------|
+| ocean breeze | 50 | 22 | 44% |
+| indigo dye | 71 | 28 | 39% |
+| wildflower | 41 | 16 | 39% |
+| northern lights | 14 | 5 | 36% |
+| storm | 38 | 13 | 34% |
+| farmhouse | 9 | 3 | 33% |
+| deep sea | 19 | 6 | 32% |
+| spring garden | 7 | 2 | 29% |
+| winter sky | 15 | 4 | 27% |
+| plum and gold | 19 | 5 | 26% |
+| midnight garden | 8 | 2 | 25% |
+| stained glass | 18 | 4 | 22% |
+| autumn harvest | 10 | 2 | 20% |
+| patchwork classic | 9 | 1 | 11% |
+| sunset | 11 | 1 | 9% |
+| frost | 13 | 1 | 8% |
+| mosaic | 13 | 1 | 8% |
+| ember | 9 | 0 | 0% |
+
+### Border style detail
+
+| Style | Shown | Liked | Rate |
+|-------|-------|-------|------|
+| solid | 27 | 13 | 48% |
+| checkerboard | 39 | 15 | 38% |
+| none | 261 | 76 | 29% |
+| piano_keys | 42 | 12 | 29% |
+| stripes | 5 | 0 | 0% |
+
+### Sashing detail
+
+| Width | Shown | Liked | Rate |
+|-------|-------|-------|------|
+| 8px | 20 | 8 | 40% |
+| 5px | 18 | 7 | 39% |
+| 4px | 19 | 6 | 32% |
+| none | 270 | 88 | 33% |
+| 7px | 16 | 3 | 19% |
+| 6px | 14 | 2 | 14% |
+| 3px | 17 | 2 | 12% |
+
+### Color gradient detail
+
+| Mode | Shown | Liked | Rate |
+|------|-------|-------|------|
+| radial | 125 | 44 | 35% |
+| diagonal | 11 | 3 | 27% |
+| none | 213 | 67 | 31% |
+| vertical | 17 | 2 | 12% |
+| horizontal | 8 | 0 | 0% |
+
+### Symmetry detail
+
+| Mode | Shown | Liked | Rate |
+|------|-------|-------|------|
+| emergent | 84 | 30 | 36% |
+| none | 51 | 18 | 35% |
+| mirror | 46 | 14 | 30% |
+| partial | 55 | 16 | 29% |
+| rotational | 50 | 15 | 30% |
+| stripe | 49 | 14 | 29% |
+| flower | 39 | 9 | 23% |
+
+### Like rate trend (round 4 only)
+
+```
+784-808:  28%
+809-833:  36%
+834-858:  24%
+859-883:  32%
+884-908:  60%
+909-933:  32%
+934-958:  36%
+959-983:  56%
+984-1008: 16%
+1009-1033: 36%
+1034-1058: 24%
+1059-1083: 20%
+1084-1108: 16%
+1109-1133: 28%
+1134-1157: 21%
+```
+
 ---
 
 ## Favorites
