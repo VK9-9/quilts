@@ -260,7 +260,7 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,
             for cell in grid.values():
                 cell["pattern"] = allowed[cell["pattern"]]
 
-        for key, cell in grid.items():
+        for _, cell in grid.items():
             cell_rng = random.Random(cell["pattern"] * 1000 + cell["palette"])
             indices = list(range(n_colors))
             cell_rng.shuffle(indices)
