@@ -16,7 +16,7 @@ from quilt import BORDER_STYLES
 
 PALETTE_NAMES = [p[0] for p in PALETTES]
 _DROP_SYMMETRY = {"flower", "emergent"}
-SYMMETRY_NAMES = [s for s in SYMMETRY_MODES.keys() if s not in _DROP_SYMMETRY]
+SYMMETRY_NAMES = [s for s in SYMMETRY_MODES if s not in _DROP_SYMMETRY]
 
 # parameter ranges
 PARAM_SPACE = {
@@ -149,7 +149,7 @@ class QuiltExplorer:
         if len(self.ratings) < 10:
             self.model = None
             return
-        X = np.array([params_to_features(r["params"]) for r in self.ratings])
+        features = np.array([params_to_features(r["params"]) for r in self.ratings])
         y = np.array([1 if r["liked"] else 0 for r in self.ratings])
         # need at least one of each class
         if len(set(y)) < 2:
@@ -158,7 +158,7 @@ class QuiltExplorer:
         self.model = GradientBoostingClassifier(
             n_estimators=50, max_depth=3, random_state=42,
         )
-        self.model.fit(X, y)
+        self.model.fit(features, y)
 
     def suggest_params(self, explore_prob=0.3):
         """Suggest a new parameter set.
@@ -187,8 +187,8 @@ class QuiltExplorer:
                 filtered.append(c)
         candidates = filtered if filtered else candidates
 
-        X = np.array([params_to_features(c) for c in candidates])
-        probs = self.model.predict_proba(X)[:, 1]
+        features = np.array([params_to_features(c) for c in candidates])
+        probs = self.model.predict_proba(features)[:, 1]
         best = int(np.argmax(probs))
         return candidates[best]
 
