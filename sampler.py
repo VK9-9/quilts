@@ -24,13 +24,14 @@ from palettes import PALETTES
 from layout import SYMMETRY_MODES
 from quilt import BORDER_STYLES, QUILT_STITCH_STYLES, render_quilt
 
-PALETTE_NAMES = [p[0] for p in PALETTES]
-_DROP_SYMMETRY = {"flower", "emergent"}
+_DROP_PALETTES = {"storm", "midnight moss"}
+PALETTE_NAMES = [p[0] for p in PALETTES if p[0] not in _DROP_PALETTES]
+_DROP_SYMMETRY = {"flower", "emergent", "mirror"}
 SYMMETRY_NAMES = [s for s in SYMMETRY_MODES if s not in _DROP_SYMMETRY]
 
 # parameter ranges
 PARAM_SPACE = {
-    "rows": (14, 19),
+    "rows": (15, 19),
     "cols": (14, 19),
     "symmetry": SYMMETRY_NAMES,
     "chaos": (0.0, 0.8),
@@ -69,14 +70,14 @@ def sample_random_params(rng=None):
         "tile_size": rng.randint(*PARAM_SPACE["tile_size"]),
         "tile_variation": round(rng.uniform(*PARAM_SPACE["tile_variation"]), 2),
         "border_style": rng.choice(BORDER_STYLES) if rng.random() < 0.25 else "none",
-        "sash_width": 5 if rng.random() < 0.10 else 0,
+        "sash_width": 0,
         "cornerstones": rng.random() < 0.50,
         "color_gradient": "none",
-        "mega_frac": round(rng.uniform(0.1, 0.25), 2) if rng.random() < 0.30 else 0.0,
+        "mega_frac": round(rng.uniform(0.1, 0.25), 2) if rng.random() < 0.15 else 0.0,
         "plain_frac": round(rng.uniform(0.1, 0.4), 2) if rng.random() < 0.30 else 0.0,
         "quilt_stitch": rng.choice(QUILT_STITCH_STYLES) if rng.random() < 0.30 else None,
         "wash_alpha": round(rng.uniform(0.04, 0.18), 2) if rng.random() < 0.15 else 0.0,
-        "palette_2": rng.choice(PALETTE_NAMES) if rng.random() < 0.15 else None,
+        "palette_2": rng.choice(PALETTE_NAMES) if rng.random() < 0.05 else None,
         "seed": rng.randint(0, 2**31),
     }
 
