@@ -28,7 +28,7 @@ from palettes import PALETTES, hex_to_rgb
 from layout import SYMMETRY_MODES
 
 
-def pick_palettes(palette_name, n_needed, rng):
+def pick_palettes(palette_name, _n_needed, rng):
     """Select palette colors. Returns a list of lists of (r,g,b) tuples."""
     if palette_name == "random":
         chosen = rng.choice(PALETTES)
