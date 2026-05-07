@@ -406,8 +406,10 @@ def main():
         names = {f["slug"]: f["name"] for f in families}
         with open(args.names, "w", encoding="utf-8") as f:
             json.dump(names, f, indent=2)
-        print(f"Wrote {len(names)} family names to {args.names}")
-        print("Edit the names, then re-run without --dump-names.")
+        for slug, name in names.items():
+            print(f"  {slug:40s} → {name}")
+        print(f"\nWrote {len(names)} names to {args.names}.")
+        print("Edit the file, then re-run without --dump-names.")
         return
 
     name_overrides = {}
