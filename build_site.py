@@ -17,7 +17,7 @@ import numpy as np
 from jinja2 import Environment, BaseLoader
 from sklearn.cluster import KMeans
 
-from sampler import params_to_features, sample_random_params, params_to_render_kwargs, PALETTE_NAMES
+from sampler import sample_random_params, params_to_render_kwargs, PALETTE_NAMES, SYMMETRY_NAMES
 from quilt import render_quilt
 from quilt_id import encode, _V1_PALETTES, _V1_SYMMETRY, _V1_GRADIENT
 
@@ -63,9 +63,29 @@ def load_liked(ratings_path):
     return encodable
 
 
+def params_to_cluster_features(params):
+    """Aesthetic-only feature vector for K-means — excludes palette so clusters
+    reflect structure and composition, not just color choices."""
+    features = [
+        params["rows"] / 20.0,
+        params["chaos"],
+        params["n_patterns"] / 2.0,
+        params["n_colors"] / 4.0,
+        params.get("tile_size", 0) / 10.0,
+        params.get("tile_variation", 0.0),
+        params.get("sash_width", 0) / 5.0,
+        params.get("mega_frac", 0.0),
+        params.get("plain_frac", 0.0),
+        1.0 if params.get("cornerstones", False) else 0.0,
+    ]
+    for s in SYMMETRY_NAMES:
+        features.append(1.0 if params["symmetry"] == s else 0.0)
+    return np.array(features, dtype=np.float64)
+
+
 def cluster(liked, n_families):
     """K-means cluster liked quilts into n_families groups."""
-    features = np.array([params_to_features(p) for p in liked])
+    features = np.array([params_to_cluster_features(p) for p in liked])
     km = KMeans(n_clusters=n_families, random_state=42, n_init=10)
     labels = km.fit_predict(features)
     return labels, km.cluster_centers_, features
@@ -151,12 +171,11 @@ def unique_name(name, existing):
     return result
 
 
-def generate_variations(palette, symmetry, n, rng):
-    """Sample n random param sets with palette and symmetry fixed."""
+def generate_variations(symmetry, n, rng):
+    """Sample n random param sets with symmetry fixed, palette free to vary."""
     variations = []
     for _ in range(n):
         p = sample_random_params(rng)
-        p["palette"] = palette
         p["symmetry"] = symmetry
         variations.append(p)
     return variations
@@ -183,9 +202,8 @@ def define_families(liked, n_families, n_variations, rng, name_overrides=None): 
         name = name_overrides.get(slug, auto)
 
         rep = representative(members, mfeatures, centroid)
-        dominant_palette = Counter(p["palette"] for p in members).most_common(1)[0][0]
         dominant_sym = Counter(p["symmetry"] for p in members).most_common(1)[0][0]
-        variations = generate_variations(dominant_palette, dominant_sym, n_variations, rng)
+        variations = generate_variations(dominant_sym, n_variations, rng)
 
         families.append({
             "name": name,
