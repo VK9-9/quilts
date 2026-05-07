@@ -510,6 +510,7 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,
 
 
 def main():
+    """Parse CLI arguments and render a quilt."""
     parser = argparse.ArgumentParser(description="Generate a quilt image")
     parser.add_argument("--rows", type=int, default=20)
     parser.add_argument("--cols", type=int, default=20)
