@@ -439,7 +439,6 @@ def double_pinwheel(x, y, size, n_colors):
     Outer quadrants each contain a smaller pinwheel, creating fractal-like depth.
     """
     patches = []
-    half = size / 2
     cx, cy = x + size / 2, y + size / 2
 
     # outer pinwheel triangles (color 0 and 1)
