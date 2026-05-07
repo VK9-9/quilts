@@ -423,13 +423,22 @@ def card_trick(x, y, size, n_colors):
     ]
     # four "cards" — each is a triangle from center to a corner, clipped
     # top-left card
-    patches.append(([(x, y), (cx, y), (cx, cy - q), (cx - q, cy - q), (cx - q, cy), (x, cy)], 1 % n_colors))
+    patches.append((
+        [(x, y), (cx, y), (cx, cy - q), (cx - q, cy - q), (cx - q, cy), (x, cy)],
+        1 % n_colors))
     # top-right card
-    patches.append(([(cx, y), (x + size, y), (x + size, cy), (cx + q, cy), (cx + q, cy - q), (cx, cy - q)], 2 % n_colors))
+    patches.append((
+        [(cx, y), (x + size, y), (x + size, cy), (cx + q, cy), (cx + q, cy - q), (cx, cy - q)],
+        2 % n_colors))
     # bottom-right card
-    patches.append(([(cx + q, cy), (x + size, cy), (x + size, y + size), (cx, y + size), (cx, cy + q), (cx + q, cy + q)], 3 % n_colors))
+    patches.append((
+        [(cx + q, cy), (x + size, cy), (x + size, y + size),
+         (cx, y + size), (cx, cy + q), (cx + q, cy + q)],
+        3 % n_colors))
     # bottom-left card
-    patches.append(([(x, cy), (cx - q, cy), (cx - q, cy + q), (cx, cy + q), (cx, y + size), (x, y + size)], 1 % n_colors))
+    patches.append((
+        [(x, cy), (cx - q, cy), (cx - q, cy + q), (cx, cy + q), (cx, y + size), (x, y + size)],
+        1 % n_colors))
     return patches
 
 
