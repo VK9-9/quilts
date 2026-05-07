@@ -264,7 +264,7 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylin
                  tile_size=None, tile_variation=0.05, border_style=None,
                  sash_width=0, color_gradient=None, mega_frac=0.0,
                  cornerstones=False, plain_frac=0.0, quilt_stitch=None,
-                 wash_alpha=0.0, palette_name_2=None):
+                 wash_alpha=0.0, palette_name_2=None, palette_mix=None):
     """Generate and render a quilt to an image file."""
     if seed is None:
         seed = random.randint(0, 2**31)
@@ -274,6 +274,26 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylin
     palette_colors = pick_palettes(palette_name, 1, rng)
     if max_colors is not None:
         palette_colors = palette_colors[:max_colors]
+
+    # palette mixing: blend colors from two palettes into a single hybrid palette
+    if palette_mix is not None:
+        mix_known = {p[0] for p in PALETTES}
+        if palette_mix in mix_known:
+            mix_colors = pick_palettes(palette_mix, 1, rng)
+            if max_colors is not None:
+                mix_colors = mix_colors[:max_colors]
+            # interleave: take alternating colors from each palette
+            hybrid = []
+            for i in range(max(len(palette_colors), len(mix_colors))):
+                if i < len(palette_colors):
+                    hybrid.append(palette_colors[i])
+                if i < len(mix_colors):
+                    hybrid.append(mix_colors[i])
+            # trim back to max_colors (keeps a balanced mix)
+            if max_colors is not None:
+                hybrid = hybrid[:max_colors]
+            palette_colors = hybrid
+
     n_colors = len(palette_colors)
 
     # two-palette mixing: build a second palette; n_palettes=2 splits blocks

@@ -78,6 +78,7 @@ def sample_random_params(rng=None):
         "quilt_stitch": rng.choice(QUILT_STITCH_STYLES) if rng.random() < 0.30 else None,
         "wash_alpha": round(rng.uniform(0.04, 0.18), 2) if rng.random() < 0.15 else 0.0,
         "palette_2": rng.choice(PALETTE_NAMES) if rng.random() < 0.05 else None,
+        "palette_mix": rng.choice(PALETTE_NAMES) if rng.random() < 0.20 else None,
         "seed": rng.randint(0, 2**31),
     }
 
@@ -99,6 +100,7 @@ def params_to_features(params):
     features.append(params.get("wash_alpha", 0.0))
     features.append(1.0 if params.get("quilt_stitch") else 0.0)
     features.append(1.0 if params.get("palette_2") else 0.0)
+    features.append(1.0 if params.get("palette_mix") else 0.0)
     # one-hot border style (includes "none")
     border_names = ["none"] + BORDER_STYLES
     for b in border_names:
@@ -137,11 +139,14 @@ def params_to_render_kwargs(params, block_size=40):
         "quilt_stitch": params.get("quilt_stitch"),
         "wash_alpha": params.get("wash_alpha", 0.0),
         "palette_name_2": params.get("palette_2"),
+        "palette_mix": params.get("palette_mix"),
     }
-    # Drop palette_2 if it was from a palette that has since been removed
+    # Drop palette_2/palette_mix if they reference a retired palette
     _active = set(PALETTE_NAMES)
     if kwargs["palette_name_2"] and kwargs["palette_name_2"] not in _active:
         kwargs["palette_name_2"] = None
+    if kwargs.get("palette_mix") and kwargs["palette_mix"] not in _active:
+        kwargs["palette_mix"] = None
     if kwargs["border_style"] == "none":
         kwargs["border_style"] = None
     if kwargs["color_gradient"] == "none":
@@ -329,7 +334,7 @@ class QuiltExplorer:  # pylint: disable=too-many-instance-attributes
         names = (
             ["rows", "chaos", "n_patterns", "n_colors",
              "tile_size", "tile_variation", "sash_width", "mega_frac", "plain_frac",
-             "cornerstones", "wash_alpha", "quilt_stitch", "palette_2"]
+             "cornerstones", "wash_alpha", "quilt_stitch", "palette_2", "palette_mix"]
             + [f"brd_{b}" for b in border_names]
             + [f"sym_{s}" for s in SYMMETRY_NAMES]
             + [f"pal_{p}" for p in PALETTE_NAMES]
