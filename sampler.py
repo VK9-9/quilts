@@ -49,7 +49,7 @@ _CLIP_CANDIDATE_BLOCK_SIZE = 8
 # block_size used when embedding a rated quilt
 _CLIP_EMBED_BLOCK_SIZE = 16
 # number of top param-scored candidates to render+embed for CLIP scoring
-_CLIP_TOP_N = 20
+_CLIP_TOP_N = 10
 
 
 def sample_random_params(rng=None):
