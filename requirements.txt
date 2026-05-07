@@ -5,5 +5,7 @@ numpy
 jinja2
 noise
 matplotlib
+open_clip_torch
+pillow
 pylint
 pytest

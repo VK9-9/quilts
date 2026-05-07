@@ -16,7 +16,7 @@ fi
 if [ $VERBOSE -eq 1 ]; then
     set -e
     echo "=== Doctests ==="
-    python -m doctest -v quilt_id.py
+    python -m doctest -v quilt_id.py clip_embed.py
     echo ""
     echo "=== pylint ==="
     python -m pylint *.py
@@ -26,7 +26,7 @@ fi
 # Summary mode
 FAILED=0
 
-DOCTEST_OUT=$(python -m doctest -v quilt_id.py 2>&1)
+DOCTEST_OUT=$(python -m doctest -v quilt_id.py clip_embed.py 2>&1)
 DOCTEST_EXIT=$?
 TOTAL=$(echo "$DOCTEST_OUT" | awk '/^[0-9]+ tests in [0-9]+ items/{sum+=$1} END{print sum+0}')
 PASSED=$(echo "$DOCTEST_OUT" | awk '/^[0-9]+ passed/{sum+=$1} END{print sum+0}')

@@ -12,7 +12,8 @@ from sampler import QuiltExplorer, params_to_render_kwargs
 # pylint: enable=wrong-import-position
 
 app = Flask(__name__)
-explorer = QuiltExplorer()
+_ratings_path = sys.argv[1] if len(sys.argv) > 1 else "/tmp/ratings.json"
+explorer = QuiltExplorer(_ratings_path)
 
 
 @app.route("/")
@@ -47,6 +48,14 @@ def rate():
     data = request.get_json()
     explorer.add_rating(data["params"], data["liked"])
     return jsonify({"ok": True})
+
+
+@app.route("/round", methods=["POST"])
+def start_round():
+    """Start a new scoring round."""
+    data = request.get_json() or {}
+    num = explorer.start_round(label=data.get("label"))
+    return jsonify({"round": num})
 
 
 if __name__ == "__main__":

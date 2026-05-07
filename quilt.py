@@ -17,9 +17,8 @@ Options:
 import argparse
 import io
 import math
-import random
-import sys
 import os
+import random
 
 import cairo
 
@@ -35,10 +34,10 @@ def pick_palettes(palette_name, _n_needed, rng):
     else:
         matches = [p for p in PALETTES if p[0] == palette_name]
         if not matches:
-            print(f"Unknown palette '{palette_name}'. Available:")
-            for name, _ in PALETTES:
-                print(f"  {name}")
-            sys.exit(1)
+            available = ", ".join(p[0] for p in PALETTES)
+            raise ValueError(
+                f"Unknown palette '{palette_name}'. Available: {available}"
+            )
         chosen = matches[0]
 
     name, colors = chosen
@@ -265,7 +264,8 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylin
                  tile_size=None, tile_variation=0.05, border_style=None,
                  sash_width=0, color_gradient=None, mega_frac=0.0,
                  cornerstones=False, plain_frac=0.0, quilt_stitch=None,
-                 wash_alpha=0.0, palette_name_2=None):
+                 wash_alpha=0.0, palette_name_2=None, palette_mix=None,
+                 accent_count=0):
     """Generate and render a quilt to an image file."""
     if seed is None:
         seed = random.randint(0, 2**31)
@@ -275,6 +275,26 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylin
     palette_colors = pick_palettes(palette_name, 1, rng)
     if max_colors is not None:
         palette_colors = palette_colors[:max_colors]
+
+    # palette mixing: blend colors from two palettes into a single hybrid palette
+    if palette_mix is not None:
+        mix_known = {p[0] for p in PALETTES}
+        if palette_mix in mix_known:
+            mix_colors = pick_palettes(palette_mix, 1, rng)
+            if max_colors is not None:
+                mix_colors = mix_colors[:max_colors]
+            # interleave: take alternating colors from each palette
+            hybrid = []
+            for i in range(max(len(palette_colors), len(mix_colors))):
+                if i < len(palette_colors):
+                    hybrid.append(palette_colors[i])
+                if i < len(mix_colors):
+                    hybrid.append(mix_colors[i])
+            # trim back to max_colors (keeps a balanced mix)
+            if max_colors is not None:
+                hybrid = hybrid[:max_colors]
+            palette_colors = hybrid
+
     n_colors = len(palette_colors)
 
     # two-palette mixing: build a second palette; n_palettes=2 splits blocks
@@ -354,6 +374,18 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylin
                 if rng.random() < plain_frac:
                     plain_cells.add((r, c))
 
+    # accent squares: a few cells get a bold color from a different palette
+    accent_cells = {}  # (r, c) → (r, g, b)
+    if accent_count and accent_count > 0:
+        other_palettes = [p for p in PALETTES if p[0] != palette_name]
+        if other_palettes:
+            accent_pal = rng.choice(other_palettes)
+            accent_rgb = [hex_to_rgb(c) for c in accent_pal[1]]
+            all_positions = [(r, c) for r in range(rows) for c in range(cols)]
+            rng.shuffle(all_positions)
+            for pos in all_positions[:accent_count]:
+                accent_cells[pos] = rng.choice(accent_rgb)
+
     # mega-blocks: greedily select non-overlapping 2x2 regions
     mega_tl = set()       # top-left corners of mega-blocks
     mega_covered = set()  # all 4 cells covered by mega-blocks
@@ -414,6 +446,12 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylin
             cell = grid[(r, c)]
             bx = border + c * stride
             by = border + r * stride
+
+            if (r, c) in accent_cells:
+                ctx.set_source_rgb(*accent_cells[(r, c)])
+                ctx.rectangle(bx, by, block_size, block_size)
+                ctx.fill()
+                continue
 
             if (r, c) in plain_cells:
                 ci = cell["color_map"][0]
@@ -522,7 +560,7 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylin
     ctx.set_line_width(0.5)
     for r in range(rows):
         for c in range(cols):
-            if (r, c) in mega_covered or (r, c) in plain_cells:
+            if (r, c) in mega_covered or (r, c) in plain_cells or (r, c) in accent_cells:
                 continue
             cell = grid[(r, c)]
             bx = border + c * stride

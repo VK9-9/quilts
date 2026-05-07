@@ -42,7 +42,7 @@ def nearest_square(n):
 def _encodable(params):
     """Return True if params can be rendered and encoded as a v1 quilt ID."""
     gradient = params.get("color_gradient") or "none"
-    return (params.get("palette") in _ACTIVE_PALETTES
+    return (params.get("palette") in _ENCODABLE_PALETTES
             and params.get("symmetry") in _V1_SYMMETRY
             and gradient in _V1_GRADIENT)
 
@@ -52,15 +52,26 @@ def _encodable(params):
 # ---------------------------------------------------------------------------
 
 def load_liked(ratings_path):
-    """Load liked quilts from ratings JSON, filtered to encodable params."""
+    """Load liked quilts from ratings JSON, filtered to encodable params.
+
+    Returns (params_list, indices_into_ratings) — indices are needed to
+    look up CLIP embeddings from the parallel embeddings array.
+    """
     with open(ratings_path, encoding="utf-8") as f:
         ratings = json.load(f)
-    liked = [r["params"] for r in ratings if r["liked"]]
-    encodable = [p for p in liked if _encodable(p)]
-    skipped = len(liked) - len(encodable)
+    params, indices = [], []
+    skipped = 0
+    for i, r in enumerate(ratings):
+        if not r["liked"]:
+            continue
+        if _encodable(r["params"]):
+            params.append(r["params"])
+            indices.append(i)
+        else:
+            skipped += 1
     if skipped:
         print(f"  (skipping {skipped} liked quilts with retired params)")
-    return encodable
+    return params, indices
 
 
 def params_to_cluster_features(params):
@@ -83,9 +94,29 @@ def params_to_cluster_features(params):
     return np.array(features, dtype=np.float64)
 
 
-def cluster(liked, n_families):
-    """K-means cluster liked quilts into n_families groups."""
-    features = np.array([params_to_cluster_features(p) for p in liked])
+def load_clip_embeddings(ratings_path, indices):
+    """Load CLIP embeddings for the given rating indices.
+
+    Returns (embeddings, valid_mask) — valid_mask is False for zero-norm
+    rows (retired palettes that couldn't be rendered).
+    """
+    emb_path = ratings_path.replace(".json", "_embeddings.npy")
+    all_emb = np.load(emb_path)
+    emb = all_emb[indices]
+    valid = np.linalg.norm(emb, axis=1) > 0
+    return emb, valid
+
+
+def cluster(liked, n_families, clip_embeddings=None):
+    """K-means cluster liked quilts into n_families groups.
+
+    If clip_embeddings is provided, clusters on visual similarity.
+    Otherwise clusters on hand-crafted parameter features.
+    """
+    if clip_embeddings is not None:
+        features = clip_embeddings
+    else:
+        features = np.array([params_to_cluster_features(p) for p in liked])
     km = KMeans(n_clusters=n_families, random_state=42, n_init=10)
     labels = km.fit_predict(features)
     return labels, km.cluster_centers_, features
@@ -175,15 +206,20 @@ def generate_variations(symmetry, n, rng):
     """Sample n random param sets with symmetry fixed, palette free to vary."""
     variations = []
     for _ in range(n):
-        p = sample_random_params(rng)
-        p["symmetry"] = symmetry
+        while True:
+            p = sample_random_params(rng)
+            p["symmetry"] = symmetry
+            if _encodable(p):
+                break
         variations.append(p)
     return variations
 
 
-def define_families(liked, n_families, n_variations, rng, name_overrides=None):  # pylint: disable=too-many-locals
+def define_families(liked, n_families, n_variations, rng,  # pylint: disable=too-many-locals,too-many-arguments,too-many-positional-arguments
+                    name_overrides=None, clip_embeddings=None):
     """Cluster liked quilts and define families with names, reps, and variations."""
-    labels, centroids, features = cluster(liked, n_families)
+    labels, centroids, features = cluster(liked, n_families,
+                                          clip_embeddings=clip_embeddings)
     families = []
     slugs_used = set()
     names_used = set()
@@ -440,7 +476,7 @@ def render_html(families, out, n_families, n_variations):
 # Main
 # ---------------------------------------------------------------------------
 
-def main():  # pylint: disable=too-many-locals,too-many-statements
+def main():  # pylint: disable=too-many-locals,too-many-statements,too-many-branches
     """Parse CLI args and build the static gallery site."""
     parser = argparse.ArgumentParser(description="Build static quilt gallery")
     parser.add_argument("--ratings", default="ratings.json")
@@ -455,6 +491,8 @@ def main():  # pylint: disable=too-many-locals,too-many-statements
                         help="JSON file mapping slug → custom name (default: family_names.json)")
     parser.add_argument("--dump-names", action="store_true",
                         help="Write auto-generated names to --names file and exit")
+    parser.add_argument("--clip", action="store_true",
+                        help="Cluster by CLIP visual embeddings instead of params")
     args = parser.parse_args()
 
     out = Path(args.out)
@@ -475,13 +513,27 @@ def main():  # pylint: disable=too-many-locals,too-many-statements
     if n_variations != args.variations:
         print(f"  (--variations {args.variations} → {n_variations} to make a square grid)")
 
-    liked = load_liked(args.ratings)
+    liked, liked_indices = load_liked(args.ratings)
     print(f"Loaded {len(liked)} liked quilts")
+
+    clip_emb = None
+    if args.clip:
+        all_emb, valid = load_clip_embeddings(args.ratings, liked_indices)
+        # filter out zero-norm embeddings (retired palettes)
+        valid_liked = [p for p, v in zip(liked, valid) if v]
+        valid_emb = all_emb[valid]
+        n_dropped = len(liked) - len(valid_liked)
+        if n_dropped:
+            print(f"  (dropped {n_dropped} quilts with missing CLIP embeddings)")
+        liked = valid_liked
+        clip_emb = valid_emb
+        print(f"  Clustering on {len(clip_emb)} CLIP embeddings (512-dim)")
 
     rng = random.Random(args.seed)
 
     if args.dump_names:
-        families = define_families(liked, n_families, n_variations, rng)
+        families = define_families(liked, n_families, n_variations, rng,
+                                   clip_embeddings=clip_emb)
         names = {f["slug"]: f["name"] for f in families}
         with open(args.names, "w", encoding="utf-8") as f:
             json.dump(names, f, indent=2)
@@ -498,7 +550,8 @@ def main():  # pylint: disable=too-many-locals,too-many-statements
         print(f"Loaded {len(name_overrides)} name overrides from {args.names}")
 
     families = define_families(liked, n_families, n_variations, rng,
-                               name_overrides=name_overrides)
+                               name_overrides=name_overrides,
+                               clip_embeddings=clip_emb)
     for fam in families:
         print(f"  {fam['name']} ({fam['size']} members) → {fam['slug']}")
 
