@@ -96,6 +96,5 @@ def print_report(ratings):  # pylint: disable=too-many-locals
 
 
 if __name__ == "__main__":
-    path = sys.argv[1] if len(sys.argv) > 1 else "ratings.json"
-    ratings = load_ratings(path)
-    print_report(ratings)
+    _path = sys.argv[1] if len(sys.argv) > 1 else "ratings.json"
+    print_report(load_ratings(_path))
