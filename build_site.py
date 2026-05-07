@@ -340,6 +340,15 @@ _QUILT_HTML = """\
     <span class="qid">{{ qid }}</span>
     <div class="tooltip">{{ params_summary }}</div>
   </div>
+<script>
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+    {% if next_qid %}window.location = '../../quilt/{{ next_qid }}/';{% endif %}
+  } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+    {% if prev_qid %}window.location = '../../quilt/{{ prev_qid }}/';{% endif %}
+  }
+});
+</script>
 </body>
 </html>
 """
@@ -391,7 +400,8 @@ def render_html(families, out, n_families, n_variations):
     # quilt pages
     tmpl = env.from_string(_QUILT_HTML)
     for fam in families:
-        for v in fam["variations"]:
+        qids = [v["qid"] for v in fam["variations"]]
+        for i, v in enumerate(fam["variations"]):
             qdir = out / "quilt" / v["qid"]
             qdir.mkdir(parents=True, exist_ok=True)
             (qdir / "index.html").write_text(
@@ -400,6 +410,8 @@ def render_html(families, out, n_families, n_variations):
                     family_slug=fam["slug"],
                     family_name=fam["name"],
                     params_summary=params_summary(v["params"]),
+                    prev_qid=qids[i - 1] if i > 0 else None,
+                    next_qid=qids[i + 1] if i < len(qids) - 1 else None,
                 ),
                 encoding="utf-8",
             )
