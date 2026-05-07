@@ -59,8 +59,8 @@ def sample_random_params(rng=None):
         "mega_frac": round(rng.uniform(0.1, 0.25), 2) if rng.random() < 0.30 else 0.0,
         "plain_frac": round(rng.uniform(0.1, 0.4), 2) if rng.random() < 0.30 else 0.0,
         "quilt_stitch": rng.choice(QUILT_STITCH_STYLES) if rng.random() < 0.30 else None,
-        "wash_alpha": round(rng.uniform(0.04, 0.18), 2) if rng.random() < 0.25 else 0.0,
-        "palette_2": rng.choice(PALETTE_NAMES) if rng.random() < 0.25 else None,
+        "wash_alpha": round(rng.uniform(0.04, 0.18), 2) if rng.random() < 0.15 else 0.0,
+        "palette_2": rng.choice(PALETTE_NAMES) if rng.random() < 0.15 else None,
         "seed": rng.randint(0, 2**31),
     }
 

@@ -9,7 +9,7 @@ Round boundaries (cumulative record counts):
   R4:  783 – 1156 (374 ratings)
   R5:  1157 – 1537 (381 ratings)
   R6:  1538 – 1913 (376 ratings)
-  R7:  1914 –      (in progress)
+  R7:  1914 – 2286 (373 ratings)
 """
 import json
 import sys
@@ -27,7 +27,8 @@ ROUND_SLICES = [
     ("R4", slice(783, 1157)),
     ("R5", slice(1157, 1538)),
     ("R6", slice(1538, 1914)),
-    ("R7", slice(1914, None)),
+    ("R7", slice(1914, 2287)),
+    ("R8", slice(2287, None)),
 ]
 def compute_round_rates(ratings):
     """Return list of like-rate percentages (int) for each round slice."""
@@ -43,7 +44,8 @@ DROPPED = {
     "palette": {"berry patch", "cedar and moss", "dusty rose", "forest floor",
                 "jewel box", "prairie", "slate and sage", "tidal pool",
                 "frost", "ember", "mosaic", "spring garden", "patchwork classic",
-                "midnight garden", "sunset"},
+                "midnight garden", "sunset",
+                "winter sky", "copper canyon", "autumn embers", "peacock feather", "cardinal"},
     "symmetry": {"flower", "emergent"},
 }
 
