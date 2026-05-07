@@ -26,7 +26,7 @@ from quilt import BORDER_STYLES, QUILT_STITCH_STYLES, render_quilt
 
 _DROP_PALETTES = {"storm", "midnight moss"}
 PALETTE_NAMES = [p[0] for p in PALETTES if p[0] not in _DROP_PALETTES]
-_DROP_SYMMETRY = {"flower", "emergent", "mirror"}
+_DROP_SYMMETRY = {"flower", "emergent", "mirror", "none"}
 SYMMETRY_NAMES = [s for s in SYMMETRY_MODES if s not in _DROP_SYMMETRY]
 
 # parameter ranges
@@ -36,7 +36,7 @@ PARAM_SPACE = {
     "symmetry": SYMMETRY_NAMES,
     "chaos": (0.0, 0.8),
     "palette": PALETTE_NAMES,
-    "n_patterns": (1, 2),
+    "n_patterns": (2, 2),
     "n_colors": (3, 4),
     "tile_size": (0, 10),       # 0 = no tiling
     "tile_variation": (0.0, 0.3),
