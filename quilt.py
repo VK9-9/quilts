@@ -265,7 +265,7 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylin
                  tile_size=None, tile_variation=0.05, border_style=None,
                  sash_width=0, color_gradient=None, mega_frac=0.0,
                  cornerstones=False, plain_frac=0.0, quilt_stitch=None,
-                 wash_alpha=0.0):
+                 wash_alpha=0.0, palette_name_2=None):
     """Generate and render a quilt to an image file."""
     if seed is None:
         seed = random.randint(0, 2**31)
@@ -276,6 +276,17 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylin
     if max_colors is not None:
         palette_colors = palette_colors[:max_colors]
     n_colors = len(palette_colors)
+
+    # two-palette mixing: build a second palette; n_palettes=2 splits blocks
+    if palette_name_2 is not None:
+        palette_colors_2 = pick_palettes(palette_name_2, 1, rng)
+        if max_colors is not None:
+            palette_colors_2 = palette_colors_2[:max_colors]
+        all_palettes = [palette_colors, palette_colors_2]
+        n_palettes = 2
+    else:
+        all_palettes = [palette_colors]
+        n_palettes = 1
 
     n_all_patterns = len(BLOCK_PATTERNS)
     if max_patterns is not None:
@@ -295,7 +306,6 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylin
             for cell in grid.values():
                 cell["pattern"] = allowed[cell["pattern"]]
     else:
-        n_palettes = 1
         layout_fn = SYMMETRY_MODES[symmetry]
         kwargs = {}
         if symmetry == "partial":
@@ -404,7 +414,8 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylin
 
             if (r, c) in plain_cells:
                 ci = cell["color_map"][0]
-                ctx.set_source_rgb(*palette_colors[ci])
+                active_pal = all_palettes[cell.get("palette", 0) % len(all_palettes)]
+                ctx.set_source_rgb(*active_pal[ci])
                 ctx.rectangle(bx, by, block_size, block_size)
                 ctx.fill()
                 continue
@@ -418,9 +429,10 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylin
                                      cell["rotation"])
 
             color_map = cell["color_map"]
+            active_pal = all_palettes[cell.get("palette", 0) % len(all_palettes)]
             for poly, color_idx in patches:
                 ci = color_map[color_idx % n_colors]
-                r_c, g_c, b_c = palette_colors[ci]
+                r_c, g_c, b_c = active_pal[ci]
                 ctx.set_source_rgb(r_c, g_c, b_c)
                 ctx.move_to(*poly[0])
                 for pt in poly[1:]:
@@ -491,9 +503,10 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylin
         patches = rotate_patches(patches, cx_block, cy_block, cell["rotation"])
 
         color_map = cell["color_map"]
+        active_pal = all_palettes[cell.get("palette", 0) % len(all_palettes)]
         for poly, color_idx in patches:
             ci = color_map[color_idx % n_colors]
-            r_c, g_c, b_c = palette_colors[ci]
+            r_c, g_c, b_c = active_pal[ci]
             ctx.set_source_rgb(r_c, g_c, b_c)
             ctx.move_to(*poly[0])
             for pt in poly[1:]:
