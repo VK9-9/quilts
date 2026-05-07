@@ -121,6 +121,10 @@ def params_to_render_kwargs(params):
         "wash_alpha": params.get("wash_alpha", 0.0),
         "palette_name_2": params.get("palette_2"),
     }
+    # Drop palette_2 if it was from a palette that has since been removed
+    _active = set(PALETTE_NAMES)
+    if kwargs["palette_name_2"] and kwargs["palette_name_2"] not in _active:
+        kwargs["palette_name_2"] = None
     if kwargs["border_style"] == "none":
         kwargs["border_style"] = None
     if kwargs["color_gradient"] == "none":

@@ -278,6 +278,9 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylin
     n_colors = len(palette_colors)
 
     # two-palette mixing: build a second palette; n_palettes=2 splits blocks
+    _known = {p[0] for p in PALETTES}
+    if palette_name_2 is not None and palette_name_2 not in _known:
+        palette_name_2 = None  # retired palette — silently drop
     if palette_name_2 is not None:
         palette_colors_2 = pick_palettes(palette_name_2, 1, rng)
         if max_colors is not None:

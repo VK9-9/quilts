@@ -42,7 +42,7 @@ def nearest_square(n):
 def _encodable(params):
     """Return True if params can be rendered and encoded as a v1 quilt ID."""
     gradient = params.get("color_gradient") or "none"
-    return (params.get("palette") in _ENCODABLE_PALETTES
+    return (params.get("palette") in _ACTIVE_PALETTES
             and params.get("symmetry") in _V1_SYMMETRY
             and gradient in _V1_GRADIENT)
 
