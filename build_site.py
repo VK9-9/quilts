@@ -24,6 +24,20 @@ from quilt_id import encode, _V1_SYMMETRY, _V1_GRADIENT
 _ACTIVE_PALETTES = set(PALETTE_NAMES)
 
 
+def nearest_square(n):
+    """Return the nearest perfect square to n.
+
+    >>> nearest_square(18)
+    16
+    >>> nearest_square(20)
+    25
+    >>> nearest_square(25)
+    25
+    """
+    root = round(n ** 0.5)
+    return root * root
+
+
 def _encodable(params):
     """Return True if params can be rendered and encoded as a v1 quilt ID."""
     gradient = params.get("color_gradient") or "none"
@@ -373,7 +387,7 @@ def render_html(families, out):
 # Main
 # ---------------------------------------------------------------------------
 
-def main():  # pylint: disable=too-many-locals
+def main():  # pylint: disable=too-many-locals,too-many-statements
     """Parse CLI args and build the static gallery site."""
     parser = argparse.ArgumentParser(description="Build static quilt gallery")
     parser.add_argument("--ratings", default="ratings.json")
@@ -409,13 +423,20 @@ def main():  # pylint: disable=too-many-locals
             if not dst.exists():
                 shutil.copy2(src, dst)
 
+    n_families = nearest_square(args.families)
+    n_variations = nearest_square(args.variations)
+    if n_families != args.families:
+        print(f"  (--families {args.families} → {n_families} to make a square grid)")
+    if n_variations != args.variations:
+        print(f"  (--variations {args.variations} → {n_variations} to make a square grid)")
+
     liked = load_liked(args.ratings)
     print(f"Loaded {len(liked)} liked quilts")
 
     rng = random.Random(args.seed)
 
     if args.dump_names:
-        families = define_families(liked, args.families, args.variations, rng)
+        families = define_families(liked, n_families, n_variations, rng)
         names = {f["slug"]: f["name"] for f in families}
         with open(args.names, "w", encoding="utf-8") as f:
             json.dump(names, f, indent=2)
@@ -431,7 +452,7 @@ def main():  # pylint: disable=too-many-locals
             name_overrides = json.load(f)
         print(f"Loaded {len(name_overrides)} name overrides from {args.names}")
 
-    families = define_families(liked, args.families, args.variations, rng,
+    families = define_families(liked, n_families, n_variations, rng,
                                name_overrides=name_overrides)
     for fam in families:
         print(f"  {fam['name']} ({fam['size']} members) → {fam['slug']}")
