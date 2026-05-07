@@ -50,5 +50,13 @@ def rate():
     return jsonify({"ok": True})
 
 
+@app.route("/round", methods=["POST"])
+def start_round():
+    """Start a new scoring round."""
+    data = request.get_json() or {}
+    num = explorer.start_round(label=data.get("label"))
+    return jsonify({"round": num})
+
+
 if __name__ == "__main__":
     app.run(debug=True, port=5555)

@@ -154,14 +154,16 @@ def _render_small(params, block_size):
     return render_quilt(**kwargs)
 
 
-class QuiltExplorer:
+class QuiltExplorer:  # pylint: disable=too-many-instance-attributes
     """Active learning explorer for quilt aesthetics."""
 
     def __init__(self, data_path="ratings.json"):
         self.data_path = data_path
         self.embeddings_path = data_path.replace(".json", "_embeddings.npy")
+        self.rounds_path = data_path.replace(".json", "_rounds.json")
         self.ratings = []
         self.embeddings = np.zeros((0, 512), dtype=np.float32)
+        self.rounds = []
         self._load()
         self.model = None       # param model
         self.clip_model = None  # CLIP embedding model
@@ -173,11 +175,31 @@ class QuiltExplorer:
                 self.ratings = json.load(f)
         if os.path.exists(self.embeddings_path):
             self.embeddings = np.load(self.embeddings_path)
+        if os.path.exists(self.rounds_path):
+            with open(self.rounds_path, encoding="utf-8") as f:
+                self.rounds = json.load(f)
 
     def _save(self):
         os.makedirs(os.path.dirname(self.data_path) or ".", exist_ok=True)
         with open(self.data_path, "w", encoding="utf-8") as f:
             json.dump(self.ratings, f, indent=2)
+
+    def _save_rounds(self):
+        os.makedirs(os.path.dirname(self.rounds_path) or ".", exist_ok=True)
+        with open(self.rounds_path, "w", encoding="utf-8") as f:
+            json.dump(self.rounds, f, indent=2)
+
+    def start_round(self, label=None):
+        """Start a new scoring round. Returns the round number."""
+        num = len(self.rounds) + 1
+        self.rounds.append({
+            "round": num,
+            "label": label or f"R{num}",
+            "start_index": len(self.ratings),
+            "ts": time.time(),
+        })
+        self._save_rounds()
+        return num
 
     def _save_embeddings(self):
         np.save(self.embeddings_path, self.embeddings)
@@ -275,9 +297,9 @@ class QuiltExplorer:
     def stats(self):
         """Return summary stats about ratings so far."""
         if not self.ratings:
-            return {"total": 0, "liked": 0, "disliked": 0}
+            return {"total": 0, "liked": 0, "disliked": 0, "round": None}
         liked = sum(1 for r in self.ratings if r["liked"])
-        return {
+        result = {
             "total": len(self.ratings),
             "liked": liked,
             "disliked": len(self.ratings) - liked,
@@ -285,6 +307,18 @@ class QuiltExplorer:
             "clip_model_active": self.clip_model is not None,
             "embeddings_count": len(self.embeddings),
         }
+        if self.rounds:
+            cur = self.rounds[-1]
+            rnd_ratings = self.ratings[cur["start_index"]:]
+            rnd_liked = sum(1 for r in rnd_ratings if r["liked"])
+            result["round"] = {
+                "label": cur["label"],
+                "rated": len(rnd_ratings),
+                "liked": rnd_liked,
+            }
+        else:
+            result["round"] = None
+        return result
 
     def feature_importance(self):
         """Return feature importances if param model is trained."""

@@ -91,6 +91,17 @@
     border-radius: 2px;
   }
   .shortcut { font-size: 0.75em; color: #555; }
+  .round-btn {
+    font-size: 0.75em;
+    padding: 4px 12px;
+    background: #333;
+    color: #aaa;
+    border: 1px solid #555;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-left: 10px;
+  }
+  .round-btn:hover { background: #444; }
 </style>
 </head>
 <body>
@@ -156,12 +167,34 @@ async function rate(liked) {
 
 function skip() { if (!loading) loadNext(); }
 
+async function startRound() {
+  const label = prompt('Round label (leave blank for auto):');
+  if (label === null) return;
+  await fetch('/round', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({label: label || null}),
+  });
+  loadNext();
+}
+
 function updateStats(stats) {
   if (!stats) return;
-  let html = `Rated: ${stats.total} (${stats.liked} liked, ${stats.disliked} disliked)`;
-  if (stats.model_active) {
-    html += ' &mdash; <span class="model-active">model active</span>';
+  const pct = stats.total > 0 ? Math.round(100 * stats.liked / stats.total) : 0;
+  let html = '';
+  if (stats.round) {
+    const r = stats.round;
+    const rPct = r.rated > 0 ? Math.round(100 * r.liked / r.rated) : '-';
+    html += `<b>${r.label}</b>: ${r.rated} rated (${rPct}% liked) &mdash; `;
   }
+  html += `All: ${stats.total} (${pct}% liked)`;
+  if (stats.model_active) {
+    html += ' &mdash; <span class="model-active">param model</span>';
+  }
+  if (stats.clip_model_active) {
+    html += ' + <span class="model-active">CLIP model</span>';
+  }
+  html += ' <button class="round-btn" onclick="startRound()">New Round</button>';
   document.getElementById('stats').innerHTML = html;
 }
 
