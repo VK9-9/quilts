@@ -3,8 +3,6 @@
 Assigns block patterns and color indices to each cell in the grid,
 respecting the chosen symmetry mode.
 """
-import random
-import math
 import noise
 
 
@@ -49,7 +47,7 @@ def layout_mirror4(rows, cols, n_patterns, n_palettes, rng):
     return grid
 
 
-def layout_rotational(rows, cols, n_patterns, n_palettes, rng):
+def layout_rotational(rows, cols, n_patterns, n_palettes, rng):  # pylint: disable=too-many-locals
     """4-fold rotational symmetry (90-degree rotations)."""
     grid = {}
     half_r = (rows + 1) // 2
@@ -92,7 +90,7 @@ def layout_stripe(rows, cols, n_patterns, n_palettes, rng):
     return grid
 
 
-def layout_partial(rows, cols, n_patterns, n_palettes, rng, chaos=0.3):
+def layout_partial(rows, cols, n_patterns, n_palettes, rng, chaos=0.3):  # pylint: disable=too-many-arguments,too-many-positional-arguments
     """Start with mirror symmetry, then perturb cells based on Perlin noise.
 
     chaos: 0.0 = perfect symmetry, 1.0 = fully random.
@@ -124,7 +122,7 @@ def layout_partial(rows, cols, n_patterns, n_palettes, rng, chaos=0.3):
     return grid
 
 
-def layout_flower(rows, cols, n_patterns, n_palettes, rng):
+def layout_flower(rows, cols, n_patterns, n_palettes, rng):  # pylint: disable=too-many-locals
     """Flower/medallion symmetry — distinct center square with mirror-symmetric border.
 
     The center region (roughly inner 40-60% of the grid) uses one pattern/palette
@@ -205,7 +203,7 @@ def layout_flower(rows, cols, n_patterns, n_palettes, rng):
     return grid
 
 
-def layout_emergent(rows, cols, n_patterns, n_palettes, rng):
+def layout_emergent(rows, cols, n_patterns, _n_palettes, rng):  # pylint: disable=too-many-locals,too-many-branches
     """Emergent macro patterns via coordinated block rotations.
 
     Uses a single block pattern and assigns rotations so that block edges
@@ -237,11 +235,11 @@ def layout_emergent(rows, cols, n_patterns, n_palettes, rng):
                 # quadrant determines base rotation; Manhattan ring alternates
                 cr = r - mid_r
                 cc = c - mid_c
-                if cr <= 0 and cc >= 0:
+                if cr <= 0 and cc >= 0:  # pylint: disable=chained-comparison
                     rotation = 0
                 elif cr >= 0 and cc >= 0:
                     rotation = 1
-                elif cr >= 0 and cc <= 0:
+                elif cr >= 0 and cc <= 0:  # pylint: disable=chained-comparison
                     rotation = 2
                 else:
                     rotation = 3

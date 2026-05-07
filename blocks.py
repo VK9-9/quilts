@@ -5,10 +5,9 @@ a list of patches. Each patch is (polygon, color_index) where polygon is a list
 of (px, py) points and color_index selects from the block's assigned palette.
 """
 import random
-import math
 
 
-def half_square_triangle(x, y, size, n_colors):
+def half_square_triangle(x, y, size, _n_colors):
     """Two triangles split along the diagonal."""
     direction = random.randint(0, 1)
     if direction == 0:
@@ -17,15 +16,14 @@ def half_square_triangle(x, y, size, n_colors):
             ([(x, y), (x + size, y), (x, y + size)], 0),
             ([(x + size, y), (x + size, y + size), (x, y + size)], 1),
         ]
-    else:
-        # top-right to bottom-left diagonal
-        return [
-            ([(x, y), (x + size, y), (x + size, y + size)], 0),
-            ([(x, y), (x + size, y + size), (x, y + size)], 1),
-        ]
+    # top-right to bottom-left diagonal
+    return [
+        ([(x, y), (x + size, y), (x + size, y + size)], 0),
+        ([(x, y), (x + size, y + size), (x, y + size)], 1),
+    ]
 
 
-def nine_patch(x, y, size, n_colors):
+def nine_patch(x, y, size, _n_colors):
     """3x3 grid of squares, alternating two colors (checkerboard)."""
     s = size / 3
     patches = []
@@ -40,7 +38,7 @@ def nine_patch(x, y, size, n_colors):
     return patches
 
 
-def log_cabin(x, y, size, n_colors):
+def log_cabin(x, y, size, n_colors):  # pylint: disable=too-many-locals
     """Concentric rectangular strips around a center square.
 
     Builds outward by adding one strip per side in order: top, right, bottom,
@@ -103,7 +101,7 @@ def log_cabin(x, y, size, n_colors):
     return patches
 
 
-def pinwheel(x, y, size, n_colors):
+def pinwheel(x, y, size, _n_colors):
     """Four triangles arranged in a pinwheel rotation."""
     cx, cy = x + size / 2, y + size / 2
     corners = [
@@ -119,7 +117,7 @@ def pinwheel(x, y, size, n_colors):
     return patches
 
 
-def flying_geese(x, y, size, n_colors):
+def flying_geese(x, y, size, _n_colors):
     """Row of triangles pointing upward with background triangles."""
     n = 3
     w = size / n
@@ -145,7 +143,7 @@ def flying_geese(x, y, size, n_colors):
     return patches
 
 
-def hourglass(x, y, size, n_colors):
+def hourglass(x, y, size, _n_colors):
     """Two triangles forming an hourglass shape with background."""
     cx, cy = x + size / 2, y + size / 2
     # top triangle
@@ -182,7 +180,7 @@ def chevron(x, y, size, n_colors):
     return patches
 
 
-def star(x, y, size, n_colors):
+def star(x, y, size, n_colors):  # pylint: disable=too-many-locals
     """Eight-pointed star — center diamond, 4 point triangles, 4 corner quads."""
     cx, cy = x + size / 2, y + size / 2
     m = size * 0.25
@@ -325,7 +323,7 @@ def ohio_star(x, y, size, n_colors):
     return patches
 
 
-def courthouse_steps(x, y, size, n_colors):
+def courthouse_steps(x, y, size, n_colors):  # pylint: disable=too-many-locals
     """Courthouse Steps — log cabin variant with symmetric strips on opposite sides.
 
     Alternates two colors in concentric rectangular frames around a center.
@@ -425,13 +423,22 @@ def card_trick(x, y, size, n_colors):
     ]
     # four "cards" — each is a triangle from center to a corner, clipped
     # top-left card
-    patches.append(([(x, y), (cx, y), (cx, cy - q), (cx - q, cy - q), (cx - q, cy), (x, cy)], 1 % n_colors))
+    patches.append((
+        [(x, y), (cx, y), (cx, cy - q), (cx - q, cy - q), (cx - q, cy), (x, cy)],
+        1 % n_colors))
     # top-right card
-    patches.append(([(cx, y), (x + size, y), (x + size, cy), (cx + q, cy), (cx + q, cy - q), (cx, cy - q)], 2 % n_colors))
+    patches.append((
+        [(cx, y), (x + size, y), (x + size, cy), (cx + q, cy), (cx + q, cy - q), (cx, cy - q)],
+        2 % n_colors))
     # bottom-right card
-    patches.append(([(cx + q, cy), (x + size, cy), (x + size, y + size), (cx, y + size), (cx, cy + q), (cx + q, cy + q)], 3 % n_colors))
+    patches.append((
+        [(cx + q, cy), (x + size, cy), (x + size, y + size),
+         (cx, y + size), (cx, cy + q), (cx + q, cy + q)],
+        3 % n_colors))
     # bottom-left card
-    patches.append(([(x, cy), (cx - q, cy), (cx - q, cy + q), (cx, cy + q), (cx, y + size), (x, y + size)], 1 % n_colors))
+    patches.append((
+        [(x, cy), (cx - q, cy), (cx - q, cy + q), (cx, cy + q), (cx, y + size), (x, y + size)],
+        1 % n_colors))
     return patches
 
 
@@ -441,7 +448,6 @@ def double_pinwheel(x, y, size, n_colors):
     Outer quadrants each contain a smaller pinwheel, creating fractal-like depth.
     """
     patches = []
-    half = size / 2
     cx, cy = x + size / 2, y + size / 2
 
     # outer pinwheel triangles (color 0 and 1)

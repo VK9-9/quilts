@@ -28,7 +28,7 @@ from palettes import PALETTES, hex_to_rgb
 from layout import SYMMETRY_MODES
 
 
-def pick_palettes(palette_name, n_needed, rng):
+def pick_palettes(palette_name, _n_needed, rng):
     """Select palette colors. Returns a list of lists of (r,g,b) tuples."""
     if palette_name == "random":
         chosen = rng.choice(PALETTES)
@@ -65,7 +65,7 @@ def rotate_patches(patches, cx, cy, rotation):
     return rotated
 
 
-def _build_tiled_grid(rows, cols, tile_size, tile_variation, n_patterns,
+def _build_tiled_grid(rows, cols, tile_size, tile_variation, n_patterns,  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals,too-many-nested-blocks
                       n_colors, rng):
     """Build grid by stamping a template tile with tiny per-copy variations.
 
@@ -88,7 +88,7 @@ def _build_tiled_grid(rows, cols, tile_size, tile_variation, n_patterns,
     grid = {}
     tile_rows = math.ceil(rows / ts)
     tile_cols = math.ceil(cols / ts)
-    for tr in range(tile_rows):
+    for tr in range(tile_rows):  # pylint: disable=too-many-nested-blocks
         for tc in range(tile_cols):
             for lr in range(ts):
                 for lc in range(ts):
@@ -115,7 +115,7 @@ def _build_tiled_grid(rows, cols, tile_size, tile_variation, n_patterns,
     return grid
 
 
-def _draw_border(ctx, width, height, border, quilt_x, quilt_y, quilt_w,
+def _draw_border(ctx, width, height, border, quilt_x, quilt_y, quilt_w,  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals,too-many-branches,too-many-statements
                   quilt_h, style, colors, block_size):
     """Draw a decorative border around the quilt area.
 
@@ -211,15 +211,61 @@ def _draw_border(ctx, width, height, border, quilt_x, quilt_y, quilt_w,
 
 BORDER_STYLES = ["solid", "checkerboard", "piano_keys"]
 
+QUILT_STITCH_STYLES = ["grid", "diagonal", "crosshatch"]
+
+
+def _draw_quilt_stitching(ctx, qx, qy, qw, qh, style, spacing):  # pylint: disable=too-many-arguments,too-many-positional-arguments
+    """Draw dotted thread-quilting lines over the quilt area.
+
+    style: 'grid' | 'diagonal' | 'crosshatch'
+    spacing: pixel distance between parallel stitch lines
+    """
+    ctx.save()
+    # clip to quilt interior
+    ctx.rectangle(qx, qy, qw, qh)
+    ctx.clip()
+
+    ctx.set_source_rgba(0.15, 0.10, 0.05, 0.28)  # dark thread, semi-transparent
+    ctx.set_line_width(0.9)
+    ctx.set_dash([1.5, 5.5])  # dot, gap
+
+    def draw_lines_at_angle(angle_deg):
+        """Draw parallel lines at given angle spanning the clipped area."""
+        rad = math.radians(angle_deg)
+        cos_a, sin_a = math.cos(rad), math.sin(rad)
+        # diagonal of bounding box — enough to span any rotation
+        diag = math.sqrt(qw * qw + qh * qh)
+        cx, cy = qx + qw / 2, qy + qh / 2
+        # perpendicular direction to the lines
+        perp_x, perp_y = -sin_a, cos_a
+        n = int(diag / spacing) + 2
+        for i in range(-n, n + 1):
+            ox = cx + perp_x * i * spacing
+            oy = cy + perp_y * i * spacing
+            ctx.move_to(ox - cos_a * diag, oy - sin_a * diag)
+            ctx.line_to(ox + cos_a * diag, oy + sin_a * diag)
+        ctx.stroke()
+
+    if style in ("grid", "crosshatch"):
+        draw_lines_at_angle(0)    # horizontal
+        draw_lines_at_angle(90)   # vertical
+    if style in ("diagonal", "crosshatch"):
+        draw_lines_at_angle(45)
+        draw_lines_at_angle(-45)
+
+    ctx.set_dash([])
+    ctx.restore()
+
 
 GRADIENT_MODES = ["diagonal"]
 
 
-def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,
+def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals,too-many-branches,too-many-statements
                  seed, output, border, max_patterns=None, max_colors=None,
                  tile_size=None, tile_variation=0.05, border_style=None,
                  sash_width=0, color_gradient=None, mega_frac=0.0,
-                 cornerstones=False, plain_frac=0.0):
+                 cornerstones=False, plain_frac=0.0, quilt_stitch=None,
+                 wash_alpha=0.0, palette_name_2=None):
     """Generate and render a quilt to an image file."""
     if seed is None:
         seed = random.randint(0, 2**31)
@@ -230,6 +276,20 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,
     if max_colors is not None:
         palette_colors = palette_colors[:max_colors]
     n_colors = len(palette_colors)
+
+    # two-palette mixing: build a second palette; n_palettes=2 splits blocks
+    _known = {p[0] for p in PALETTES}
+    if palette_name_2 is not None and palette_name_2 not in _known:
+        palette_name_2 = None  # retired palette — silently drop
+    if palette_name_2 is not None:
+        palette_colors_2 = pick_palettes(palette_name_2, 1, rng)
+        if max_colors is not None:
+            palette_colors_2 = palette_colors_2[:max_colors]
+        all_palettes = [palette_colors, palette_colors_2]
+        n_palettes = 2
+    else:
+        all_palettes = [palette_colors]
+        n_palettes = 1
 
     n_all_patterns = len(BLOCK_PATTERNS)
     if max_patterns is not None:
@@ -249,7 +309,6 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,
             for cell in grid.values():
                 cell["pattern"] = allowed[cell["pattern"]]
     else:
-        n_palettes = 1
         layout_fn = SYMMETRY_MODES[symmetry]
         kwargs = {}
         if symmetry == "partial":
@@ -260,7 +319,7 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,
             for cell in grid.values():
                 cell["pattern"] = allowed[cell["pattern"]]
 
-        for key, cell in grid.items():
+        for _, cell in grid.items():
             cell_rng = random.Random(cell["pattern"] * 1000 + cell["palette"])
             indices = list(range(n_colors))
             cell_rng.shuffle(indices)
@@ -271,6 +330,7 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,
     if color_gradient is not None and n_colors > 1:
         mid_r, mid_c = (rows - 1) / 2, (cols - 1) / 2
         for (r, c), cell in grid.items():
+            t = 0.0
             if color_gradient == "horizontal":
                 t = c / max(cols - 1, 1)
             elif color_gradient == "vertical":
@@ -357,7 +417,8 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,
 
             if (r, c) in plain_cells:
                 ci = cell["color_map"][0]
-                ctx.set_source_rgb(*palette_colors[ci])
+                active_pal = all_palettes[cell.get("palette", 0) % len(all_palettes)]
+                ctx.set_source_rgb(*active_pal[ci])
                 ctx.rectangle(bx, by, block_size, block_size)
                 ctx.fill()
                 continue
@@ -371,9 +432,10 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,
                                      cell["rotation"])
 
             color_map = cell["color_map"]
+            active_pal = all_palettes[cell.get("palette", 0) % len(all_palettes)]
             for poly, color_idx in patches:
                 ci = color_map[color_idx % n_colors]
-                r_c, g_c, b_c = palette_colors[ci]
+                r_c, g_c, b_c = active_pal[ci]
                 ctx.set_source_rgb(r_c, g_c, b_c)
                 ctx.move_to(*poly[0])
                 for pt in poly[1:]:
@@ -444,9 +506,10 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,
         patches = rotate_patches(patches, cx_block, cy_block, cell["rotation"])
 
         color_map = cell["color_map"]
+        active_pal = all_palettes[cell.get("palette", 0) % len(all_palettes)]
         for poly, color_idx in patches:
             ci = color_map[color_idx % n_colors]
-            r_c, g_c, b_c = palette_colors[ci]
+            r_c, g_c, b_c = active_pal[ci]
             ctx.set_source_rgb(r_c, g_c, b_c)
             ctx.move_to(*poly[0])
             for pt in poly[1:]:
@@ -497,6 +560,18 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,
             ctx.close_path()
             ctx.stroke()
 
+    # color wash — semi-transparent tint over entire quilt area
+    if wash_alpha and wash_alpha > 0:
+        wash_rgb = palette_colors[rng.randint(0, n_colors - 1)]
+        ctx.set_source_rgba(*wash_rgb, wash_alpha)
+        ctx.rectangle(quilt_x, quilt_y, quilt_w, quilt_h)
+        ctx.fill()
+
+    # thread quilting overlay
+    if quilt_stitch is not None:
+        _draw_quilt_stitching(ctx, quilt_x, quilt_y, quilt_w, quilt_h,
+                              quilt_stitch, block_size)
+
     # save or return bytes
     if output is None:
         buf = io.BytesIO()
@@ -506,9 +581,11 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,
     os.makedirs(os.path.dirname(output) or ".", exist_ok=True)
     surface.write_to_png(output)
     print(f"Saved to {output} ({width}x{height})")
+    return None
 
 
 def main():
+    """Parse CLI arguments and render a quilt."""
     parser = argparse.ArgumentParser(description="Generate a quilt image")
     parser.add_argument("--rows", type=int, default=20)
     parser.add_argument("--cols", type=int, default=20)
@@ -528,6 +605,17 @@ def main():
                         help="Blocks per tile side (e.g. 5 for 5x5 tiles)")
     parser.add_argument("--tile-variation", type=float, default=0.05,
                         help="Fraction of blocks perturbed per tile (default: 0.05)")
+    parser.add_argument("--border-style", default=None,
+                        choices=BORDER_STYLES,
+                        help="Decorative border style (default: none)")
+    parser.add_argument("--sash-width", type=int, default=0,
+                        help="Sash width in px between blocks (default: 0)")
+    parser.add_argument("--cornerstones", action="store_true",
+                        help="Draw cornerstone squares at sash intersections")
+    parser.add_argument("--mega-frac", type=float, default=0.0,
+                        help="Fraction of 2x2 mega-blocks (default: 0.0)")
+    parser.add_argument("--plain-frac", type=float, default=0.0,
+                        help="Fraction of plain solid-color blocks (default: 0.0)")
     args = parser.parse_args()
 
     render_quilt(
@@ -544,6 +632,11 @@ def main():
         max_colors=args.n_colors,
         tile_size=args.tile_size,
         tile_variation=args.tile_variation,
+        border_style=args.border_style,
+        sash_width=args.sash_width,
+        cornerstones=args.cornerstones,
+        mega_frac=args.mega_frac,
+        plain_frac=args.plain_frac,
     )
 
 

@@ -1,0 +1,3 @@
+[MESSAGES CONTROL]
+# cairo is a C extension — pylint can't inspect its members
+ignored-modules=cairo

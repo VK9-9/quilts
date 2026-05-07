@@ -6,17 +6,18 @@ and samples new parameters balancing exploration vs exploitation.
 import json
 import os
 import random
+import time
 
 import numpy as np
 from sklearn.ensemble import GradientBoostingClassifier
 
 from palettes import PALETTES
 from layout import SYMMETRY_MODES
-from quilt import BORDER_STYLES
+from quilt import BORDER_STYLES, QUILT_STITCH_STYLES
 
 PALETTE_NAMES = [p[0] for p in PALETTES]
 _DROP_SYMMETRY = {"flower", "emergent"}
-SYMMETRY_NAMES = [s for s in SYMMETRY_MODES.keys() if s not in _DROP_SYMMETRY]
+SYMMETRY_NAMES = [s for s in SYMMETRY_MODES if s not in _DROP_SYMMETRY]
 
 # parameter ranges
 PARAM_SPACE = {
@@ -57,6 +58,9 @@ def sample_random_params(rng=None):
         "color_gradient": "none",
         "mega_frac": round(rng.uniform(0.1, 0.25), 2) if rng.random() < 0.30 else 0.0,
         "plain_frac": round(rng.uniform(0.1, 0.4), 2) if rng.random() < 0.30 else 0.0,
+        "quilt_stitch": rng.choice(QUILT_STITCH_STYLES) if rng.random() < 0.30 else None,
+        "wash_alpha": round(rng.uniform(0.04, 0.18), 2) if rng.random() < 0.15 else 0.0,
+        "palette_2": rng.choice(PALETTE_NAMES) if rng.random() < 0.15 else None,
         "seed": rng.randint(0, 2**31),
     }
 
@@ -75,6 +79,9 @@ def params_to_features(params):
     features.append(params.get("mega_frac", 0.0))
     features.append(params.get("plain_frac", 0.0))
     features.append(1.0 if params.get("cornerstones", False) else 0.0)
+    features.append(params.get("wash_alpha", 0.0))
+    features.append(1.0 if params.get("quilt_stitch") else 0.0)
+    features.append(1.0 if params.get("palette_2") else 0.0)
     # one-hot border style (includes "none")
     border_names = ["none"] + BORDER_STYLES
     for b in border_names:
@@ -110,7 +117,14 @@ def params_to_render_kwargs(params):
         "mega_frac": params.get("mega_frac", 0.0),
         "plain_frac": params.get("plain_frac", 0.0),
         "cornerstones": params.get("cornerstones", False),
+        "quilt_stitch": params.get("quilt_stitch"),
+        "wash_alpha": params.get("wash_alpha", 0.0),
+        "palette_name_2": params.get("palette_2"),
     }
+    # Drop palette_2 if it was from a palette that has since been removed
+    _active = set(PALETTE_NAMES)
+    if kwargs["palette_name_2"] and kwargs["palette_name_2"] not in _active:
+        kwargs["palette_name_2"] = None
     if kwargs["border_style"] == "none":
         kwargs["border_style"] = None
     if kwargs["color_gradient"] == "none":
@@ -140,7 +154,7 @@ class QuiltExplorer:
 
     def add_rating(self, params, liked):
         """Record a rating (liked=True/False) for a param set."""
-        self.ratings.append({"params": params, "liked": liked})
+        self.ratings.append({"params": params, "liked": liked, "ts": time.time()})
         self._save()
         self._retrain()
 
@@ -149,7 +163,7 @@ class QuiltExplorer:
         if len(self.ratings) < 10:
             self.model = None
             return
-        X = np.array([params_to_features(r["params"]) for r in self.ratings])
+        features = np.array([params_to_features(r["params"]) for r in self.ratings])
         y = np.array([1 if r["liked"] else 0 for r in self.ratings])
         # need at least one of each class
         if len(set(y)) < 2:
@@ -158,7 +172,7 @@ class QuiltExplorer:
         self.model = GradientBoostingClassifier(
             n_estimators=50, max_depth=3, random_state=42,
         )
-        self.model.fit(X, y)
+        self.model.fit(features, y)
 
     def suggest_params(self, explore_prob=0.3):
         """Suggest a new parameter set.
@@ -187,8 +201,8 @@ class QuiltExplorer:
                 filtered.append(c)
         candidates = filtered if filtered else candidates
 
-        X = np.array([params_to_features(c) for c in candidates])
-        probs = self.model.predict_proba(X)[:, 1]
+        features = np.array([params_to_features(c) for c in candidates])
+        probs = self.model.predict_proba(features)[:, 1]
         best = int(np.argmax(probs))
         return candidates[best]
 
@@ -212,7 +226,7 @@ class QuiltExplorer:
         names = (
             ["rows", "chaos", "n_patterns", "n_colors",
              "tile_size", "tile_variation", "sash_width", "mega_frac", "plain_frac",
-             "cornerstones"]
+             "cornerstones", "wash_alpha", "quilt_stitch", "palette_2"]
             + [f"brd_{b}" for b in border_names]
             + [f"sym_{s}" for s in SYMMETRY_NAMES]
             + [f"pal_{p}" for p in PALETTE_NAMES]

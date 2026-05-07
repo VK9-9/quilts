@@ -7,11 +7,13 @@ import numpy as np
 
 
 def load_ratings(path="ratings.json"):
-    with open(path) as f:
+    """Load ratings JSON from disk."""
+    with open(path, encoding="utf-8") as f:
         return json.load(f)
 
 
 def like_rate(ratings):
+    """Return fraction of ratings that are liked."""
     if not ratings:
         return 0.0
     return sum(1 for r in ratings if r["liked"]) / len(ratings)
@@ -55,7 +57,8 @@ def palette_frequency(ratings):
     return Counter(r["params"]["palette"] for r in ratings)
 
 
-def print_report(ratings):
+def print_report(ratings):  # pylint: disable=too-many-locals
+    """Print a full analysis report to stdout."""
     n = len(ratings)
     liked = sum(1 for r in ratings if r["liked"])
     print(f"Total: {n} ratings, {liked} liked ({liked/n*100:.1f}%)\n")
@@ -93,6 +96,5 @@ def print_report(ratings):
 
 
 if __name__ == "__main__":
-    path = sys.argv[1] if len(sys.argv) > 1 else "ratings.json"
-    ratings = load_ratings(path)
-    print_report(ratings)
+    _path = sys.argv[1] if len(sys.argv) > 1 else "ratings.json"
+    print_report(load_ratings(_path))

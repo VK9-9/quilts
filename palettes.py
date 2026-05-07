@@ -11,9 +11,6 @@ PALETTES = [
     ("wildflower", [
         "#8B008B", "#DA70D6", "#FFB6C1", "#FFFACD", "#228B22",
     ]),
-    ("winter sky", [
-        "#191970", "#4169E1", "#B0C4DE", "#F8F8FF", "#708090",
-    ]),
     ("indigo dye", [
         "#1A0533", "#3F00FF", "#7B68EE", "#E6E6FA", "#F5F5F5",
     ]),
@@ -25,6 +22,9 @@ PALETTES = [
     ]),
     ("northern lights", [
         "#0B0B3B", "#1B8A6B", "#7FDBCA", "#C77DFF", "#F0F8FF",
+    ]),
+    ("midnight moss", [
+        "#0D1F0D", "#2D6A2D", "#6B9E6B", "#C4D9A0", "#F0EDD8",
     ]),
 ]
 

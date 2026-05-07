@@ -1,9 +1,5 @@
 * Fabric textures
-* How should we use --tile-size?  Should it just repeat, or repeat with tiny variations?
 * Public webapp
-** Show 4x4 grid and let the user click on the top N they like
-** Each round, use the info to update a user-specific model
-** Do they need to identify themselves?
 * New Patterns
 **
 * Quilting design ideas

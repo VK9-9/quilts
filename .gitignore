@@ -4,3 +4,8 @@ venv/
 ratings.json
 CLAUDE.md
 docs/
+family_names.json
+.#*
+family/
+quilt/
+.gh-pages-worktree/

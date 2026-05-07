@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Compact identifier for quilt parameter sets.
 
 Encodes all parameters needed to reproduce a quilt into a short base58 string.
@@ -19,6 +20,9 @@ Usage:
     qid = encode(params)          # e.g. "3xKm7pRt2nWqA"
     params = decode(qid)
 """
+
+import json
+import sys
 
 # Base58 alphabet — no 0/O/I/l to avoid visual confusion
 _B58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
@@ -52,6 +56,8 @@ _V1_PALETTES = [
     "autumn harvest", "ocean breeze", "wildflower", "farmhouse",
     "winter sky", "stained glass", "indigo dye", "deep sea",
     "plum and gold", "storm", "northern lights",
+    "copper canyon", "autumn embers", "peacock feather", "cardinal",
+    "midnight moss",
 ]
 
 # Active symmetry modes (3 bits → max 7 entries)
@@ -203,6 +209,74 @@ def decode(qid):
     raise ValueError(f"Unknown quilt ID version: {version}")
 
 
+def _decode_cmd(args):
+    """Handle the decode subcommand."""
+    if len(args) < 1:
+        print("decode requires an ID argument")
+        sys.exit(1)
+    params = decode(args[0])
+    if "--command" in args:
+        parts = [
+            "python quilt.py",
+            f"--rows {params['rows']}",
+            f"--cols {params['cols']}",
+            f"--palette \"{params['palette']}\"",
+            f"--symmetry {params['symmetry']}",
+            f"--chaos {params['chaos']}",
+            f"--seed {params['seed']}",
+            f"--n-patterns {params['n_patterns']}",
+            f"--n-colors {params['n_colors']}",
+            f"--tile-size {params['tile_size']}",
+            f"--tile-variation {params['tile_variation']}",
+        ]
+        if params.get("border_style") and params["border_style"] != "none":
+            parts.append(f"--border-style {params['border_style']}")
+        if params.get("sash_width", 0) > 0:
+            parts.append(f"--sash-width {params['sash_width']}")
+        if params.get("cornerstones"):
+            parts.append("--cornerstones")
+        if params.get("mega_frac", 0.0) > 0.0:
+            parts.append(f"--mega-frac {params['mega_frac']}")
+        if params.get("plain_frac", 0.0) > 0.0:
+            parts.append(f"--plain-frac {params['plain_frac']}")
+        parts.append("--output out.png")
+        print(" \\\n  ".join(parts))
+    else:
+        print(json.dumps(params, indent=2))
+
+
+def _cli():
+    usage = """Usage:
+  python quilt_id.py decode <id>           decode ID → params JSON
+  python quilt_id.py decode <id> --command print quilt.py render command
+  python quilt_id.py encode <params.json>  encode params file → ID
+  python quilt_id.py test                  run doctests
+"""
+    if len(sys.argv) < 2:
+        print(usage)
+        sys.exit(1)
+
+    cmd = sys.argv[1]
+
+    if cmd == "decode":
+        _decode_cmd(sys.argv[2:])
+
+    elif cmd == "encode":
+        if len(sys.argv) < 3:
+            print("encode requires a params JSON file argument")
+            sys.exit(1)
+        with open(sys.argv[2], encoding="utf-8") as f:
+            params = json.load(f)
+        print(encode(params))
+
+    elif cmd == "test":
+        import doctest  # pylint: disable=import-outside-toplevel
+        doctest.testmod(verbose=True)
+
+    else:
+        print(usage)
+        sys.exit(1)
+
+
 if __name__ == "__main__":
-    import doctest
-    doctest.testmod(verbose=True)
+    _cli()
