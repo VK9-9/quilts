@@ -7,6 +7,12 @@ GREEN='\033[0;32m'
 RED='\033[0;31m'
 NC='\033[0m'
 
+# Use local venv if present
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+if [ -f "$SCRIPT_DIR/venv/bin/python" ]; then
+    source "$SCRIPT_DIR/venv/bin/activate"
+fi
+
 if [ $VERBOSE -eq 1 ]; then
     set -e
     echo "=== Doctests ==="
