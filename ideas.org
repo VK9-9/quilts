@@ -11,4 +11,16 @@
 *** Shift which palette colors are chosen based on each block's position — warm colors cluster in one corner, cool in another. Operates at composition level rather than within individual blocks.
 ** Asymmetric grid
 *** Vary row heights or column widths — creates a "strippy quilt" feel very different from the current uniform grid.
+** Drunkard's Path block
+*** Quarter-circle curves instead of straight diagonals. When tiled with rotational symmetry, creates flowing organic rivers/waves across the quilt. First block with curves — big visual differentiator.
+** Bargello columns
+*** Not a block pattern but a new layout mode: vertical strips of varying height that shift up/down to create an undulating wave across the whole quilt. Classic technique, very striking.
+** Appliqué block
+*** Circle or leaf shape layered on a background square. Approximated with many-sided polygons. Adds organic rounded forms that no current block has.
+** Sashiko overlay
+*** Post-render texture pass that draws running-stitch patterns (waves, hemp leaf, concentric circles) in white/cream thread over finished blocks. Purely decorative, like real quilting stitch patterns. Different from quilt_stitch which just does grid lines.
+** Improv/wonky mode
+*** A chaos modifier that jitters vertex positions on any block by a small random amount. Makes everything slightly off-kilter, mimicking modern improv quilting. Global param rather than a new block.
+** Cathedral windows
+*** Overlapping folded-fabric circles creating diamond-shaped reveals of a contrast color. Very distinctive look.
 * Bugs
