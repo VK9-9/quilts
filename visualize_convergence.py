@@ -31,11 +31,13 @@ DROPPED = {
 
 
 def load_ratings(ratings_path):
+    """Load ratings JSON from disk."""
     with open(ratings_path, encoding="utf-8") as f:
         return json.load(f)
 
 
 def overall_like_rates(ratings, param):
+    """Return {value: like_rate} for a given param across all ratings."""
     buckets = defaultdict(lambda: [0, 0])
     for rec in ratings:
         val = rec["params"].get(param)
@@ -48,6 +50,7 @@ def overall_like_rates(ratings, param):
 
 
 def make_figure(ratings):
+    """Render convergence chart and save to quilts/convergence.png."""
     pal_rates = overall_like_rates(ratings, "palette")
     sym_rates = overall_like_rates(ratings, "symmetry")
 
