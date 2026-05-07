@@ -49,26 +49,17 @@ def overall_like_rates(ratings, param):
     return {k: v[0] / v[1] for k, v in buckets.items() if v[1] >= 10}
 
 
-def make_figure(ratings):
-    """Render convergence chart and save to quilts/convergence.png."""
-    pal_rates = overall_like_rates(ratings, "palette")
-    sym_rates = overall_like_rates(ratings, "symmetry")
+def _sorted_bars(rates, dropped):
+    """Split rates into (survivors, cut) sorted by like rate."""
+    survivors = sorted([(k, v) for k, v in rates.items() if k not in dropped],
+                       key=lambda x: x[1])
+    cut = sorted([(k, v) for k, v in rates.items() if k in dropped],
+                 key=lambda x: x[1])
+    return survivors, cut
 
-    def sorted_bars(rates, dropped):
-        survivors = sorted([(k, v) for k, v in rates.items() if k not in dropped],
-                           key=lambda x: x[1])
-        cut = sorted([(k, v) for k, v in rates.items() if k in dropped],
-                     key=lambda x: x[1])
-        return survivors, cut
 
-    pal_surv, pal_cut = sorted_bars(pal_rates, DROPPED["palette"])
-    sym_surv, sym_cut = sorted_bars(sym_rates, DROPPED["symmetry"])
-
-    fig, axes = plt.subplots(1, 3, figsize=(14, 6),
-                             gridspec_kw={"width_ratios": [1, 2.5, 1], "wspace": 0.4})
-
-    # --- like rate trend ---
-    ax = axes[0]
+def _plot_trend(ax):
+    """Draw the like-rate-over-rounds line chart."""
     xs = range(1, 6)
     ax.plot(xs, OVERALL_RATES, "o-", color="steelblue", linewidth=2.5, markersize=8)
     for x, y in zip(xs, OVERALL_RATES):
@@ -81,44 +72,39 @@ def make_figure(ratings):
     ax.yaxis.grid(True, alpha=0.35)
     ax.set_axisbelow(True)
 
-    # --- palette bars ---
-    ax = axes[1]
-    all_pals = pal_surv + pal_cut
-    labels = [k for k, _ in all_pals]
-    vals = [v for _, v in all_pals]
-    colors = ["steelblue"] * len(pal_surv) + ["#cc4444"] * len(pal_cut)
-    y = range(len(all_pals))
-    ax.barh(list(y), vals, color=colors, height=0.7)
-    ax.axvline(np.mean(OVERALL_RATES) / 100, color="gray", linestyle="--",
-               linewidth=1, label="avg like rate")
+
+def _plot_bars(ax, survivors, cut, title, fontsize=9):
+    """Draw a horizontal bar chart of like rates, survivors blue, cut items red."""
+    items = survivors + cut
+    labels = [k for k, _ in items]
+    vals = [v for _, v in items]
+    colors = ["steelblue"] * len(survivors) + ["#cc4444"] * len(cut)
+    ys = range(len(items))
+    ax.barh(list(ys), vals, color=colors, height=0.7)
+    ax.axvline(np.mean(OVERALL_RATES) / 100, color="gray", linestyle="--", linewidth=1)
     for i, v in enumerate(vals):
-        ax.text(v + 0.005, i, f"{int(round(v*100))}%", va="center", fontsize=8.5)
-    ax.set_yticks(list(y))
-    ax.set_yticklabels(labels, fontsize=9)
+        ax.text(v + 0.005, i, f"{int(round(v*100))}%", va="center", fontsize=fontsize)
+    ax.set_yticks(list(ys))
+    ax.set_yticklabels(labels, fontsize=fontsize)
     ax.set_xlim(0, 0.75)
     ax.set_xlabel("Like rate")
-    ax.set_title("Palettes  (red = dropped)", fontweight="bold")
+    ax.set_title(title, fontweight="bold")
     ax.xaxis.grid(True, alpha=0.35)
     ax.set_axisbelow(True)
 
-    # --- symmetry bars ---
-    ax = axes[2]
-    all_syms = sym_surv + sym_cut
-    slabels = [k for k, _ in all_syms]
-    svals = [v for _, v in all_syms]
-    scolors = ["steelblue"] * len(sym_surv) + ["#cc4444"] * len(sym_cut)
-    sy = range(len(all_syms))
-    ax.barh(list(sy), svals, color=scolors, height=0.7)
-    ax.axvline(np.mean(OVERALL_RATES) / 100, color="gray", linestyle="--", linewidth=1)
-    for i, v in enumerate(svals):
-        ax.text(v + 0.005, i, f"{int(round(v*100))}%", va="center", fontsize=9)
-    ax.set_yticks(list(sy))
-    ax.set_yticklabels(slabels, fontsize=9)
-    ax.set_xlim(0, 0.75)
-    ax.set_xlabel("Like rate")
-    ax.set_title("Symmetry  (red = dropped)", fontweight="bold")
-    ax.xaxis.grid(True, alpha=0.35)
-    ax.set_axisbelow(True)
+
+def make_figure(ratings):
+    """Render convergence chart and save to quilts/convergence.png."""
+    pal_surv, pal_cut = _sorted_bars(
+        overall_like_rates(ratings, "palette"), DROPPED["palette"])
+    sym_surv, sym_cut = _sorted_bars(
+        overall_like_rates(ratings, "symmetry"), DROPPED["symmetry"])
+
+    fig, axes = plt.subplots(1, 3, figsize=(14, 6),
+                             gridspec_kw={"width_ratios": [1, 2.5, 1], "wspace": 0.4})
+    _plot_trend(axes[0])
+    _plot_bars(axes[1], pal_surv, pal_cut, "Palettes  (red = dropped)", fontsize=8.5)
+    _plot_bars(axes[2], sym_surv, sym_cut, "Symmetry  (red = dropped)")
 
     fig.suptitle("Active learning: 1538 quilts rated, 5 rounds", fontsize=13)
 
