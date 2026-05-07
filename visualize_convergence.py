@@ -30,7 +30,15 @@ ROUND_SLICES = [
     ("R6", slice(1538, 1914)),
     ("R7", slice(1914, None)),
 ]
-OVERALL_RATES = [21, 20, 28, 31, 38, 25]
+def compute_round_rates(ratings):
+    """Return list of like-rate percentages (int) for each round slice."""
+    rates = []
+    for _, sl in ROUND_SLICES:
+        chunk = ratings[sl]
+        if not chunk:
+            continue
+        rates.append(round(100 * sum(1 for r in chunk if r["liked"]) / len(chunk)))
+    return rates
 
 DROPPED = {
     "palette": {"berry patch", "cedar and moss", "dusty rose", "forest floor",
@@ -69,14 +77,14 @@ def _sorted_bars(rates, dropped):
     return survivors, cut
 
 
-def _plot_trend(ax):
+def _plot_trend(ax, rates):
     """Draw the like-rate-over-rounds line chart."""
-    xs = range(1, len(ROUND_SLICES) + 1)
-    ax.plot(xs, OVERALL_RATES, "o-", color="steelblue", linewidth=2.5, markersize=8)
-    for x, y in zip(xs, OVERALL_RATES):
+    xs = range(1, len(rates) + 1)
+    ax.plot(list(xs), rates, "o-", color="steelblue", linewidth=2.5, markersize=8)
+    for x, y in zip(xs, rates):
         ax.text(x, y + 1.5, f"{y}%", ha="center", fontsize=11)
     ax.set_xticks(list(xs))
-    ax.set_xticklabels([r for r, _ in ROUND_SLICES])
+    ax.set_xticklabels([r for r, _ in ROUND_SLICES[:len(rates)]])
     ax.set_ylabel("Like rate %")
     ax.set_ylim(0, 50)
     ax.set_title("Like rate over rounds", fontweight="bold")
@@ -84,7 +92,7 @@ def _plot_trend(ax):
     ax.set_axisbelow(True)
 
 
-def _plot_bars(ax, survivors, cut, title, fontsize=9):
+def _plot_bars(ax, survivors, cut, title, overall_rate, fontsize=9):
     """Draw a horizontal bar chart of like rates, survivors blue, cut items red."""
     items = survivors + cut
     labels = [k for k, _ in items]
@@ -92,7 +100,7 @@ def _plot_bars(ax, survivors, cut, title, fontsize=9):
     colors = ["steelblue"] * len(survivors) + ["#cc4444"] * len(cut)
     ys = range(len(items))
     ax.barh(list(ys), vals, color=colors, height=0.7)
-    ax.axvline(np.mean(OVERALL_RATES) / 100, color="gray", linestyle="--", linewidth=1)
+    ax.axvline(overall_rate / 100, color="gray", linestyle="--", linewidth=1)
     for i, v in enumerate(vals):
         ax.text(v + 0.005, i, f"{int(round(v*100))}%", va="center", fontsize=fontsize)
     ax.set_yticks(list(ys))
@@ -106,6 +114,7 @@ def _plot_bars(ax, survivors, cut, title, fontsize=9):
 
 def make_figure(ratings):
     """Render convergence chart and save to quilts/convergence.png."""
+    rates = compute_round_rates(ratings)
     pal_surv, pal_cut = _sorted_bars(
         overall_like_rates(ratings, "palette"), DROPPED["palette"])
     sym_surv, sym_cut = _sorted_bars(
@@ -113,9 +122,10 @@ def make_figure(ratings):
 
     fig, axes = plt.subplots(1, 3, figsize=(14, 6),
                              gridspec_kw={"width_ratios": [1, 2.5, 1], "wspace": 0.4})
-    _plot_trend(axes[0])
-    _plot_bars(axes[1], pal_surv, pal_cut, "Palettes  (red = dropped)", fontsize=8.5)
-    _plot_bars(axes[2], sym_surv, sym_cut, "Symmetry  (red = dropped)")
+    overall_rate = round(sum(rates) / len(rates)) if rates else 0
+    _plot_trend(axes[0], rates)
+    _plot_bars(axes[1], pal_surv, pal_cut, "Palettes  (red = dropped)", overall_rate, fontsize=8.5)
+    _plot_bars(axes[2], sym_surv, sym_cut, "Symmetry  (red = dropped)", overall_rate)
 
     n_rated = len(ratings)
     n_rounds = len(ROUND_SLICES)

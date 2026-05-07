@@ -6,6 +6,7 @@ and samples new parameters balancing exploration vs exploitation.
 import json
 import os
 import random
+import time
 
 import numpy as np
 from sklearn.ensemble import GradientBoostingClassifier
@@ -149,7 +150,7 @@ class QuiltExplorer:
 
     def add_rating(self, params, liked):
         """Record a rating (liked=True/False) for a param set."""
-        self.ratings.append({"params": params, "liked": liked})
+        self.ratings.append({"params": params, "liked": liked, "ts": time.time()})
         self._save()
         self._retrain()
 
