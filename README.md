@@ -40,27 +40,40 @@ The `--command` flag is useful when someone sends you IDs they like — decode
 it, optionally tweak the printed command, and re-run to regenerate or vary
 the design.
 
-## Build the static gallery
+## Build and deploy the static gallery
+
+**Build** — clusters liked quilts into families, renders variation images,
+writes HTML to `docs/`:
 
 ```bash
-python build_site.py --ratings ratings.json --out docs/ --families 18 --variations 18
+python build_site.py --ratings ratings.json --out docs/ --families 16 --variations 16
 ```
 
-Clusters liked quilts into families, generates variation images, and writes
-a static site to `docs/`. Push to GitHub to deploy via GitHub Pages.
+**Deploy** — syncs `docs/` to the `gh-pages` branch and pushes to GitHub Pages:
 
-Family names are auto-generated from chaos level, symmetry, and other traits
-(e.g. "Wild Spiral", "Lattice Calm Crystal"). To preview or hand-tune names:
+```bash
+./deploy.sh
+```
+
+The site is served from the `gh-pages` branch (configured in GitHub repo
+Settings → Pages → Branch: `gh-pages`, folder: `/`).
+URL: `https://vk9-9.github.io/quilts/`
+
+### Tuning family names
+
+Names are auto-generated from chaos level, symmetry, and other traits
+(e.g. "Wild Spiral", "Lattice Calm Crystal"). To preview or hand-tune them:
 
 ```bash
 # Preview auto-generated names and write to family_names.json
 python build_site.py --dump-names
 
-# Edit family_names.json with better names, then rebuild
-python build_site.py --ratings ratings.json --out docs/ --families 18 --variations 18
+# Edit family_names.json with better names, then rebuild + deploy
+python build_site.py --ratings ratings.json --out docs/ --families 16 --variations 16
+./deploy.sh
 ```
 
-`family_names.json` is read automatically on each build if present. The slug
+`family_names.json` is read automatically on each build if present. Slug
 keys are stable as long as `--families` and `--seed` stay the same.
 
 ## Key files
