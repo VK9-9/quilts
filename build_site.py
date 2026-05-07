@@ -405,23 +405,15 @@ def main():  # pylint: disable=too-many-locals,too-many-statements
     args = parser.parse_args()
 
     out = Path(args.out)
-    # preserve existing images to avoid re-rendering unchanged quilts
-    images_dir = out / "images"
-    saved = {}
-    if images_dir.exists():
-        for p in images_dir.rglob("*.png"):
-            saved[p.name] = p
-
-    shutil.rmtree(out, ignore_errors=True)
-    out.mkdir(parents=True)
-
-    # restore saved images
-    if saved:
-        (out / "images" / "quilts").mkdir(parents=True, exist_ok=True)
-        for name, src in saved.items():
-            dst = out / "images" / "quilts" / name
-            if not dst.exists():
-                shutil.copy2(src, dst)
+    # Delete everything except images/ (which is expensive to re-render)
+    if out.exists():
+        for item in out.iterdir():
+            if item.name != "images":
+                if item.is_dir():
+                    shutil.rmtree(item)
+                else:
+                    item.unlink()
+    out.mkdir(parents=True, exist_ok=True)
 
     n_families = nearest_square(args.families)
     n_variations = nearest_square(args.variations)
