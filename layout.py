@@ -203,7 +203,7 @@ def layout_flower(rows, cols, n_patterns, n_palettes, rng):
     return grid
 
 
-def layout_emergent(rows, cols, n_patterns, n_palettes, rng):
+def layout_emergent(rows, cols, n_patterns, _n_palettes, rng):
     """Emergent macro patterns via coordinated block rotations.
 
     Uses a single block pattern and assigns rotations so that block edges
