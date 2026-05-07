@@ -7,7 +7,7 @@ of (px, py) points and color_index selects from the block's assigned palette.
 import random
 
 
-def half_square_triangle(x, y, size, n_colors):
+def half_square_triangle(x, y, size, _n_colors):
     """Two triangles split along the diagonal."""
     direction = random.randint(0, 1)
     if direction == 0:
@@ -23,7 +23,7 @@ def half_square_triangle(x, y, size, n_colors):
     ]
 
 
-def nine_patch(x, y, size, n_colors):
+def nine_patch(x, y, size, _n_colors):
     """3x3 grid of squares, alternating two colors (checkerboard)."""
     s = size / 3
     patches = []
@@ -101,7 +101,7 @@ def log_cabin(x, y, size, n_colors):
     return patches
 
 
-def pinwheel(x, y, size, n_colors):
+def pinwheel(x, y, size, _n_colors):
     """Four triangles arranged in a pinwheel rotation."""
     cx, cy = x + size / 2, y + size / 2
     corners = [
@@ -117,7 +117,7 @@ def pinwheel(x, y, size, n_colors):
     return patches
 
 
-def flying_geese(x, y, size, n_colors):
+def flying_geese(x, y, size, _n_colors):
     """Row of triangles pointing upward with background triangles."""
     n = 3
     w = size / n
@@ -143,7 +143,7 @@ def flying_geese(x, y, size, n_colors):
     return patches
 
 
-def hourglass(x, y, size, n_colors):
+def hourglass(x, y, size, _n_colors):
     """Two triangles forming an hourglass shape with background."""
     cx, cy = x + size / 2, y + size / 2
     # top triangle
