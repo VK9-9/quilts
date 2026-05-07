@@ -181,8 +181,6 @@ def render_images(families, out, _block_size_thumb, block_size_full):
     done = 0
 
     for fam in families:
-        slug = fam["slug"]
-
         rep_path = str(out / "images" / "quilts" / f"{fam['rep_id']}.png")
         if not os.path.exists(rep_path):
             render_to_file(fam["rep"], rep_path, block_size_full)
