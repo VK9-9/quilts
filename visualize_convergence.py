@@ -5,11 +5,12 @@ Produces: quilts/convergence.png
 import json
 import sys
 import os
+from collections import defaultdict
+
 import numpy as np
 import matplotlib
 matplotlib.use("Agg")
-import matplotlib.pyplot as plt
-from collections import defaultdict
+import matplotlib.pyplot as plt  # pylint: disable=wrong-import-position
 
 ROUND_SLICES = [
     ("R1", slice(0, 200)),
