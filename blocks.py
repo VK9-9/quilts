@@ -16,12 +16,11 @@ def half_square_triangle(x, y, size, n_colors):
             ([(x, y), (x + size, y), (x, y + size)], 0),
             ([(x + size, y), (x + size, y + size), (x, y + size)], 1),
         ]
-    else:
-        # top-right to bottom-left diagonal
-        return [
-            ([(x, y), (x + size, y), (x + size, y + size)], 0),
-            ([(x, y), (x + size, y + size), (x, y + size)], 1),
-        ]
+    # top-right to bottom-left diagonal
+    return [
+        ([(x, y), (x + size, y), (x + size, y + size)], 0),
+        ([(x, y), (x + size, y + size), (x, y + size)], 1),
+    ]
 
 
 def nine_patch(x, y, size, n_colors):
