@@ -303,7 +303,7 @@ _FAMILY_HTML = """\
     .back:hover { color: #2c2c2c; }
     h1 { font-size: 1.6rem; margin: 0.5rem 0 0.25rem; }
     .subtitle { color: #999; font-size: 0.88rem; margin-bottom: 2rem; }
-    .grid { display: grid; grid-template-columns: repeat({{ cols }}, 1fr); gap: 1rem; max-width: 1200px; }
+    .grid { display: grid; grid-template-columns: repeat({{ cols }}, 1fr); gap: 1rem; max-width: 1200px; margin: 0 auto; }
     .card { background: white; border-radius: 6px; overflow: hidden; box-shadow: 0 2px 6px rgba(0,0,0,0.07); transition: transform 0.15s; }
     .card:hover { transform: translateY(-2px); }
     .card a { display: block; }
