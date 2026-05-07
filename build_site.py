@@ -444,7 +444,7 @@ def main():
 
     total = sum(len(f["variations"]) for f in families)
     print(f"\nDone. {len(families)} families, {total} quilts → {out}/")
-    print(f"Push to GitHub to deploy: git add docs/ && git commit -m 'rebuild gallery' && git push")
+    print("Push to GitHub to deploy: git add docs/ && git commit -m 'rebuild gallery' && git push")
 
 
 if __name__ == "__main__":
