@@ -235,11 +235,11 @@ def layout_emergent(rows, cols, n_patterns, _n_palettes, rng):
                 # quadrant determines base rotation; Manhattan ring alternates
                 cr = r - mid_r
                 cc = c - mid_c
-                if cr <= 0 and cc >= 0:
+                if cr <= 0 and cc >= 0:  # pylint: disable=chained-comparison
                     rotation = 0
                 elif cr >= 0 and cc >= 0:
                     rotation = 1
-                elif cr >= 0 and cc <= 0:
+                elif cr >= 0 and cc <= 0:  # pylint: disable=chained-comparison
                     rotation = 2
                 else:
                     rotation = 3
