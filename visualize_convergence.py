@@ -16,7 +16,6 @@ import sys
 import os
 from collections import defaultdict
 
-import numpy as np
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # pylint: disable=wrong-import-position
@@ -92,7 +91,7 @@ def _plot_trend(ax, rates):
     ax.set_axisbelow(True)
 
 
-def _plot_bars(ax, survivors, cut, title, overall_rate, fontsize=9):
+def _plot_bars(ax, survivors, cut, title, overall_rate, fontsize=9):  # pylint: disable=too-many-arguments,too-many-positional-arguments
     """Draw a horizontal bar chart of like rates, survivors blue, cut items red."""
     items = survivors + cut
     labels = [k for k, _ in items]
