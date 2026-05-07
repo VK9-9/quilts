@@ -175,7 +175,7 @@ def render_to_file(params, path, block_size):
     render_quilt(**kwargs)
 
 
-def render_images(families, out, block_size_thumb, block_size_full):
+def render_images(families, out, _block_size_thumb, block_size_full):
     """Render rep and variation PNGs for all families, skipping existing files."""
     n_total = len(families) + sum(len(f["variations"]) for f in families)
     done = 0
