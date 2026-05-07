@@ -38,7 +38,7 @@ def nine_patch(x, y, size, _n_colors):
     return patches
 
 
-def log_cabin(x, y, size, n_colors):
+def log_cabin(x, y, size, n_colors):  # pylint: disable=too-many-locals
     """Concentric rectangular strips around a center square.
 
     Builds outward by adding one strip per side in order: top, right, bottom,
@@ -180,7 +180,7 @@ def chevron(x, y, size, n_colors):
     return patches
 
 
-def star(x, y, size, n_colors):
+def star(x, y, size, n_colors):  # pylint: disable=too-many-locals
     """Eight-pointed star — center diamond, 4 point triangles, 4 corner quads."""
     cx, cy = x + size / 2, y + size / 2
     m = size * 0.25
@@ -323,7 +323,7 @@ def ohio_star(x, y, size, n_colors):
     return patches
 
 
-def courthouse_steps(x, y, size, n_colors):
+def courthouse_steps(x, y, size, n_colors):  # pylint: disable=too-many-locals
     """Courthouse Steps — log cabin variant with symmetric strips on opposite sides.
 
     Alternates two colors in concentric rectangular frames around a center.
