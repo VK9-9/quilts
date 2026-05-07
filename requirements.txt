@@ -3,3 +3,7 @@ scikit-learn
 pycairo
 numpy
 jinja2
+noise
+matplotlib
+pylint
+pytest

@@ -271,6 +271,7 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,
     if color_gradient is not None and n_colors > 1:
         mid_r, mid_c = (rows - 1) / 2, (cols - 1) / 2
         for (r, c), cell in grid.items():
+            t = 0.0
             if color_gradient == "horizontal":
                 t = c / max(cols - 1, 1)
             elif color_gradient == "vertical":
