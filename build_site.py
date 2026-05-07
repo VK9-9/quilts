@@ -246,7 +246,7 @@ _INDEX_HTML = """\
     body { font-family: Georgia, serif; background: #f9f5f0; margin: 0; padding: 2rem; color: #2c2c2c; }
     h1 { text-align: center; font-size: 2rem; margin-bottom: 0.4rem; }
     .subtitle { text-align: center; color: #999; margin-bottom: 2.5rem; font-size: 0.95rem; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1.5rem; max-width: 1200px; margin: 0 auto; }
+    .grid { display: grid; grid-template-columns: repeat({{ cols }}, 1fr); gap: 1.5rem; max-width: 1200px; margin: 0 auto; }
     .card { background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08); transition: transform 0.15s, box-shadow 0.15s; }
     .card:hover { transform: translateY(-3px); box-shadow: 0 6px 18px rgba(0,0,0,0.14); }
     .card a { text-decoration: none; color: inherit; display: block; }
@@ -284,7 +284,7 @@ _FAMILY_HTML = """\
     .back:hover { color: #2c2c2c; }
     h1 { font-size: 1.6rem; margin: 0.5rem 0 0.25rem; }
     .subtitle { color: #999; font-size: 0.88rem; margin-bottom: 2rem; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem; max-width: 1200px; }
+    .grid { display: grid; grid-template-columns: repeat({{ cols }}, 1fr); gap: 1rem; max-width: 1200px; }
     .card { background: white; border-radius: 6px; overflow: hidden; box-shadow: 0 2px 6px rgba(0,0,0,0.07); transition: transform 0.15s; }
     .card:hover { transform: translateY(-2px); }
     .card a { display: block; }
@@ -366,15 +366,17 @@ def params_summary(params):
     return "\n".join(lines)
 
 
-def render_html(families, out):
+def render_html(families, out, n_families, n_variations):
     """Render index, family, and quilt HTML pages to out/."""
     env = Environment(loader=BaseLoader())
+    index_cols = round(n_families ** 0.5)
+    family_cols = round(n_variations ** 0.5)
 
     # index
     tmpl = env.from_string(_INDEX_HTML)
     total = sum(len(f["variations"]) for f in families)
     (out / "index.html").write_text(
-        tmpl.render(families=families, total=total), encoding="utf-8"
+        tmpl.render(families=families, total=total, cols=index_cols), encoding="utf-8"
     )
 
     # family pages
@@ -383,7 +385,7 @@ def render_html(families, out):
         fam_dir = out / "family" / fam["slug"]
         fam_dir.mkdir(parents=True, exist_ok=True)
         (fam_dir / "index.html").write_text(
-            tmpl.render(fam=fam), encoding="utf-8"
+            tmpl.render(fam=fam, cols=family_cols), encoding="utf-8"
         )
 
     # quilt pages
@@ -474,7 +476,7 @@ def main():  # pylint: disable=too-many-locals,too-many-statements
     render_images(families, out, args.block_size, args.block_size)
 
     print("\nRendering HTML...")
-    render_html(families, out)
+    render_html(families, out, n_families, n_variations)
 
     total = sum(len(f["variations"]) for f in families)
     print(f"\nDone. {len(families)} families, {total} quilts → {out}/")
