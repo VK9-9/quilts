@@ -3,8 +3,6 @@
 Assigns block patterns and color indices to each cell in the grid,
 respecting the chosen symmetry mode.
 """
-import random
-import math
 import noise
 
 
