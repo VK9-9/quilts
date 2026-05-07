@@ -524,6 +524,81 @@ def path_tile(x, y, size, n_colors):
     return patches
 
 
+def cherry_blossom(x, y, size, n_colors):  # pylint: disable=too-many-locals
+    """Cherry blossom branch with generative blossoms and leaves.
+
+    A diagonal branch (color 0 = brown) with small five-petal flowers and
+    leaf shapes scattered around it. Uses randomness for organic placement.
+    """
+    import math  # pylint: disable=import-outside-toplevel
+    patches = []
+    s = size
+
+    # diagonal branch — a thick band from lower-left to upper-right
+    bw = s * 0.08  # branch half-width
+    # main branch: lower-left corner area to upper-right
+    patches.append((
+        [(x, y + s * 0.85), (x + s * 0.15, y + s),
+         (x + s, y + s * 0.15), (x + s * 0.85, y)],
+        0,
+    ))
+
+    # small sub-branch going up-left from midpoint
+    mx, my = x + s * 0.45, y + s * 0.55
+    patches.append((
+        [(mx - bw, my - bw), (mx + bw, my + bw),
+         (x + s * 0.15, y + s * 0.15), (x + s * 0.10, y + s * 0.20)],
+        0,
+    ))
+
+    # generate blossoms at several points along and near the branch
+    rng = random.Random()
+    blossom_centers = [
+        (x + s * 0.20, y + s * 0.75),
+        (x + s * 0.40, y + s * 0.55),
+        (x + s * 0.60, y + s * 0.38),
+        (x + s * 0.80, y + s * 0.18),
+        (x + s * 0.15, y + s * 0.25),
+        (x + s * 0.70, y + s * 0.50),
+    ]
+
+    for bcx, bcy in blossom_centers:
+        r = s * rng.uniform(0.06, 0.10)
+        n_petals = 5
+        angle_offset = rng.uniform(0, 2 * math.pi)
+        for p in range(n_petals):
+            a = angle_offset + p * 2 * math.pi / n_petals
+            # petal: a small triangle radiating from center
+            pr = r * rng.uniform(0.8, 1.2)
+            pa = s * 0.04  # petal half-width at base
+            tip_x = bcx + pr * math.cos(a)
+            tip_y = bcy + pr * math.sin(a)
+            left_a = a + math.pi / 2
+            right_a = a - math.pi / 2
+            base_lx = bcx + pa * math.cos(left_a)
+            base_ly = bcy + pa * math.sin(left_a)
+            base_rx = bcx + pa * math.cos(right_a)
+            base_ry = bcy + pa * math.sin(right_a)
+            patches.append((
+                [(base_lx, base_ly), (tip_x, tip_y), (base_rx, base_ry)],
+                1 % n_colors,  # petal color (pink)
+            ))
+        # center dot — small diamond
+        cd = s * 0.02
+        patches.append((
+            [(bcx, bcy - cd), (bcx + cd, bcy),
+             (bcx, bcy + cd), (bcx - cd, bcy)],
+            2 % n_colors,  # center color
+        ))
+
+    # background fill — large quad behind everything
+    bg = [
+        ([(x, y), (x + s, y), (x + s, y + s), (x, y + s)],
+         (n_colors - 1) % n_colors),
+    ]
+    return bg + patches
+
+
 # Registry of all block patterns
 BLOCK_PATTERNS = [
     half_square_triangle,
@@ -545,4 +620,5 @@ BLOCK_PATTERNS = [
     double_pinwheel,
     diagonal,
     path_tile,
+    cherry_blossom,
 ]
