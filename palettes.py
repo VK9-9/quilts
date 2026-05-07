@@ -26,6 +26,21 @@ PALETTES = [
     ("midnight moss", [
         "#0D1F0D", "#2D6A2D", "#6B9E6B", "#C4D9A0", "#F0EDD8",
     ]),
+    ("terracotta", [
+        "#8B3A2F", "#C25B3F", "#E8A87C", "#F5DEB3", "#4A2511",
+    ]),
+    ("autumn harvest", [
+        "#7B2D1A", "#D4762C", "#F2B84B", "#5C7A29", "#2E1B0E",
+    ]),
+    ("cherry blossom", [
+        "#FFB7C5", "#FF69B4", "#D1426E", "#F8E8EE", "#4A0E2B",
+    ]),
+    ("slate and rust", [
+        "#3B444B", "#708090", "#B7410E", "#D2691E", "#F5F5DC",
+    ]),
+    ("coral reef", [
+        "#FF6F61", "#FFD700", "#00CED1", "#20B2AA", "#1C1C3C",
+    ]),
 ]
 
 
