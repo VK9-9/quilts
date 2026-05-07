@@ -75,7 +75,9 @@ _SYM_NOUN = {
 }
 
 _SECONDARY = [
-    ("sash",    lambda m: sum(1 for p in m if p.get("sash_width", 0) > 0) / len(m) > 0.4, "Lattice"),
+    ("sash",
+     lambda m: sum(1 for p in m if p.get("sash_width", 0) > 0) / len(m) > 0.4,
+     "Lattice"),
     ("mega",    lambda m: sum(p.get("mega_frac", 0) for p in m) / len(m) > 0.08,          "Bold"),
     ("plain",   lambda m: sum(p.get("plain_frac", 0) for p in m) / len(m) > 0.08,         "Spare"),
     ("large",   lambda m: sum(p["rows"] for p in m) / len(m) >= 17.5,                     "Grand"),
