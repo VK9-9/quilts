@@ -59,10 +59,41 @@ def representative(members, member_features, centroid):
     return members[int(np.argmin(dists))]
 
 
+_CHAOS_ADJ = [
+    (0.25, "Ordered"),
+    (0.45, "Calm"),
+    (0.62, "Lively"),
+    (1.00, "Wild"),
+]
+
+_SYM_NOUN = {
+    "rotational": "Spiral",
+    "mirror":     "Crystal",
+    "stripe":     "Ribbons",
+    "partial":    "Mosaic",
+    "none":       "Garden",
+}
+
+_SECONDARY = [
+    ("sash",    lambda m: sum(1 for p in m if p.get("sash_width", 0) > 0) / len(m) > 0.4, "Lattice"),
+    ("mega",    lambda m: sum(p.get("mega_frac", 0) for p in m) / len(m) > 0.08,          "Bold"),
+    ("plain",   lambda m: sum(p.get("plain_frac", 0) for p in m) / len(m) > 0.08,         "Spare"),
+    ("large",   lambda m: sum(p["rows"] for p in m) / len(m) >= 17.5,                     "Grand"),
+]
+
+
 def family_name(members):
-    palette = Counter(p["palette"] for p in members).most_common(1)[0][0]
-    symmetry = Counter(p["symmetry"] for p in members).most_common(1)[0][0]
-    return f"{palette.title()} / {symmetry.title()}"
+    avg_chaos = sum(p["chaos"] for p in members) / len(members)
+    dominant_sym = Counter(p["symmetry"] for p in members).most_common(1)[0][0]
+
+    adj = next(word for threshold, word in _CHAOS_ADJ if avg_chaos <= threshold)
+    noun = _SYM_NOUN.get(dominant_sym, "Quilt")
+
+    # pick first matching secondary modifier, if any
+    modifier = next((word for _, test, word in _SECONDARY if test(members)), None)
+    if modifier:
+        return f"{modifier} {adj} {noun}"
+    return f"{adj} {noun}"
 
 
 def slugify(name):
@@ -89,10 +120,11 @@ def generate_variations(palette, symmetry, n, rng):
     return variations
 
 
-def define_families(liked, n_families, n_variations, rng):
+def define_families(liked, n_families, n_variations, rng, name_overrides=None):
     labels, centroids, features = cluster(liked, n_families)
     families = []
     slugs_used = set()
+    name_overrides = name_overrides or {}
 
     for fid in range(n_families):
         idx = [i for i, l in enumerate(labels) if l == fid]
@@ -100,9 +132,10 @@ def define_families(liked, n_families, n_variations, rng):
         mfeatures = features[idx]
         centroid = centroids[fid]
 
-        name = family_name(members)
-        slug = unique_slug(name, slugs_used)
+        auto = family_name(members)
+        slug = unique_slug(auto, slugs_used)
         slugs_used.add(slug)
+        name = name_overrides.get(slug, auto)
 
         rep = representative(members, mfeatures, centroid)
         dominant_palette = Counter(p["palette"] for p in members).most_common(1)[0][0]
@@ -338,6 +371,10 @@ def main():
                         help="Block size in px for rendered images (default: 40)")
     parser.add_argument("--seed", type=int, default=42,
                         help="RNG seed for variation sampling (default: 42)")
+    parser.add_argument("--names", default="family_names.json",
+                        help="JSON file mapping slug → custom name (default: family_names.json)")
+    parser.add_argument("--dump-names", action="store_true",
+                        help="Write auto-generated names to --names file and exit")
     args = parser.parse_args()
 
     out = Path(args.out)
@@ -363,7 +400,24 @@ def main():
     print(f"Loaded {len(liked)} liked quilts")
 
     rng = random.Random(args.seed)
-    families = define_families(liked, args.families, args.variations, rng)
+
+    if args.dump_names:
+        families = define_families(liked, args.families, args.variations, rng)
+        names = {f["slug"]: f["name"] for f in families}
+        with open(args.names, "w", encoding="utf-8") as f:
+            json.dump(names, f, indent=2)
+        print(f"Wrote {len(names)} family names to {args.names}")
+        print("Edit the names, then re-run without --dump-names.")
+        return
+
+    name_overrides = {}
+    if os.path.exists(args.names):
+        with open(args.names, encoding="utf-8") as f:
+            name_overrides = json.load(f)
+        print(f"Loaded {len(name_overrides)} name overrides from {args.names}")
+
+    families = define_families(liked, args.families, args.variations, rng,
+                               name_overrides=name_overrides)
     for fam in families:
         print(f"  {fam['name']} ({fam['size']} members) → {fam['slug']}")
 
