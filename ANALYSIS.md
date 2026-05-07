@@ -619,6 +619,149 @@ plain_frac (~30%, 0.1–0.4), cornerstones (~50% when sash active)
 
 ---
 
+## Round 7 — ratings 1915-1945
+
+**Records:** 1915-1945 (31 ratings)
+**Overall:** Transitional round — CLIP model deployed mid-round, too few ratings
+for standalone analysis. Folded into R8 evaluation baseline.
+
+### Changes after Round 7
+
+- Added CLIP visual model: two-stage pipeline (param GBC → CLIP LogisticRegression)
+- Backfilled 1914 CLIP embeddings from existing ratings
+- Dropped 4 palettes: farmhouse, autumn harvest, stained glass, plum and gold
+- Added palette: midnight moss — 7 palettes remain
+- Reduced CLIP top-N from 20 → 10 for speed
+
+---
+
+## Round 8 — ratings 1946-2145
+
+**Records:** 1946-2145 (200 ratings)
+**Overall:** 102/200 liked (51.0%)
+**Params:** rows/cols 14-19, symmetry 5 modes (none/mirror/rotational/stripe/partial),
+chaos 0-0.8, 7 palettes, n_patterns 1-2, n_colors 3-4, 10% palette diversity cap,
+3 border styles (solid/checkerboard/piano_keys, ~25%), sash (~10%, 5px),
+mega_frac (~30%, 0.1-0.25), plain_frac (~30%, 0.1-0.4), quilt_stitch (~30%),
+wash_alpha (~15%), palette_2 (~15%)
+**New:** CLIP visual model active (two-stage pipeline)
+
+### Key findings
+
+- **Like rate jumped to 51.0%** — best round by far. Previous best was R5 at 38.3%.
+  CLIP visual re-ranking is clearly helping: the param model proposes candidates,
+  CLIP filters out the ones that don't look good regardless of parameters.
+- **n_patterns=1 strongly preferred again** — 59% vs 36%. Consistent with R1/R4/R6.
+- **n_colors converged** — 3 and 4 identical at 51%. No signal.
+- **Partial symmetry top** at 60%, rotational 55%, stripe 52%, none 50%. Mirror
+  weak at 36% — consider dropping.
+- **Wildflower dominates** — 67% (35/52), over-exploited at 26% of samples.
+  Indigo dye 61%, ocean breeze 57%. Top 3 all strong.
+- **Storm collapsed** — 14% (1/7). Northern lights weak at 31%.
+  Midnight moss (new) at 17% — not earning its keep.
+- **rows=15 sweet spot** — 69%. rows=14 worst at 32%.
+- **Sash still negative** — 9% (1/11) vs 53% without. Drop entirely.
+- **quilt_stitch huge positive** — 62% with vs 9% without. 157/200 had it active
+  (model heavily exploiting). Suspiciously strong signal — may be confounded with
+  CLIP preference for texture detail.
+- **wash_alpha slight positive** — 57% vs 50%. Keep as-is.
+- **mega_frac flipped negative** — 44% vs 55%. Was positive in R6, now hurting.
+- **palette_2 slightly negative** — 42% vs 53%.
+- **Trend stable** — no late-round crash. Dipped to 32-40% at end but didn't
+  collapse like R6.
+
+### Palette detail
+
+| Palette | Shown | Liked | Rate |
+|---------|-------|-------|------|
+| wildflower | 52 | 35 | 67% |
+| indigo dye | 44 | 27 | 61% |
+| ocean breeze | 35 | 20 | 57% |
+| deep sea | 28 | 11 | 39% |
+| northern lights | 16 | 5 | 31% |
+| midnight moss | 18 | 3 | 17% |
+| storm | 7 | 1 | 14% |
+
+### Symmetry detail
+
+| Mode | Shown | Liked | Rate |
+|------|-------|-------|------|
+| partial | 35 | 21 | 60% |
+| rotational | 49 | 27 | 55% |
+| stripe | 42 | 22 | 52% |
+| none | 38 | 19 | 50% |
+| mirror | 36 | 13 | 36% |
+
+### Feature params detail
+
+| Param | On | Off |
+|-------|----|-----|
+| quilt_stitch | 98/157 (62%) | 4/43 (9%) |
+| wash_alpha | 20/35 (57%) | 82/165 (50%) |
+| plain_frac | 37/70 (53%) | 65/130 (50%) |
+| cornerstones | 46/89 (52%) | 56/111 (50%) |
+| mega_frac | 33/75 (44%) | 69/125 (55%) |
+| palette_2 | 14/33 (42%) | 88/167 (53%) |
+| sash_width | 1/11 (9%) | 101/189 (53%) |
+
+### Border style detail
+
+| Style | Shown | Liked | Rate |
+|-------|-------|-------|------|
+| checkerboard | 18 | 10 | 56% |
+| solid | 20 | 11 | 55% |
+| none | 149 | 75 | 50% |
+| piano_keys | 13 | 6 | 46% |
+
+### Grid size detail
+
+| Rows | Shown | Liked | Rate |
+|------|-------|-------|------|
+| 15 | 39 | 27 | 69% |
+| 18 | 34 | 20 | 59% |
+| 17 | 29 | 15 | 52% |
+| 19 | 43 | 19 | 44% |
+| 16 | 33 | 14 | 42% |
+| 14 | 22 | 7 | 32% |
+
+### Like rate trend (round 8 only)
+
+```
+1946-1970: 40%
+1971-1995: 60%
+1996-2020: 56%
+2021-2045: 64%
+2046-2070: 64%
+2071-2095: 52%
+2096-2120: 32%
+2121-2145: 40%
+```
+
+### Palette frequency
+
+(expected ~14% each for 7 palettes)
+
+| Palette | Frequency |
+|---------|-----------|
+| wildflower | 26.0% |
+| indigo dye | 22.0% |
+| ocean breeze | 17.5% |
+| deep sea | 14.0% |
+| midnight moss | 9.0% |
+| northern lights | 8.0% |
+| storm | 3.5% |
+
+### Changes after Round 8
+
+- Drop sash entirely (9% like rate, consistently negative since R6)
+- Drop storm (14%) and midnight moss (17%) — 5 palettes remain
+- Cut palette_2 probability: 15% → 5% (42% vs 53% baseline)
+- Cut mega_frac probability: 30% → 15% (44% vs 55% baseline)
+- Drop mirror symmetry (36%, consistently weakest) — 4 modes remain
+- Narrow rows to 15-19 (rows=14 at 32%, consistently weak)
+
+---
+
 ## Favorites
 
 Standout quilts worth revisiting or using as seeds for future exploration.
