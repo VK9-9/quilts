@@ -65,7 +65,7 @@ def rotate_patches(patches, cx, cy, rotation):
     return rotated
 
 
-def _build_tiled_grid(rows, cols, tile_size, tile_variation, n_patterns,
+def _build_tiled_grid(rows, cols, tile_size, tile_variation, n_patterns,  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals,too-many-nested-blocks
                       n_colors, rng):
     """Build grid by stamping a template tile with tiny per-copy variations.
 
@@ -88,7 +88,7 @@ def _build_tiled_grid(rows, cols, tile_size, tile_variation, n_patterns,
     grid = {}
     tile_rows = math.ceil(rows / ts)
     tile_cols = math.ceil(cols / ts)
-    for tr in range(tile_rows):
+    for tr in range(tile_rows):  # pylint: disable=too-many-nested-blocks
         for tc in range(tile_cols):
             for lr in range(ts):
                 for lc in range(ts):
@@ -115,7 +115,7 @@ def _build_tiled_grid(rows, cols, tile_size, tile_variation, n_patterns,
     return grid
 
 
-def _draw_border(ctx, width, height, border, quilt_x, quilt_y, quilt_w,
+def _draw_border(ctx, width, height, border, quilt_x, quilt_y, quilt_w,  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals,too-many-branches,too-many-statements
                   quilt_h, style, colors, block_size):
     """Draw a decorative border around the quilt area.
 
@@ -215,7 +215,7 @@ BORDER_STYLES = ["solid", "checkerboard", "piano_keys"]
 GRADIENT_MODES = ["diagonal"]
 
 
-def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,
+def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals,too-many-branches,too-many-statements
                  seed, output, border, max_patterns=None, max_colors=None,
                  tile_size=None, tile_variation=0.05, border_style=None,
                  sash_width=0, color_gradient=None, mega_frac=0.0,
