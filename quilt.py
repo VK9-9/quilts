@@ -507,6 +507,7 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,
     os.makedirs(os.path.dirname(output) or ".", exist_ok=True)
     surface.write_to_png(output)
     print(f"Saved to {output} ({width}x{height})")
+    return None
 
 
 def main():
