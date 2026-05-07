@@ -37,6 +37,7 @@ def _encodable(params):
 # ---------------------------------------------------------------------------
 
 def load_liked(ratings_path):
+    """Load liked quilts from ratings JSON, filtered to encodable params."""
     with open(ratings_path, encoding="utf-8") as f:
         ratings = json.load(f)
     liked = [r["params"] for r in ratings if r["liked"]]
@@ -48,6 +49,7 @@ def load_liked(ratings_path):
 
 
 def cluster(liked, n_families):
+    """K-means cluster liked quilts into n_families groups."""
     features = np.array([params_to_features(p) for p in liked])
     km = KMeans(n_clusters=n_families, random_state=42, n_init=10)
     labels = km.fit_predict(features)
@@ -55,6 +57,7 @@ def cluster(liked, n_families):
 
 
 def representative(members, member_features, centroid):
+    """Return the member closest to the cluster centroid."""
     dists = np.linalg.norm(member_features - centroid, axis=1)
     return members[int(np.argmin(dists))]
 
@@ -99,10 +102,12 @@ def family_name(members):
 
 
 def slugify(name):
+    """Convert a name to a URL-safe slug."""
     return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
 
 
 def unique_slug(name, existing):
+    """Return a slug for name that doesn't collide with existing slugs."""
     base = slugify(name)
     slug = base
     n = 2
@@ -113,6 +118,7 @@ def unique_slug(name, existing):
 
 
 def generate_variations(palette, symmetry, n, rng):
+    """Sample n random param sets with palette and symmetry fixed."""
     variations = []
     for _ in range(n):
         p = sample_random_params(rng)
@@ -161,6 +167,7 @@ def define_families(liked, n_families, n_variations, rng, name_overrides=None):
 # ---------------------------------------------------------------------------
 
 def render_to_file(params, path, block_size):
+    """Render a quilt to a PNG file."""
     os.makedirs(os.path.dirname(path), exist_ok=True)
     kwargs = params_to_render_kwargs(params)
     kwargs["block_size"] = block_size
@@ -169,6 +176,7 @@ def render_to_file(params, path, block_size):
 
 
 def render_images(families, out, block_size_thumb, block_size_full):
+    """Render rep and variation PNGs for all families, skipping existing files."""
     n_total = len(families) + sum(len(f["variations"]) for f in families)
     done = 0
 
@@ -304,6 +312,7 @@ _QUILT_HTML = """\
 
 
 def params_summary(params):
+    """Format params as a multi-line string for the quilt detail tooltip."""
     lines = [
         f"palette:    {params['palette']}",
         f"symmetry:   {params['symmetry']}",
@@ -324,6 +333,7 @@ def params_summary(params):
 
 
 def render_html(families, out):
+    """Render index, family, and quilt HTML pages to out/."""
     env = Environment(loader=BaseLoader())
 
     # index
@@ -364,6 +374,7 @@ def render_html(families, out):
 # ---------------------------------------------------------------------------
 
 def main():
+    """Parse CLI args and build the static gallery site."""
     parser = argparse.ArgumentParser(description="Build static quilt gallery")
     parser.add_argument("--ratings", default="ratings.json")
     parser.add_argument("--out", default="docs/")
