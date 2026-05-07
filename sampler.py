@@ -12,7 +12,7 @@ from sklearn.ensemble import GradientBoostingClassifier
 
 from palettes import PALETTES
 from layout import SYMMETRY_MODES
-from quilt import BORDER_STYLES
+from quilt import BORDER_STYLES, QUILT_STITCH_STYLES
 
 PALETTE_NAMES = [p[0] for p in PALETTES]
 _DROP_SYMMETRY = {"flower", "emergent"}
@@ -57,6 +57,9 @@ def sample_random_params(rng=None):
         "color_gradient": "none",
         "mega_frac": round(rng.uniform(0.1, 0.25), 2) if rng.random() < 0.30 else 0.0,
         "plain_frac": round(rng.uniform(0.1, 0.4), 2) if rng.random() < 0.30 else 0.0,
+        "quilt_stitch": rng.choice(QUILT_STITCH_STYLES) if rng.random() < 0.30 else None,
+        "wash_alpha": round(rng.uniform(0.04, 0.18), 2) if rng.random() < 0.25 else 0.0,
+        "palette_2": rng.choice(PALETTE_NAMES) if rng.random() < 0.25 else None,
         "seed": rng.randint(0, 2**31),
     }
 
@@ -75,6 +78,9 @@ def params_to_features(params):
     features.append(params.get("mega_frac", 0.0))
     features.append(params.get("plain_frac", 0.0))
     features.append(1.0 if params.get("cornerstones", False) else 0.0)
+    features.append(params.get("wash_alpha", 0.0))
+    features.append(1.0 if params.get("quilt_stitch") else 0.0)
+    features.append(1.0 if params.get("palette_2") else 0.0)
     # one-hot border style (includes "none")
     border_names = ["none"] + BORDER_STYLES
     for b in border_names:
@@ -110,6 +116,9 @@ def params_to_render_kwargs(params):
         "mega_frac": params.get("mega_frac", 0.0),
         "plain_frac": params.get("plain_frac", 0.0),
         "cornerstones": params.get("cornerstones", False),
+        "quilt_stitch": params.get("quilt_stitch"),
+        "wash_alpha": params.get("wash_alpha", 0.0),
+        "palette_name_2": params.get("palette_2"),
     }
     if kwargs["border_style"] == "none":
         kwargs["border_style"] = None
@@ -212,7 +221,7 @@ class QuiltExplorer:
         names = (
             ["rows", "chaos", "n_patterns", "n_colors",
              "tile_size", "tile_variation", "sash_width", "mega_frac", "plain_frac",
-             "cornerstones"]
+             "cornerstones", "wash_alpha", "quilt_stitch", "palette_2"]
             + [f"brd_{b}" for b in border_names]
             + [f"sym_{s}" for s in SYMMETRY_NAMES]
             + [f"pal_{p}" for p in PALETTE_NAMES]
