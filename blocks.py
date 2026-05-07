@@ -5,7 +5,6 @@ a list of patches. Each patch is (polygon, color_index) where polygon is a list
 of (px, py) points and color_index selects from the block's assigned palette.
 """
 import random
-import math
 
 
 def half_square_triangle(x, y, size, n_colors):
