@@ -88,6 +88,7 @@ _SECONDARY = [
 
 
 def family_name(members):
+    """Derive an evocative name from a cluster's dominant chaos, symmetry, and traits."""
     avg_chaos = sum(p["chaos"] for p in members) / len(members)
     dominant_sym = Counter(p["symmetry"] for p in members).most_common(1)[0][0]
 
@@ -128,7 +129,8 @@ def generate_variations(palette, symmetry, n, rng):
     return variations
 
 
-def define_families(liked, n_families, n_variations, rng, name_overrides=None):
+def define_families(liked, n_families, n_variations, rng, name_overrides=None):  # pylint: disable=too-many-locals
+    """Cluster liked quilts and define families with names, reps, and variations."""
     labels, centroids, features = cluster(liked, n_families)
     families = []
     slugs_used = set()
@@ -371,7 +373,7 @@ def render_html(families, out):
 # Main
 # ---------------------------------------------------------------------------
 
-def main():
+def main():  # pylint: disable=too-many-locals
     """Parse CLI args and build the static gallery site."""
     parser = argparse.ArgumentParser(description="Build static quilt gallery")
     parser.add_argument("--ratings", default="ratings.json")
@@ -436,8 +438,7 @@ def main():
 
     print(f"\nRendering images ({len(families)} reps + "
           f"{sum(len(f['variations']) for f in families)} variations)...")
-    render_images(families, out, block_size_thumb=args.block_size,
-                  block_size_full=args.block_size)
+    render_images(families, out, args.block_size, args.block_size)
 
     print("\nRendering HTML...")
     render_html(families, out)
