@@ -264,7 +264,8 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylin
                  seed, output, border, max_patterns=None, max_colors=None,
                  tile_size=None, tile_variation=0.05, border_style=None,
                  sash_width=0, color_gradient=None, mega_frac=0.0,
-                 cornerstones=False, plain_frac=0.0, quilt_stitch=None):
+                 cornerstones=False, plain_frac=0.0, quilt_stitch=None,
+                 wash_alpha=0.0):
     """Generate and render a quilt to an image file."""
     if seed is None:
         seed = random.randint(0, 2**31)
@@ -542,6 +543,13 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylin
                 ctx.line_to(*pt)
             ctx.close_path()
             ctx.stroke()
+
+    # color wash — semi-transparent tint over entire quilt area
+    if wash_alpha and wash_alpha > 0:
+        wash_rgb = palette_colors[rng.randint(0, n_colors - 1)]
+        ctx.set_source_rgba(*wash_rgb, wash_alpha)
+        ctx.rectangle(quilt_x, quilt_y, quilt_w, quilt_h)
+        ctx.fill()
 
     # thread quilting overlay
     if quilt_stitch is not None:
