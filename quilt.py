@@ -17,9 +17,8 @@ Options:
 import argparse
 import io
 import math
-import random
-import sys
 import os
+import random
 
 import cairo
 
@@ -35,10 +34,10 @@ def pick_palettes(palette_name, _n_needed, rng):
     else:
         matches = [p for p in PALETTES if p[0] == palette_name]
         if not matches:
-            print(f"Unknown palette '{palette_name}'. Available:")
-            for name, _ in PALETTES:
-                print(f"  {name}")
-            sys.exit(1)
+            available = ", ".join(p[0] for p in PALETTES)
+            raise ValueError(
+                f"Unknown palette '{palette_name}'. Available: {available}"
+            )
         chosen = matches[0]
 
     name, colors = chosen
