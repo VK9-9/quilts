@@ -211,6 +211,51 @@ def _draw_border(ctx, width, height, border, quilt_x, quilt_y, quilt_w,  # pylin
 
 BORDER_STYLES = ["solid", "checkerboard", "piano_keys"]
 
+QUILT_STITCH_STYLES = ["grid", "diagonal", "crosshatch"]
+
+
+def _draw_quilt_stitching(ctx, qx, qy, qw, qh, style, spacing):  # pylint: disable=too-many-arguments,too-many-positional-arguments
+    """Draw dotted thread-quilting lines over the quilt area.
+
+    style: 'grid' | 'diagonal' | 'crosshatch'
+    spacing: pixel distance between parallel stitch lines
+    """
+    ctx.save()
+    # clip to quilt interior
+    ctx.rectangle(qx, qy, qw, qh)
+    ctx.clip()
+
+    ctx.set_source_rgba(0.15, 0.10, 0.05, 0.28)  # dark thread, semi-transparent
+    ctx.set_line_width(0.9)
+    ctx.set_dash([1.5, 5.5])  # dot, gap
+
+    def draw_lines_at_angle(angle_deg):
+        """Draw parallel lines at given angle spanning the clipped area."""
+        rad = math.radians(angle_deg)
+        cos_a, sin_a = math.cos(rad), math.sin(rad)
+        # diagonal of bounding box — enough to span any rotation
+        diag = math.sqrt(qw * qw + qh * qh)
+        cx, cy = qx + qw / 2, qy + qh / 2
+        # perpendicular direction to the lines
+        perp_x, perp_y = -sin_a, cos_a
+        n = int(diag / spacing) + 2
+        for i in range(-n, n + 1):
+            ox = cx + perp_x * i * spacing
+            oy = cy + perp_y * i * spacing
+            ctx.move_to(ox - cos_a * diag, oy - sin_a * diag)
+            ctx.line_to(ox + cos_a * diag, oy + sin_a * diag)
+        ctx.stroke()
+
+    if style in ("grid", "crosshatch"):
+        draw_lines_at_angle(0)    # horizontal
+        draw_lines_at_angle(90)   # vertical
+    if style in ("diagonal", "crosshatch"):
+        draw_lines_at_angle(45)
+        draw_lines_at_angle(-45)
+
+    ctx.set_dash([])
+    ctx.restore()
+
 
 GRADIENT_MODES = ["diagonal"]
 
@@ -219,7 +264,7 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylin
                  seed, output, border, max_patterns=None, max_colors=None,
                  tile_size=None, tile_variation=0.05, border_style=None,
                  sash_width=0, color_gradient=None, mega_frac=0.0,
-                 cornerstones=False, plain_frac=0.0):
+                 cornerstones=False, plain_frac=0.0, quilt_stitch=None):
     """Generate and render a quilt to an image file."""
     if seed is None:
         seed = random.randint(0, 2**31)
@@ -497,6 +542,11 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylin
                 ctx.line_to(*pt)
             ctx.close_path()
             ctx.stroke()
+
+    # thread quilting overlay
+    if quilt_stitch is not None:
+        _draw_quilt_stitching(ctx, quilt_x, quilt_y, quilt_w, quilt_h,
+                              quilt_stitch, block_size)
 
     # save or return bytes
     if output is None:
