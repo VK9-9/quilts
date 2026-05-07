@@ -79,6 +79,7 @@ def sample_random_params(rng=None):
         "wash_alpha": round(rng.uniform(0.04, 0.18), 2) if rng.random() < 0.15 else 0.0,
         "palette_2": rng.choice(PALETTE_NAMES) if rng.random() < 0.05 else None,
         "palette_mix": rng.choice(PALETTE_NAMES) if rng.random() < 0.20 else None,
+        "accent_count": rng.randint(1, 3) if rng.random() < 0.20 else 0,
         "seed": rng.randint(0, 2**31),
     }
 
@@ -101,6 +102,7 @@ def params_to_features(params):
     features.append(1.0 if params.get("quilt_stitch") else 0.0)
     features.append(1.0 if params.get("palette_2") else 0.0)
     features.append(1.0 if params.get("palette_mix") else 0.0)
+    features.append(params.get("accent_count", 0))
     # one-hot border style (includes "none")
     border_names = ["none"] + BORDER_STYLES
     for b in border_names:
@@ -140,6 +142,7 @@ def params_to_render_kwargs(params, block_size=40):
         "wash_alpha": params.get("wash_alpha", 0.0),
         "palette_name_2": params.get("palette_2"),
         "palette_mix": params.get("palette_mix"),
+        "accent_count": params.get("accent_count", 0),
     }
     # Drop palette_2/palette_mix if they reference a retired palette
     _active = set(PALETTE_NAMES)
@@ -334,7 +337,8 @@ class QuiltExplorer:  # pylint: disable=too-many-instance-attributes
         names = (
             ["rows", "chaos", "n_patterns", "n_colors",
              "tile_size", "tile_variation", "sash_width", "mega_frac", "plain_frac",
-             "cornerstones", "wash_alpha", "quilt_stitch", "palette_2", "palette_mix"]
+             "cornerstones", "wash_alpha", "quilt_stitch", "palette_2",
+             "palette_mix", "accent_count"]
             + [f"brd_{b}" for b in border_names]
             + [f"sym_{s}" for s in SYMMETRY_NAMES]
             + [f"pal_{p}" for p in PALETTE_NAMES]
