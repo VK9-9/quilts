@@ -132,6 +132,24 @@ def unique_slug(name, existing):
     return slug
 
 
+def unique_name(name, existing):
+    """Return name deduplicated against existing set by appending a number.
+
+    >>> unique_name("Lively Spiral", set())
+    'Lively Spiral'
+    >>> unique_name("Lively Spiral", {"Lively Spiral"})
+    'Lively Spiral 2'
+    >>> unique_name("Lively Spiral", {"Lively Spiral", "Lively Spiral 2"})
+    'Lively Spiral 3'
+    """
+    result = name
+    n = 2
+    while result in existing:
+        result = f"{name} {n}"
+        n += 1
+    return result
+
+
 def generate_variations(palette, symmetry, n, rng):
     """Sample n random param sets with palette and symmetry fixed."""
     variations = []
@@ -148,6 +166,7 @@ def define_families(liked, n_families, n_variations, rng, name_overrides=None): 
     labels, centroids, features = cluster(liked, n_families)
     families = []
     slugs_used = set()
+    names_used = set()
     name_overrides = name_overrides or {}
 
     for fid in range(n_families):
@@ -156,7 +175,8 @@ def define_families(liked, n_families, n_variations, rng, name_overrides=None): 
         mfeatures = features[idx]
         centroid = centroids[fid]
 
-        auto = family_name(members)
+        auto = unique_name(family_name(members), names_used)
+        names_used.add(auto)
         slug = unique_slug(auto, slugs_used)
         slugs_used.add(slug)
         name = name_overrides.get(slug, auto)
