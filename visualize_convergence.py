@@ -1,6 +1,15 @@
-"""Visualize active learning convergence over 5 rounds.
+"""Visualize active learning convergence over rounds.
 
 Produces: quilts/convergence.png
+
+Round boundaries (cumulative record counts):
+  R1:  0 – 199    (200 ratings)
+  R2:  200 – 506  (307 ratings)
+  R3:  507 – 782  (276 ratings)
+  R4:  783 – 1156 (374 ratings)
+  R5:  1157 – 1537 (381 ratings)
+  R6:  1538 – 1913 (376 ratings)
+  R7:  1914 –      (in progress)
 """
 import json
 import sys
@@ -17,9 +26,11 @@ ROUND_SLICES = [
     ("R2", slice(200, 507)),
     ("R3", slice(507, 783)),
     ("R4", slice(783, 1157)),
-    ("R5", slice(1157, None)),
+    ("R5", slice(1157, 1538)),
+    ("R6", slice(1538, 1914)),
+    ("R7", slice(1914, None)),
 ]
-OVERALL_RATES = [21, 20, 28, 31, 38]
+OVERALL_RATES = [21, 20, 28, 31, 38, 25]
 
 DROPPED = {
     "palette": {"berry patch", "cedar and moss", "dusty rose", "forest floor",
@@ -60,7 +71,7 @@ def _sorted_bars(rates, dropped):
 
 def _plot_trend(ax):
     """Draw the like-rate-over-rounds line chart."""
-    xs = range(1, 6)
+    xs = range(1, len(ROUND_SLICES) + 1)
     ax.plot(xs, OVERALL_RATES, "o-", color="steelblue", linewidth=2.5, markersize=8)
     for x, y in zip(xs, OVERALL_RATES):
         ax.text(x, y + 1.5, f"{y}%", ha="center", fontsize=11)
@@ -106,7 +117,9 @@ def make_figure(ratings):
     _plot_bars(axes[1], pal_surv, pal_cut, "Palettes  (red = dropped)", fontsize=8.5)
     _plot_bars(axes[2], sym_surv, sym_cut, "Symmetry  (red = dropped)")
 
-    fig.suptitle("Active learning: 1538 quilts rated, 5 rounds", fontsize=13)
+    n_rated = len(ratings)
+    n_rounds = len(ROUND_SLICES)
+    fig.suptitle(f"Active learning: {n_rated} quilts rated, {n_rounds} rounds", fontsize=13)
 
     out = "quilts/convergence.png"
     plt.savefig(out, dpi=150, bbox_inches="tight")
