@@ -56,6 +56,8 @@ _V1_PALETTES = [
     "autumn harvest", "ocean breeze", "wildflower", "farmhouse",
     "winter sky", "stained glass", "indigo dye", "deep sea",
     "plum and gold", "storm", "northern lights",
+    "copper canyon", "autumn embers", "peacock feather", "cardinal",
+    "midnight moss",
 ]
 
 # Active symmetry modes (3 bits → max 7 entries)

@@ -26,6 +26,21 @@ PALETTES = [
     ("northern lights", [
         "#0B0B3B", "#1B8A6B", "#7FDBCA", "#C77DFF", "#F0F8FF",
     ]),
+    ("copper canyon", [
+        "#4A1501", "#C1440E", "#E8925A", "#F5DEB3", "#2D5A27",
+    ]),
+    ("autumn embers", [
+        "#2D0D00", "#8B2500", "#D4600A", "#F4D35E", "#1B4332",
+    ]),
+    ("peacock feather", [
+        "#0A2342", "#126872", "#3BB273", "#E9C46A", "#F4A261",
+    ]),
+    ("cardinal", [
+        "#5C0011", "#A6192E", "#E8B84B", "#F5ECD7", "#1E3A1E",
+    ]),
+    ("midnight moss", [
+        "#0D1F0D", "#2D6A2D", "#6B9E6B", "#C4D9A0", "#F0EDD8",
+    ]),
 ]
 
 

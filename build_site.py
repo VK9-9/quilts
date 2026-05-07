@@ -19,9 +19,10 @@ from sklearn.cluster import KMeans
 
 from sampler import params_to_features, sample_random_params, params_to_render_kwargs, PALETTE_NAMES
 from quilt import render_quilt
-from quilt_id import encode, _V1_SYMMETRY, _V1_GRADIENT
+from quilt_id import encode, _V1_PALETTES, _V1_SYMMETRY, _V1_GRADIENT
 
 _ACTIVE_PALETTES = set(PALETTE_NAMES)
+_ENCODABLE_PALETTES = set(_V1_PALETTES)
 
 
 def nearest_square(n):
@@ -41,7 +42,7 @@ def nearest_square(n):
 def _encodable(params):
     """Return True if params can be rendered and encoded as a v1 quilt ID."""
     gradient = params.get("color_gradient") or "none"
-    return (params.get("palette") in _ACTIVE_PALETTES
+    return (params.get("palette") in _ENCODABLE_PALETTES
             and params.get("symmetry") in _V1_SYMMETRY
             and gradient in _V1_GRADIENT)
 
