@@ -206,8 +206,11 @@ def generate_variations(symmetry, n, rng):
     """Sample n random param sets with symmetry fixed, palette free to vary."""
     variations = []
     for _ in range(n):
-        p = sample_random_params(rng)
-        p["symmetry"] = symmetry
+        while True:
+            p = sample_random_params(rng)
+            p["symmetry"] = symmetry
+            if _encodable(p):
+                break
         variations.append(p)
     return variations
 
