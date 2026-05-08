@@ -210,10 +210,11 @@ def _draw_border(ctx, width, height, border, quilt_x, quilt_y, quilt_w,  # pylin
 
 BORDER_STYLES = ["solid", "checkerboard", "piano_keys"]
 
-QUILT_STITCH_STYLES = ["grid", "diagonal", "crosshatch"]
+QUILT_STITCH_STYLES = ["grid", "diagonal", "crosshatch",
+                       "sashiko_wave", "sashiko_asanoha"]
 
 
-def _draw_quilt_stitching(ctx, qx, qy, qw, qh, style, spacing):  # pylint: disable=too-many-arguments,too-many-positional-arguments
+def _draw_quilt_stitching(ctx, qx, qy, qw, qh, style, spacing):  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals
     """Draw dotted thread-quilting lines over the quilt area.
 
     style: 'grid' | 'diagonal' | 'crosshatch'
@@ -251,6 +252,38 @@ def _draw_quilt_stitching(ctx, qx, qy, qw, qh, style, spacing):  # pylint: disab
     if style in ("diagonal", "crosshatch"):
         draw_lines_at_angle(45)
         draw_lines_at_angle(-45)
+
+    if style == "sashiko_wave":
+        # seigaiha-inspired: rows of nested arcs
+        ctx.set_source_rgba(0.95, 0.92, 0.85, 0.45)  # cream thread
+        ctx.set_line_width(1.0)
+        ctx.set_dash([2.0, 4.0])
+        r = spacing * 0.5
+        for row in range(int(qh / spacing) + 2):
+            for col in range(int(qw / spacing) + 2):
+                cx = qx + col * spacing + (spacing / 2 if row % 2 else 0)
+                cy = qy + row * spacing * 0.6
+                for ring in range(3):
+                    rr = r * (ring + 1) / 3
+                    ctx.arc(cx, cy, rr, math.pi, 2 * math.pi)
+                    ctx.stroke()
+
+    if style == "sashiko_asanoha":
+        # hemp leaf pattern: six lines radiating from each grid point
+        ctx.set_source_rgba(0.95, 0.92, 0.85, 0.45)
+        ctx.set_line_width(1.0)
+        ctx.set_dash([2.0, 4.0])
+        s = spacing * 0.7  # cell size
+        for row in range(int(qh / s) + 2):
+            for col in range(int(qw / s) + 2):
+                cx = qx + col * s + (s / 2 if row % 2 else 0)
+                cy = qy + row * s * 0.866  # sqrt(3)/2 for hex packing
+                for a in range(6):
+                    angle = math.radians(a * 60)
+                    ctx.move_to(cx, cy)
+                    ctx.line_to(cx + s / 2 * math.cos(angle),
+                                cy + s / 2 * math.sin(angle))
+                ctx.stroke()
 
     ctx.set_dash([])
     ctx.restore()
