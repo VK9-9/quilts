@@ -7,8 +7,6 @@
 ** Value contrast control
 *** Deliberately bias light colors to one region and dark colors to another (top/bottom, center/edge). Currently palette colors are assigned randomly — intentional value distribution could improve composition.
 * Designs
-** Quilt-level color wash
-*** Shift which palette colors are chosen based on each block's position — warm colors cluster in one corner, cool in another. Operates at composition level rather than within individual blocks.
 ** Asymmetric grid
 *** Vary row heights or column widths — creates a "strippy quilt" feel very different from the current uniform grid.
 ** Bargello columns
