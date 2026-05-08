@@ -563,8 +563,11 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylin
         color_map = cell["color_map"]
         active_pal = all_palettes[cell.get("palette", 0) % len(all_palettes)]
         for poly, color_idx in patches:
-            ci = color_map[color_idx % n_colors]
-            r_c, g_c, b_c = active_pal[ci]
+            if isinstance(color_idx, tuple):
+                r_c, g_c, b_c = color_idx
+            else:
+                ci = color_map[color_idx % n_colors]
+                r_c, g_c, b_c = active_pal[ci]
             ctx.set_source_rgb(r_c, g_c, b_c)
             ctx.move_to(*poly[0])
             for pt in poly[1:]:
