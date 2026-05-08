@@ -524,31 +524,40 @@ def path_tile(x, y, size, n_colors):
     return patches
 
 
-def cherry_blossom(x, y, size, n_colors):  # pylint: disable=too-many-locals
+_BRANCH_BROWN = (0.36, 0.20, 0.09)  # warm brown for cherry blossom branches
+_PETAL_COLORS = [
+    (1.0, 0.72, 0.77),   # light pink
+    (1.0, 0.41, 0.71),   # hot pink
+    (0.96, 0.91, 0.93),  # pale blush / white
+    (0.82, 0.26, 0.43),  # deep rose
+]
+
+
+def cherry_blossom(x, y, size, n_colors):  # pylint: disable=too-many-locals,unused-argument
     """Cherry blossom branch with generative blossoms and leaves.
 
-    A diagonal branch (color 0 = brown) with small five-petal flowers and
-    leaf shapes scattered around it. Uses randomness for organic placement.
+    Uses hardcoded brown branches and pink/white petals (RGB tuples) so the
+    block looks like a cherry tree regardless of which palette is active.
+    Background uses palette color index 0 to blend with the quilt.
     """
     import math  # pylint: disable=import-outside-toplevel
     patches = []
     s = size
 
     # diagonal branch — a thick band from lower-left to upper-right
-    bw = s * 0.08  # branch half-width
-    # main branch: lower-left corner area to upper-right
     patches.append((
         [(x, y + s * 0.85), (x + s * 0.15, y + s),
          (x + s, y + s * 0.15), (x + s * 0.85, y)],
-        0,
+        _BRANCH_BROWN,
     ))
 
     # small sub-branch going up-left from midpoint
     mx, my = x + s * 0.45, y + s * 0.55
+    bw = s * 0.08
     patches.append((
         [(mx - bw, my - bw), (mx + bw, my + bw),
          (x + s * 0.15, y + s * 0.15), (x + s * 0.10, y + s * 0.20)],
-        0,
+        _BRANCH_BROWN,
     ))
 
     # generate blossoms at several points along and near the branch
@@ -563,14 +572,14 @@ def cherry_blossom(x, y, size, n_colors):  # pylint: disable=too-many-locals
     ]
 
     for bcx, bcy in blossom_centers:
+        petal_color = rng.choice(_PETAL_COLORS)
         r = s * rng.uniform(0.06, 0.10)
         n_petals = 5
         angle_offset = rng.uniform(0, 2 * math.pi)
         for p in range(n_petals):
             a = angle_offset + p * 2 * math.pi / n_petals
-            # petal: a small triangle radiating from center
             pr = r * rng.uniform(0.8, 1.2)
-            pa = s * 0.04  # petal half-width at base
+            pa = s * 0.04
             tip_x = bcx + pr * math.cos(a)
             tip_y = bcy + pr * math.sin(a)
             left_a = a + math.pi / 2
@@ -581,20 +590,19 @@ def cherry_blossom(x, y, size, n_colors):  # pylint: disable=too-many-locals
             base_ry = bcy + pa * math.sin(right_a)
             patches.append((
                 [(base_lx, base_ly), (tip_x, tip_y), (base_rx, base_ry)],
-                1 % n_colors,  # petal color (pink)
+                petal_color,
             ))
         # center dot — small diamond
         cd = s * 0.02
         patches.append((
             [(bcx, bcy - cd), (bcx + cd, bcy),
              (bcx, bcy + cd), (bcx - cd, bcy)],
-            2 % n_colors,  # center color
+            (0.95, 0.85, 0.20),  # golden yellow center
         ))
 
-    # background fill — large quad behind everything
+    # background uses palette color index 0 to blend with the quilt
     bg = [
-        ([(x, y), (x + s, y), (x + s, y + s), (x, y + s)],
-         (n_colors - 1) % n_colors),
+        ([(x, y), (x + s, y), (x + s, y + s), (x, y + s)], 0),
     ]
     return bg + patches
 
