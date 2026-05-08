@@ -265,7 +265,7 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylin
                  sash_width=0, color_gradient=None, mega_frac=0.0,
                  cornerstones=False, plain_frac=0.0, quilt_stitch=None,
                  wash_alpha=0.0, palette_name_2=None, palette_mix=None,
-                 accent_count=0):
+                 accent_count=0, color_wash=None):
     """Generate and render a quilt to an image file."""
     if seed is None:
         seed = random.randint(0, 2**31)
@@ -366,6 +366,24 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylin
             cell["color_map"] = [cm[(i + shift) % n_colors]
                                   for i in range(n_colors)]
 
+    # color wash — bias palette color selection based on block position
+    # direction is a unit vector; cells further along it use later palette colors
+    if color_wash is not None and n_colors > 1:
+        dx, dy = color_wash  # direction vector (already normalized)
+        # project each cell position onto the direction
+        projections = {}
+        for (r, c) in grid:
+            projections[(r, c)] = dx * c / max(cols - 1, 1) + dy * r / max(rows - 1, 1)
+        pmin = min(projections.values())
+        pmax = max(projections.values())
+        prange = pmax - pmin if pmax > pmin else 1.0
+        for (r, c), cell in grid.items():
+            t = (projections[(r, c)] - pmin) / prange  # 0..1
+            shift = round(t * (n_colors - 1))
+            cm = cell["color_map"]
+            cell["color_map"] = [cm[(i + shift) % n_colors]
+                                  for i in range(n_colors)]
+
     # plain blocks: random cells rendered as solid color (no pattern)
     plain_cells = set()
     if plain_frac > 0.0:
@@ -374,17 +392,13 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylin
                 if rng.random() < plain_frac:
                     plain_cells.add((r, c))
 
-    # accent squares: a few cells get a bold color from a different palette
+    # accent squares: a few cells rendered as solid color from the current palette
     accent_cells = {}  # (r, c) → (r, g, b)
     if accent_count and accent_count > 0:
-        other_palettes = [p for p in PALETTES if p[0] != palette_name]
-        if other_palettes:
-            accent_pal = rng.choice(other_palettes)
-            accent_rgb = [hex_to_rgb(c) for c in accent_pal[1]]
-            all_positions = [(r, c) for r in range(rows) for c in range(cols)]
-            rng.shuffle(all_positions)
-            for pos in all_positions[:accent_count]:
-                accent_cells[pos] = rng.choice(accent_rgb)
+        all_positions = [(r, c) for r in range(rows) for c in range(cols)]
+        rng.shuffle(all_positions)
+        for pos in all_positions[:accent_count]:
+            accent_cells[pos] = rng.choice(palette_colors)
 
     # mega-blocks: greedily select non-overlapping 2x2 regions
     mega_tl = set()       # top-left corners of mega-blocks
