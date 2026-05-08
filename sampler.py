@@ -24,7 +24,8 @@ from palettes import PALETTES
 from layout import SYMMETRY_MODES
 from quilt import BORDER_STYLES, QUILT_STITCH_STYLES, render_quilt
 
-_DROP_PALETTES = {"storm", "midnight moss"}
+_DROP_PALETTES = {"storm", "midnight moss", "terracotta", "slate and rust", "coral reef",
+                   "autumn harvest"}
 PALETTE_NAMES = [p[0] for p in PALETTES if p[0] not in _DROP_PALETTES]
 _DROP_SYMMETRY = {"flower", "emergent", "mirror", "none"}
 SYMMETRY_NAMES = [s for s in SYMMETRY_MODES if s not in _DROP_SYMMETRY]
@@ -53,6 +54,13 @@ _CLIP_EMBED_BLOCK_SIZE = 16
 _CLIP_TOP_N = 10
 
 
+def _random_wash_direction(rng):
+    """Pick a random unit-vector direction for color wash."""
+    import math  # pylint: disable=import-outside-toplevel
+    angle = rng.uniform(0, 2 * math.pi)
+    return (round(math.cos(angle), 3), round(math.sin(angle), 3))
+
+
 def sample_random_params(rng=None):
     """Sample a completely random parameter set."""
     if rng is None:
@@ -71,14 +79,15 @@ def sample_random_params(rng=None):
         "tile_variation": round(rng.uniform(*PARAM_SPACE["tile_variation"]), 2),
         "border_style": rng.choice(BORDER_STYLES) if rng.random() < 0.25 else "none",
         "sash_width": 0,
-        "cornerstones": rng.random() < 0.50,
+        "cornerstones": rng.random() < 0.65,
         "color_gradient": "none",
+        "color_wash": _random_wash_direction(rng) if rng.random() < 0.30 else None,
         "mega_frac": round(rng.uniform(0.1, 0.25), 2) if rng.random() < 0.15 else 0.0,
         "plain_frac": round(rng.uniform(0.1, 0.4), 2) if rng.random() < 0.30 else 0.0,
-        "quilt_stitch": rng.choice(QUILT_STITCH_STYLES) if rng.random() < 0.30 else None,
+        "quilt_stitch": rng.choice(QUILT_STITCH_STYLES) if rng.random() < 0.65 else None,
         "wash_alpha": round(rng.uniform(0.04, 0.18), 2) if rng.random() < 0.15 else 0.0,
         "palette_2": rng.choice(PALETTE_NAMES) if rng.random() < 0.05 else None,
-        "palette_mix": rng.choice(PALETTE_NAMES) if rng.random() < 0.20 else None,
+        "palette_mix": rng.choice(PALETTE_NAMES) if rng.random() < 0.05 else None,
         "accent_count": rng.randint(1, 3) if rng.random() < 0.20 else 0,
         "seed": rng.randint(0, 2**31),
     }
@@ -103,6 +112,7 @@ def params_to_features(params):
     features.append(1.0 if params.get("palette_2") else 0.0)
     features.append(1.0 if params.get("palette_mix") else 0.0)
     features.append(params.get("accent_count", 0))
+    features.append(1.0 if params.get("color_wash") else 0.0)
     # one-hot border style (includes "none")
     border_names = ["none"] + BORDER_STYLES
     for b in border_names:
@@ -143,6 +153,7 @@ def params_to_render_kwargs(params, block_size=40):
         "palette_name_2": params.get("palette_2"),
         "palette_mix": params.get("palette_mix"),
         "accent_count": params.get("accent_count", 0),
+        "color_wash": params.get("color_wash"),
     }
     # Drop palette_2/palette_mix if they reference a retired palette
     _active = set(PALETTE_NAMES)
@@ -338,7 +349,7 @@ class QuiltExplorer:  # pylint: disable=too-many-instance-attributes
             ["rows", "chaos", "n_patterns", "n_colors",
              "tile_size", "tile_variation", "sash_width", "mega_frac", "plain_frac",
              "cornerstones", "wash_alpha", "quilt_stitch", "palette_2",
-             "palette_mix", "accent_count"]
+             "palette_mix", "accent_count", "color_wash"]
             + [f"brd_{b}" for b in border_names]
             + [f"sym_{s}" for s in SYMMETRY_NAMES]
             + [f"pal_{p}" for p in PALETTE_NAMES]
