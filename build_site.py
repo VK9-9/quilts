@@ -322,6 +322,7 @@ _INDEX_HTML = """\
     </div>
     {% endfor %}
   </div>
+  <footer style="text-align:center;color:#bbb;font-size:0.75rem;margin-top:3rem;">Generated {{ generated_at }}</footer>
 </body>
 </html>
 """
@@ -359,6 +360,7 @@ _FAMILY_HTML = """\
     </div>
     {% endfor %}
   </div>
+  <footer style="text-align:center;color:#bbb;font-size:0.75rem;margin-top:3rem;">Generated {{ generated_at }}</footer>
 </body>
 </html>
 """
@@ -404,6 +406,7 @@ document.addEventListener('keydown', function(e) {
   }
 });
 </script>
+  <footer style="text-align:center;color:#bbb;font-size:0.75rem;margin-top:3rem;">Generated {{ generated_at }}</footer>
 </body>
 </html>
 """
@@ -432,6 +435,8 @@ def params_summary(params):
 
 def render_html(families, out, n_families, n_variations):
     """Render index, family, and quilt HTML pages to out/."""
+    from datetime import datetime  # pylint: disable=import-outside-toplevel
+    generated_at = datetime.now().strftime("%Y-%m-%d %H:%M")
     env = Environment(loader=BaseLoader())
     index_cols = round(n_families ** 0.5)
     family_cols = round(n_variations ** 0.5)
@@ -440,7 +445,8 @@ def render_html(families, out, n_families, n_variations):
     tmpl = env.from_string(_INDEX_HTML)
     total = sum(len(f["variations"]) for f in families)
     (out / "index.html").write_text(
-        tmpl.render(families=families, total=total, cols=index_cols), encoding="utf-8"
+        tmpl.render(families=families, total=total, cols=index_cols,
+                    generated_at=generated_at), encoding="utf-8"
     )
 
     # family pages
@@ -449,7 +455,8 @@ def render_html(families, out, n_families, n_variations):
         fam_dir = out / "family" / fam["slug"]
         fam_dir.mkdir(parents=True, exist_ok=True)
         (fam_dir / "index.html").write_text(
-            tmpl.render(fam=fam, cols=family_cols), encoding="utf-8"
+            tmpl.render(fam=fam, cols=family_cols,
+                        generated_at=generated_at), encoding="utf-8"
         )
 
     # quilt pages
@@ -467,6 +474,7 @@ def render_html(families, out, n_families, n_variations):
                     params_summary=params_summary(v["params"]),
                     prev_qid=qids[i - 1] if i > 0 else None,
                     next_qid=qids[i + 1] if i < len(qids) - 1 else None,
+                    generated_at=generated_at,
                 ),
                 encoding="utf-8",
             )

@@ -12,7 +12,7 @@ from sampler import QuiltExplorer, params_to_render_kwargs
 # pylint: enable=wrong-import-position
 
 app = Flask(__name__)
-_ratings_path = sys.argv[1] if len(sys.argv) > 1 else "/tmp/ratings.json"
+_ratings_path = sys.argv[1] if len(sys.argv) > 1 else "data/ratings.json"
 explorer = QuiltExplorer(_ratings_path)
 
 

@@ -1,7 +1,7 @@
 *.pyc
 __pycache__/
 venv/
-ratings.json
+data/
 CLAUDE.md
 docs/
 family_names.json

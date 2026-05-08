@@ -46,7 +46,7 @@ the design.
 writes HTML to `docs/`:
 
 ```bash
-python build_site.py --ratings /tmp/ratings.json --out docs/ --families 16 --variations 16
+python build_site.py --ratings data/ratings.json --out docs/ --families 16 --variations 16
 ```
 
 **Deploy** — syncs `docs/` to the `gh-pages` branch and pushes to GitHub Pages:
@@ -69,7 +69,7 @@ Names are auto-generated from chaos level, symmetry, and other traits
 python build_site.py --dump-names
 
 # Edit family_names.json with better names, then rebuild + deploy
-python build_site.py --ratings /tmp/ratings.json --out docs/ --families 16 --variations 16
+python build_site.py --ratings data/ratings.json --out docs/ --families 16 --variations 16
 ./deploy.sh
 ```
 
