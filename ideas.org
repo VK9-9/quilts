@@ -11,8 +11,6 @@
 *** Vary row heights or column widths — creates a "strippy quilt" feel very different from the current uniform grid.
 ** Bargello columns
 *** Not a block pattern but a new layout mode: vertical strips of varying height that shift up/down to create an undulating wave across the whole quilt. Classic technique, very striking.
-** Appliqué block
-*** Circle or leaf shape layered on a background square. Approximated with many-sided polygons. Adds organic rounded forms that no current block has.
 ** Improv/wonky mode
 *** A chaos modifier that jitters vertex positions on any block by a small random amount. Makes everything slightly off-kilter, mimicking modern improv quilting. Global param rather than a new block.
 ** Cathedral windows
