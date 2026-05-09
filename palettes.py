@@ -14,9 +14,6 @@ PALETTES = [
     ("indigo dye", [
         "#1A0533", "#3F00FF", "#7B68EE", "#E6E6FA", "#F5F5F5",
     ]),
-    ("deep sea", [
-        "#0C1445", "#1A5276", "#48C9B0", "#F5F5F5", "#0E6655",
-    ]),
     ("storm", [
         "#2C3E50", "#5D6D7E", "#AEB6BF", "#F2F3F4", "#1C2833",
     ]),
@@ -35,8 +32,23 @@ PALETTES = [
     ("lavender fields", [
         "#5B3A8C", "#9B72CF", "#C8A2E8", "#E8D5F5", "#3D6B4F",
     ]),
-    ("aurora", [
-        "#0A0A2E", "#1F4068", "#5DA3A8", "#E0B0FF", "#F5F0FF",
+    ("copper canyon", [
+        "#8B4513", "#CD853F", "#DEB887", "#F5E6CC", "#A0522D",
+    ]),
+    ("winter frost", [
+        "#4A6FA5", "#89ABD9", "#C5D8ED", "#F0F4F8", "#2C4A6E",
+    ]),
+    ("sage garden", [
+        "#4A6741", "#7D9B6E", "#A8C49A", "#E8F0E0", "#3B5332",
+    ]),
+    ("plum wine", [
+        "#4A0028", "#7B2D5F", "#B85C8A", "#E8B4D0", "#F5E6EF",
+    ]),
+    ("coastal fog", [
+        "#5B7B8A", "#8FAAB5", "#C4D4DB", "#EDF2F4", "#3E5A66",
+    ]),
+    ("amber glow", [
+        "#8B5E00", "#D4940A", "#F0C040", "#FFF3D4", "#6B4500",
     ]),
 ]
 

@@ -25,7 +25,7 @@ from layout import SYMMETRY_MODES
 from quilt import BORDER_STYLES, QUILT_STITCH_STYLES, render_quilt
 
 _DROP_PALETTES = {"storm", "midnight moss", "terracotta", "slate and rust", "coral reef",
-                   "autumn harvest"}
+                   "autumn harvest", "aurora", "deep sea"}
 PALETTE_NAMES = [p[0] for p in PALETTES if p[0] not in _DROP_PALETTES]
 _DROP_SYMMETRY = {"flower", "emergent", "mirror", "none"}
 SYMMETRY_NAMES = [s for s in SYMMETRY_MODES if s not in _DROP_SYMMETRY]
@@ -39,7 +39,7 @@ PARAM_SPACE = {
     "palette": PALETTE_NAMES,
     "n_patterns": (2, 2),
     "n_colors": (3, 4),
-    "tile_size": (0, 10),       # 0 = no tiling
+    "tile_size": (2, 10),       # small tiles (1) disliked
     "tile_variation": (0.0, 0.3),
 }
 
@@ -59,6 +59,19 @@ def _random_wash_direction(rng):
     import math  # pylint: disable=import-outside-toplevel
     angle = rng.uniform(0, 2 * math.pi)
     return (round(math.cos(angle), 3), round(math.sin(angle), 3))
+
+
+def _weighted_stitch(rng):
+    """Pick a stitch style with diagonal getting 2x weight."""
+    weights = [2.0 if s == "diagonal" else 1.0 for s in QUILT_STITCH_STYLES]
+    total = sum(weights)
+    r = rng.uniform(0, total)
+    cumulative = 0
+    for s, w in zip(QUILT_STITCH_STYLES, weights):
+        cumulative += w
+        if r <= cumulative:
+            return s
+    return QUILT_STITCH_STYLES[-1]
 
 
 def sample_random_params(rng=None):
@@ -84,7 +97,7 @@ def sample_random_params(rng=None):
         "color_wash": _random_wash_direction(rng) if rng.random() < 0.40 else None,
         "mega_frac": round(rng.uniform(0.1, 0.25), 2) if rng.random() < 0.15 else 0.0,
         "plain_frac": round(rng.uniform(0.1, 0.4), 2) if rng.random() < 0.30 else 0.0,
-        "quilt_stitch": rng.choice(QUILT_STITCH_STYLES) if rng.random() < 0.65 else None,
+        "quilt_stitch": _weighted_stitch(rng) if rng.random() < 0.80 else None,
         "wash_alpha": round(rng.uniform(0.04, 0.18), 2) if rng.random() < 0.15 else 0.0,
         "palette_2": rng.choice(PALETTE_NAMES) if rng.random() < 0.05 else None,
         "palette_mix": rng.choice(PALETTE_NAMES) if rng.random() < 0.05 else None,

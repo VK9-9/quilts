@@ -762,6 +762,111 @@ wash_alpha (~15%), palette_2 (~15%)
 
 ---
 
+## Round 9 — ratings 2146-2445
+
+**Records:** 2146-2445 (300 ratings)
+**Overall:** 139/300 liked (46%)
+
+Transitional round — applied R8 changes (dropped sash, storm, midnight moss,
+mirror symmetry; cut palette_2 and mega_frac probabilities). Like rate dipped
+from R8's 51% likely due to search space adjustment. No standalone detailed
+analysis was performed; changes carried forward into R10.
+
+---
+
+## Round 10 — ratings 2446-2659
+
+**Records:** 2446-2659 (214 ratings)
+**Overall:** 133/214 liked (62%)
+
+Best approval rate yet. Applied color_wash (40%), dropped more weak palettes
+(terracotta, slate and rust, coral reef, autumn harvest), added new palettes
+(tide pool, lavender fields, aurora), implemented cherry blossom block with
+hardcoded RGB colors, changed accent squares to same-palette.
+
+---
+
+## Round 11 — ratings 2660-2973
+
+**Records:** 2660-2973 (314 ratings)
+**Overall:** 190/314 liked (61%)
+
+Sustained high approval. Added sashiko_wave and sashiko_asanoha stitch styles.
+
+### Feature importances (top 10)
+
+| Feature          | Importance |
+|------------------|----------:|
+| quilt_stitch     |    0.4980 |
+| chaos            |    0.0696 |
+| tile_variation   |    0.0496 |
+| pal_ocean breeze |    0.0472 |
+| tile_size        |    0.0345 |
+| mega_frac        |    0.0342 |
+| n_patterns       |    0.0296 |
+| color_wash       |    0.0293 |
+| pal_deep sea     |    0.0262 |
+| pal_wildflower   |    0.0238 |
+
+### Stitching is #1 feature (0.50 importance)
+
+- `diagonal` clear winner at **80%** approval
+- `grid`, `crosshatch`, `sashiko_asanoha` all solid ~61%
+- `sashiko_wave` slightly lower at 57%
+- No stitch: **40%** — quilts without stitching significantly less liked
+
+### Palette detail
+
+| Palette | Shown | Liked | Rate |
+|---------|-------|-------|------|
+| ocean breeze | 101 | 75 | 74% |
+| tide pool | 54 | 37 | 69% |
+| wildflower | 46 | 27 | 59% |
+| lavender fields | 21 | 12 | 57% |
+| cherry blossom | 9 | 5 | 56% |
+| northern lights | 10 | 5 | 50% |
+| indigo dye | 23 | 11 | 48% |
+| deep sea | 26 | 10 | 38% |
+| aurora | 24 | 8 | 33% |
+
+### Symmetry detail
+
+| Mode | Shown | Liked | Rate |
+|------|-------|-------|------|
+| stripe | 116 | 74 | 64% |
+| rotational | 95 | 60 | 63% |
+| partial | 103 | 56 | 54% |
+
+### Stitch detail
+
+| Style | Shown | Liked | Rate |
+|-------|-------|-------|------|
+| diagonal | 49 | 39 | 80% |
+| crosshatch | 58 | 36 | 62% |
+| grid | 66 | 40 | 61% |
+| sashiko_asanoha | 41 | 25 | 61% |
+| sashiko_wave | 60 | 34 | 57% |
+| None | 40 | 16 | 40% |
+
+### Other signals
+
+- Color wash: 64% with vs 52% without
+- Cornerstones: slight negative (57% with vs 63% without)
+- Checkerboard border: 71% (best border style)
+- Tile size 5-7: 72-76%; tile size 1-2: 29-33%
+- Ocean breeze overrepresented at 32% of samples
+
+### Changes after Round 11
+
+- Quilt stitch probability: 65% → 80%
+- Diagonal stitch gets 2x weight vs others
+- Dropped palettes: aurora (33%), deep sea (38%)
+- Added 6 palettes: copper canyon, winter frost, sage garden, plum wine, coastal fog, amber glow
+- Tile size minimum: 0 → 2
+- Implemented appliqué block (circle + leaf shapes via many-sided polygons)
+
+---
+
 ## Favorites
 
 Standout quilts worth revisiting or using as seeds for future exploration.

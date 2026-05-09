@@ -632,6 +632,56 @@ def drunkards_path(x, y, size, n_colors):
     ]
 
 
+def applique(x, y, size, n_colors):
+    """Appliqué block — circle and leaf shapes layered on a background square.
+
+    Background square in color 0, a large circle in color 1, and two leaf
+    shapes in color 2 (or 1 if only 2 colors). Shapes are approximated with
+    many-sided polygons.
+    """
+    import math  # pylint: disable=import-outside-toplevel
+    cx, cy = x + size / 2, y + size / 2
+
+    # background square
+    bg = [(x, y), (x + size, y), (x + size, y + size), (x, y + size)]
+
+    # central circle — radius ~38% of block size
+    n_seg = 24
+    r = size * 0.38
+    circle = []
+    for i in range(n_seg):
+        a = 2 * math.pi * i / n_seg
+        circle.append((cx + r * math.cos(a), cy + r * math.sin(a)))
+
+    # two leaf shapes at opposing diagonals
+    leaf_color = 2 % n_colors
+    leaves = []
+    for angle_offset in [math.pi / 4, -3 * math.pi / 4]:
+        leaf = []
+        lr = size * 0.22  # leaf radius
+        lcx = cx + size * 0.28 * math.cos(angle_offset)
+        lcy = cy + size * 0.28 * math.sin(angle_offset)
+        for i in range(n_seg):
+            a = 2 * math.pi * i / n_seg
+            # stretch along the leaf axis for an oval shape
+            dx = lr * 1.4 * math.cos(a)
+            dy = lr * 0.7 * math.sin(a)
+            # rotate to match angle_offset
+            cos_a = math.cos(angle_offset)
+            sin_a = math.sin(angle_offset)
+            rx = dx * cos_a - dy * sin_a
+            ry = dx * sin_a + dy * cos_a
+            leaf.append((lcx + rx, lcy + ry))
+        leaves.append(leaf)
+
+    return [
+        (bg, 0),
+        (circle, 1 % n_colors),
+        (leaves[0], leaf_color),
+        (leaves[1], leaf_color),
+    ]
+
+
 # Registry of all block patterns
 BLOCK_PATTERNS = [
     half_square_triangle,
@@ -655,4 +705,5 @@ BLOCK_PATTERNS = [
     path_tile,
     cherry_blossom,
     drunkards_path,
+    applique,
 ]
