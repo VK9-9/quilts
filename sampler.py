@@ -92,7 +92,7 @@ def sample_random_params(rng=None):
         "tile_variation": round(rng.uniform(*PARAM_SPACE["tile_variation"]), 2),
         "border_style": rng.choice(BORDER_STYLES) if rng.random() < 0.25 else "none",
         "sash_width": 0,
-        "cornerstones": rng.random() < 0.50,
+        "cornerstones": rng.random() < 0.30,
         "color_gradient": "none",
         "color_wash": _random_wash_direction(rng) if rng.random() < 0.30 else None,
         "mega_frac": round(rng.uniform(0.1, 0.25), 2) if rng.random() < 0.15 else 0.0,
