@@ -25,7 +25,7 @@ from layout import SYMMETRY_MODES
 from quilt import BORDER_STYLES, QUILT_STITCH_STYLES, render_quilt
 
 _DROP_PALETTES = {"storm", "midnight moss", "terracotta", "slate and rust", "coral reef",
-                   "autumn harvest", "aurora", "deep sea"}
+                   "autumn harvest", "aurora", "deep sea", "amber glow", "sage garden"}
 PALETTE_NAMES = [p[0] for p in PALETTES if p[0] not in _DROP_PALETTES]
 _DROP_SYMMETRY = {"flower", "emergent", "mirror", "none"}
 SYMMETRY_NAMES = [s for s in SYMMETRY_MODES if s not in _DROP_SYMMETRY]
