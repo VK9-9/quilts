@@ -50,6 +50,21 @@ PALETTES = [
     ("amber glow", [
         "#8B5E00", "#D4940A", "#F0C040", "#FFF3D4", "#6B4500",
     ]),
+    ("twilight", [
+        "#1A1040", "#3D2C7C", "#7B5EA7", "#D4A0C0", "#F0E0E8",
+    ]),
+    ("sea glass", [
+        "#2D7D6E", "#6BBFAB", "#A8E0D0", "#E8F5F0", "#1A5C50",
+    ]),
+    ("moonstone", [
+        "#3A4B7C", "#7B8FBF", "#B0C4DE", "#E8EEF5", "#9B8EC4",
+    ]),
+    ("wisteria", [
+        "#5C2D82", "#8B5DAF", "#C49BD8", "#E8D0F0", "#D47FAA",
+    ]),
+    ("honey oak", [
+        "#7A5230", "#B8864A", "#D4AA70", "#F0E0C8", "#5C3D20",
+    ]),
 ]
 
 
