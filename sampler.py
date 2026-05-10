@@ -94,7 +94,7 @@ def sample_random_params(rng=None):
         "sash_width": 0,
         "cornerstones": rng.random() < 0.50,
         "color_gradient": "none",
-        "color_wash": _random_wash_direction(rng) if rng.random() < 0.40 else None,
+        "color_wash": _random_wash_direction(rng) if rng.random() < 0.30 else None,
         "mega_frac": round(rng.uniform(0.1, 0.25), 2) if rng.random() < 0.15 else 0.0,
         "plain_frac": round(rng.uniform(0.1, 0.4), 2) if rng.random() < 0.30 else 0.0,
         "quilt_stitch": _weighted_stitch(rng) if rng.random() < 0.80 else None,
