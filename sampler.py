@@ -32,8 +32,8 @@ SYMMETRY_NAMES = [s for s in SYMMETRY_MODES if s not in _DROP_SYMMETRY]
 
 # parameter ranges
 PARAM_SPACE = {
-    "rows": (15, 19),
-    "cols": (14, 19),
+    "rows": (16, 21),
+    "cols": (16, 21),
     "symmetry": SYMMETRY_NAMES,
     "chaos": (0.0, 0.8),
     "palette": PALETTE_NAMES,
