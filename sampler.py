@@ -62,8 +62,8 @@ def _random_wash_direction(rng):
 
 
 def _weighted_stitch(rng):
-    """Pick a stitch style with diagonal getting 2x weight."""
-    weights = [2.0 if s == "diagonal" else 1.0 for s in QUILT_STITCH_STYLES]
+    """Pick a stitch style with equal weights (crosshatch halved)."""
+    weights = [0.5 if s == "crosshatch" else 1.0 for s in QUILT_STITCH_STYLES]
     total = sum(weights)
     r = rng.uniform(0, total)
     cumulative = 0
