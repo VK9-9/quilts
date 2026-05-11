@@ -867,6 +867,172 @@ Sustained high approval. Added sashiko_wave and sashiko_asanoha stitch styles.
 
 ---
 
+## Round 12 — ratings 2974-3229
+
+**Records:** 2974-3229 (256 ratings)
+**Overall:** 164/256 liked (64.1%)
+**Params:** rows/cols 15-19, symmetry 3 modes (rotational/partial/stripe),
+chaos 0-0.8, 13 palettes (6 new from R11), n_patterns 2, n_colors 3-4,
+10% palette diversity cap, quilt_stitch (~80%, diagonal 2x weight),
+color_wash (~40%), mega_frac (~15%), plain_frac (~30%), appliqué block
+
+### Key findings
+
+- **Like rate holds at 64.1%** — on par with R10 (62%) and R11 (61%). System
+  is in a stable high-approval regime. No late-round crash.
+- **Lavender fields breakout palette** — 88% (30/34). Best single-palette
+  performance in the entire history. Wildflower 77%, copper canyon 71%,
+  tide pool 70%. All 6 new R11 palettes are performing.
+- **Bottom palettes:** amber glow 33% (2/6), sage garden 40% (2/5),
+  cherry blossom 40% (2/5), indigo dye 43% (3/7). Small samples but
+  amber glow and sage garden trending weak.
+- **Ocean breeze still over-exploited** — 33.2% of samples (85/256) vs expected
+  ~8%. Like rate 60%, so model is correct to favor it, but diversity suffers.
+- **n_colors=4 now preferred** — 69% vs 58% for 3. Strongest signal in several
+  rounds.
+- **Larger grids preferred** — rows=18 at 76%, rows=19 at 68%. Smaller grids
+  (15-17) all 56-63%. Shift from earlier rounds where 15 was the sweet spot.
+- **Rotational symmetry top** — 70% vs partial 62%, stripe 58%. Consistent
+  with recent trend.
+- **Solid border strong** — 79% (19/24). Checkerboard 69%. Piano_keys dropped
+  to 60% (only 5 samples). No-border baseline 62%.
+- **Stitch styles converging** — grid (70%), diagonal (69%), sashiko_wave (67%)
+  all close. Crosshatch weakest at 57%. No stitch still 33%. Diagonal's
+  dominance from R11 (80%) has narrowed.
+- **Color wash slightly negative** — 61% with vs 71% without. Reversed from
+  R11 where wash was positive. May be noise or interaction effect.
+- **mega_frac neutral** — 62% on vs 64% off. No signal.
+- **cornerstones slightly negative** — 61% vs 67%. Consistent weak negative
+  from R11.
+- **quilt_stitch still #1 feature** — 0.57 importance, dominating the param
+  model. Chaos (0.06) and tile_variation (0.05) distant second/third.
+
+### Palette detail
+
+| Palette | Shown | Liked | Rate |
+|---------|-------|-------|------|
+| lavender fields | 34 | 30 | 88% |
+| wildflower | 13 | 10 | 77% |
+| copper canyon | 7 | 5 | 71% |
+| tide pool | 20 | 14 | 70% |
+| winter frost | 43 | 28 | 65% |
+| ocean breeze | 85 | 51 | 60% |
+| plum wine | 12 | 7 | 58% |
+| coastal fog | 11 | 6 | 55% |
+| northern lights | 8 | 4 | 50% |
+| indigo dye | 7 | 3 | 43% |
+| sage garden | 5 | 2 | 40% |
+| cherry blossom | 5 | 2 | 40% |
+| amber glow | 6 | 2 | 33% |
+
+### Symmetry detail
+
+| Mode | Shown | Liked | Rate |
+|------|-------|-------|------|
+| rotational | 106 | 74 | 70% |
+| partial | 66 | 41 | 62% |
+| stripe | 84 | 49 | 58% |
+
+### Stitch detail
+
+| Style | Shown | Liked | Rate |
+|-------|-------|-------|------|
+| grid | 47 | 33 | 70% |
+| diagonal | 81 | 56 | 69% |
+| sashiko_wave | 36 | 24 | 67% |
+| sashiko_asanoha | 31 | 19 | 61% |
+| crosshatch | 49 | 28 | 57% |
+| None | 12 | 4 | 33% |
+
+### Feature params detail
+
+| Param | On | Off |
+|-------|----|-----|
+| color_wash | 107/176 (61%) | 57/80 (71%) |
+| palette_2 | 8/12 (67%) | 156/244 (64%) |
+| plain_frac | 63/95 (66%) | 101/161 (63%) |
+| mega_frac | 23/37 (62%) | 141/219 (64%) |
+| cornerstones | 79/129 (61%) | 85/127 (67%) |
+
+### Border style detail
+
+| Style | Shown | Liked | Rate |
+|-------|-------|-------|------|
+| solid | 24 | 19 | 79% |
+| checkerboard | 26 | 18 | 69% |
+| none | 201 | 124 | 62% |
+| piano_keys | 5 | 3 | 60% |
+
+### Like rate trend (round 12 only)
+
+```
+2974-2998: 48%
+2999-3023: 88%
+3024-3048: 76%
+3049-3073: 88%
+3074-3098: 68%
+3099-3123: 64%
+3124-3148: 40%
+3149-3173: 56%
+3174-3198: 60%
+3199-3223: 56%
+3224-3229: 50%
+```
+
+### Palette frequency
+
+(expected ~8% each for 13 palettes)
+
+| Palette | Frequency |
+|---------|-----------|
+| ocean breeze | 33.2% |
+| winter frost | 16.8% |
+| lavender fields | 13.3% |
+| tide pool | 7.8% |
+| wildflower | 5.1% |
+| plum wine | 4.7% |
+| coastal fog | 4.3% |
+| northern lights | 3.1% |
+| copper canyon | 2.7% |
+| indigo dye | 2.7% |
+| amber glow | 2.3% |
+| sage garden | 2.0% |
+| cherry blossom | 2.0% |
+
+### Feature importances (top 15)
+
+| Feature | Importance |
+|---------|----------:|
+| quilt_stitch | 0.5698 |
+| chaos | 0.0639 |
+| tile_variation | 0.0472 |
+| tile_size | 0.0407 |
+| pal_ocean breeze | 0.0324 |
+| mega_frac | 0.0290 |
+| n_patterns | 0.0257 |
+| rows | 0.0207 |
+| accent_count | 0.0183 |
+| n_colors | 0.0175 |
+| color_wash | 0.0171 |
+| pal_lavender fields | 0.0164 |
+| plain_frac | 0.0164 |
+| pal_wildflower | 0.0154 |
+| pal_indigo dye | 0.0136 |
+
+### Changes after Round 12
+
+- Dropped palettes: amber glow (33%), sage garden (40%) — 16 palettes remain
+- Added 5 palettes: twilight, sea glass, moonstone, wisteria, honey oak
+- Widened rows/cols range: 15-19 → 16-21
+- Weighted n_colors: 70% toward 4, 30% toward 3
+- Reduced color_wash probability: 40% → 30%
+- Deprioritized cornerstones: 50% → 30%
+- Equalized stitch weights; halved crosshatch (57%)
+- Increased border probability: 25% → 35%
+- Implemented cathedral_windows block (folded circles with diamond reveals)
+
+---
+
 ## Favorites
 
 Standout quilts worth revisiting or using as seeds for future exploration.
