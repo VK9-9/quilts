@@ -632,6 +632,101 @@ def drunkards_path(x, y, size, n_colors):
     ]
 
 
+def cathedral_windows(x, y, size, n_colors):  # pylint: disable=too-many-locals
+    """Cathedral Windows — overlapping folded circles with diamond-shaped reveals.
+
+    Four quarter-circle folds from each corner create curved "frames" around
+    a central diamond window and four half-diamond windows at the edges.
+    Background in color 0 (folded fabric), windows in color 1 (contrast),
+    curved folds in color 2.
+    """
+    import math  # pylint: disable=import-outside-toplevel
+    cx, cy = x + size / 2, y + size / 2
+    n_seg = 16
+
+    # background square
+    bg = [(x, y), (x + size, y), (x + size, y + size), (x, y + size)]
+
+    # central diamond window — the reveal where all four folds meet
+    dm = size * 0.22
+    diamond = [
+        (cx, cy - dm), (cx + dm, cy), (cx, cy + dm), (cx - dm, cy),
+    ]
+
+    # four curved fold petals — quarter-circle arcs from each corner
+    # each petal is bounded by the arc and two straight edges to the diamond
+    fold_color = 2 % n_colors
+    folds = []
+    corners = [(x, y), (x + size, y), (x + size, y + size), (x, y + size)]
+    diamond_pts = [
+        (cx, cy - dm), (cx + dm, cy), (cx, cy + dm), (cx - dm, cy),
+    ]
+    for i in range(4):
+        corner = corners[i]
+        # the two diamond points adjacent to this corner's quadrant
+        d1 = diamond_pts[i]
+        d2 = diamond_pts[(i - 1) % 4]
+        # arc from d1 to d2 curving toward the corner
+        arc = []
+        for j in range(n_seg + 1):
+            t = j / n_seg
+            # interpolate angle from d1 to d2 around the corner
+            a1 = math.atan2(d1[1] - corner[1], d1[0] - corner[0])
+            a2 = math.atan2(d2[1] - corner[1], d2[0] - corner[0])
+            # ensure we go the short way around
+            diff = a2 - a1
+            if diff > math.pi:
+                diff -= 2 * math.pi
+            elif diff < -math.pi:
+                diff += 2 * math.pi
+            a = a1 + t * diff
+            r = dm * 1.35
+            arc.append((corner[0] + r * math.cos(a), corner[1] + r * math.sin(a)))
+        fold = [d1] + arc + [d2]
+        folds.append(fold)
+
+    # edge half-diamonds — small diamond reveals at each edge midpoint
+    edge_color = 1 % n_colors
+    em = size * 0.10
+    edge_midpoints = [
+        (cx, y), (x + size, cy), (cx, y + size), (x, cy),
+    ]
+    edge_diamonds = []
+    # each half-diamond points inward
+    edge_inward = [(0, 1), (-1, 0), (0, -1), (1, 0)]
+    edge_perp = [(1, 0), (0, 1), (1, 0), (0, 1)]
+    for i in range(4):
+        emx, emy = edge_midpoints[i]
+        dx, dy = edge_inward[i]
+        px, py = edge_perp[i]
+        edge_diamonds.append([
+            (emx, emy),
+            (emx + dx * em, emy + dy * em),
+            (emx + dx * em * 2, emy + dy * em * 2),  # tip not needed, use 3-point
+        ])
+
+    # build simpler edge diamonds as triangles pointing inward
+    edge_patches = []
+    for i in range(4):
+        emx, emy = edge_midpoints[i]
+        dx, dy = edge_inward[i]
+        px, py = edge_perp[i]
+        tri = [
+            (emx - px * em, emy - py * em),
+            (emx + px * em, emy + py * em),
+            (emx + dx * em * 1.5, emy + dy * em * 1.5),
+        ]
+        edge_patches.append(tri)
+
+    patches = [(bg, 0)]
+    for fold in folds:
+        patches.append((fold, fold_color))
+    patches.append((diamond, 1 % n_colors))
+    for tri in edge_patches:
+        patches.append((tri, edge_color))
+    return patches
+
+
 def applique(x, y, size, n_colors):
     """Appliqué block — circle and leaf shapes layered on a background square.
 
@@ -706,4 +801,5 @@ BLOCK_PATTERNS = [
     cherry_blossom,
     drunkards_path,
     applique,
+    cathedral_windows,
 ]
