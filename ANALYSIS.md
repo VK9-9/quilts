@@ -1033,6 +1033,167 @@ color_wash (~40%), mega_frac (~15%), plain_frac (~30%), appliqué block
 
 ---
 
+## Round 13 — ratings 3230-3433
+
+**Records:** 3230-3433 (204 ratings)
+**Overall:** 108/204 liked (52.9%)
+**Params:** rows/cols 16-21, symmetry 3 modes (rotational/partial/stripe),
+chaos 0-0.8, 16 palettes (5 new: twilight/sea glass/moonstone/wisteria/honey oak),
+n_patterns 2, n_colors weighted 70% toward 4, 10% palette diversity cap,
+quilt_stitch (~80%, crosshatch halved), color_wash (~30%), cornerstones (~30%),
+border probability ~35%, cathedral_windows block
+
+### Key findings
+
+- **Like rate dipped to 52.9%** — down from 64.1% in R12. Expected after adding
+  5 new palettes and widening the grid range. Late-round dip (28% at ratings
+  3355-3379) dragged the average; opened strong at 72-76%.
+- **Lavender fields still dominant** — 66% (37/56) and over-exploited at 27.5%
+  of samples. Tide pool 62% (24/39), ocean breeze 58% (22/38). Top 3 palettes
+  account for 65% of all samples.
+- **New palettes mixed** — twilight 50% (4/8), sea glass 40% (2/5),
+  wisteria 40% (2/5), moonstone 25% (1/4), honey oak 33% (1/3). All small
+  samples; twilight looks promising. None are disasters.
+- **Weak palettes:** plum wine 0% (0/6), coastal fog 17% (1/6),
+  cherry blossom 0% (0/1, negligible sample).
+- **n_colors=4 still slightly ahead** — 55% vs 49%. Signal weaker than R12's
+  69% vs 58%.
+- **Grid sizes flat** — rows 18 (58%) and 21 (56%) slightly ahead, but
+  16-20 all within 47-56%. The wider range didn't reveal a strong preference
+  for 20-21.
+- **Rotational symmetry still top** — 58% vs partial 52%, stripe 47%.
+- **Borders all positive** — piano_keys 60% (6/10, small sample), solid 57%,
+  checkerboard 55%, none 51%. Increased probability working well.
+- **Stitch styles: grid pulls ahead** — 62% vs diagonal 58%, sashiko_wave 55%.
+  Crosshatch confirms weak at 38%. No stitch 29%.
+- **Color wash confirmed negative** — 43% vs 59% without. Two rounds of
+  negative signal now (R12: 61% vs 71%, R13: 43% vs 59%).
+- **Cornerstones confirmed negative** — 43% vs 58%. Third round of weak-to-
+  negative signal. Should drop entirely.
+- **mega_frac slightly negative** — 45% vs 54%.
+- **plain_frac slightly positive** — 57% vs 51%.
+- **palette_2 positive** — 64% (7/11) vs 52%. Small sample but consistent.
+
+### Palette detail
+
+| Palette | Shown | Liked | Rate |
+|---------|-------|-------|------|
+| lavender fields | 56 | 37 | 66% |
+| tide pool | 39 | 24 | 62% |
+| ocean breeze | 38 | 22 | 58% |
+| twilight | 8 | 4 | 50% |
+| winter frost | 6 | 3 | 50% |
+| wildflower | 14 | 6 | 43% |
+| copper canyon | 5 | 2 | 40% |
+| indigo dye | 5 | 2 | 40% |
+| sea glass | 5 | 2 | 40% |
+| wisteria | 5 | 2 | 40% |
+| honey oak | 3 | 1 | 33% |
+| northern lights | 3 | 1 | 33% |
+| moonstone | 4 | 1 | 25% |
+| coastal fog | 6 | 1 | 17% |
+| plum wine | 6 | 0 | 0% |
+| cherry blossom | 1 | 0 | 0% |
+
+### Symmetry detail
+
+| Mode | Shown | Liked | Rate |
+|------|-------|-------|------|
+| rotational | 84 | 49 | 58% |
+| partial | 56 | 29 | 52% |
+| stripe | 64 | 30 | 47% |
+
+### Stitch detail
+
+| Style | Shown | Liked | Rate |
+|-------|-------|-------|------|
+| grid | 45 | 28 | 62% |
+| diagonal | 57 | 33 | 58% |
+| sashiko_wave | 44 | 24 | 55% |
+| sashiko_asanoha | 28 | 13 | 46% |
+| crosshatch | 16 | 6 | 38% |
+| None | 14 | 4 | 29% |
+
+### Feature params detail
+
+| Param | On | Off |
+|-------|----|-----|
+| plain_frac | 37/65 (57%) | 71/139 (51%) |
+| quilt_stitch | 104/190 (55%) | 4/14 (29%) |
+| palette_2 | 7/11 (64%) | 101/193 (52%) |
+| mega_frac | 15/33 (45%) | 93/171 (54%) |
+| cornerstones | 29/67 (43%) | 79/137 (58%) |
+| color_wash | 33/77 (43%) | 75/127 (59%) |
+| palette_mix | 2/6 (33%) | 106/198 (54%) |
+
+### Border style detail
+
+| Style | Shown | Liked | Rate |
+|-------|-------|-------|------|
+| piano_keys | 10 | 6 | 60% |
+| solid | 30 | 17 | 57% |
+| checkerboard | 33 | 18 | 55% |
+| none | 131 | 67 | 51% |
+
+### Like rate trend (round 13 only)
+
+```
+3230-3254: 76%
+3255-3279: 72%
+3280-3304: 56%
+3305-3329: 56%
+3330-3354: 40%
+3355-3379: 28%
+3380-3404: 40%
+3405-3429: 52%
+3430-3433: 75%
+```
+
+### Palette frequency
+
+(expected ~6% each for 16 palettes)
+
+| Palette | Frequency |
+|---------|-----------|
+| lavender fields | 27.5% |
+| tide pool | 19.1% |
+| ocean breeze | 18.6% |
+| wildflower | 6.9% |
+| twilight | 3.9% |
+| coastal fog | 2.9% |
+| winter frost | 2.9% |
+| plum wine | 2.9% |
+| copper canyon | 2.5% |
+| indigo dye | 2.5% |
+| sea glass | 2.5% |
+| wisteria | 2.5% |
+| moonstone | 2.0% |
+| honey oak | 1.5% |
+| northern lights | 1.5% |
+| cherry blossom | 0.5% |
+
+### Feature importances (top 15)
+
+| Feature | Importance |
+|---------|----------:|
+| quilt_stitch | 0.5659 |
+| chaos | 0.0658 |
+| tile_variation | 0.0495 |
+| tile_size | 0.0445 |
+| mega_frac | 0.0333 |
+| pal_ocean breeze | 0.0320 |
+| n_patterns | 0.0228 |
+| rows | 0.0214 |
+| plain_frac | 0.0178 |
+| pal_wildflower | 0.0170 |
+| pal_lavender fields | 0.0165 |
+| sym_rotational | 0.0164 |
+| accent_count | 0.0135 |
+| wash_alpha | 0.0101 |
+| pal_indigo dye | 0.0100 |
+
+---
+
 ## Favorites
 
 Standout quilts worth revisiting or using as seeds for future exploration.
