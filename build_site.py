@@ -15,7 +15,6 @@ from pathlib import Path
 
 import numpy as np
 from jinja2 import Environment, BaseLoader
-from sklearn.cluster import KMeans
 
 from sampler import sample_random_params, params_to_render_kwargs, PALETTE_NAMES, SYMMETRY_NAMES
 from quilt import render_quilt
@@ -109,24 +108,34 @@ def load_clip_embeddings(ratings_path, indices):
     return emb, valid
 
 
-def cluster(liked, n_families, clip_embeddings=None):
-    """K-means cluster liked quilts into n_families groups.
+def bucket_families(liked, n_families):
+    """Group liked quilts by (palette, symmetry) and return top n_families buckets.
 
-    If clip_embeddings is provided, clusters on visual similarity.
-    Otherwise clusters on hand-crafted parameter features.
+    Returns list of (palette, symmetry, members) sorted by bucket size descending.
+    """
+    buckets = {}
+    for p in liked:
+        key = (p["palette"], p["symmetry"])
+        buckets.setdefault(key, []).append(p)
+    ranked = sorted(buckets.items(), key=lambda kv: -len(kv[1]))
+    result = []
+    for (pal, sym), members in ranked[:n_families]:
+        result.append((pal, sym, members))
+    return result
+
+
+def representative(members, clip_embeddings=None):
+    """Return the member closest to the group mean.
+
+    Uses CLIP embeddings if available, otherwise falls back to param features.
     """
     if clip_embeddings is not None:
-        features = clip_embeddings
+        centroid = clip_embeddings.mean(axis=0)
+        dists = np.linalg.norm(clip_embeddings - centroid, axis=1)
     else:
-        features = np.array([params_to_cluster_features(p) for p in liked])
-    km = KMeans(n_clusters=n_families, random_state=42, n_init=10)
-    labels = km.fit_predict(features)
-    return labels, km.cluster_centers_, features
-
-
-def representative(members, member_features, centroid):
-    """Return the member closest to the cluster centroid."""
-    dists = np.linalg.norm(member_features - centroid, axis=1)
+        features = np.array([params_to_cluster_features(p) for p in members])
+        centroid = features.mean(axis=0)
+        dists = np.linalg.norm(features - centroid, axis=1)
     return members[int(np.argmin(dists))]
 
 
@@ -204,13 +213,34 @@ def unique_name(name, existing):
     return result
 
 
-def generate_variations(symmetry, n, rng):
-    """Sample n random param sets with symmetry fixed, palette free to vary."""
+def generate_variations(palette, symmetry, members, n, rng):
+    """Sample n param sets matching the family's palette, symmetry, and style.
+
+    Derives chaos/tile_size/rows ranges from the cluster members so variations
+    look visually coherent with the family representative.
+    """
+    # derive ranges from members
+    chaos_vals = [p["chaos"] for p in members]
+    chaos_lo = max(0.0, min(chaos_vals) - 0.05)
+    chaos_hi = min(1.0, max(chaos_vals) + 0.05)
+    tile_vals = [p.get("tile_size", 4) for p in members]
+    tile_lo = max(2, min(tile_vals))
+    tile_hi = max(2, max(tile_vals))
+    row_vals = [p["rows"] for p in members]
+    row_lo = max(8, min(row_vals))
+    row_hi = max(8, max(row_vals))
+
     variations = []
     for _ in range(n):
         while True:
             p = sample_random_params(rng)
+            p["palette"] = palette
             p["symmetry"] = symmetry
+            p["chaos"] = round(rng.uniform(chaos_lo, chaos_hi), 2)
+            p["tile_size"] = rng.randint(tile_lo, tile_hi)
+            rows = rng.randint(row_lo, row_hi)
+            p["rows"] = rows
+            p["cols"] = rows
             if _encodable(p):
                 break
         variations.append(p)
@@ -218,30 +248,48 @@ def generate_variations(symmetry, n, rng):
 
 
 def define_families(liked, n_families, n_variations, rng,  # pylint: disable=too-many-locals,too-many-arguments,too-many-positional-arguments
-                    name_overrides=None, clip_embeddings=None):
-    """Cluster liked quilts and define families with names, reps, and variations."""
-    labels, centroids, features = cluster(liked, n_families,
-                                          clip_embeddings=clip_embeddings)
+                    name_overrides=None, clip_embeddings=None,
+                    liked_indices=None, all_clip_embeddings=None):
+    """Group liked quilts by palette x symmetry and build families.
+
+    clip_embeddings/liked_indices/all_clip_embeddings are used for picking
+    a better representative if available.
+    """
+    buckets = bucket_families(liked, n_families)
     families = []
     slugs_used = set()
     names_used = set()
     name_overrides = name_overrides or {}
 
-    for fid in range(n_families):
-        idx = [i for i, l in enumerate(labels) if l == fid]
-        members = [liked[i] for i in idx]
-        mfeatures = features[idx]
-        centroid = centroids[fid]
+    # build index mapping liked quilt → clip embedding row
+    liked_to_clip = {}
+    if clip_embeddings is not None:
+        for i in range(len(clip_embeddings)):
+            liked_to_clip[i] = i
 
+    for pal, sym, members in buckets:
         auto = unique_name(family_name(members), names_used)
         names_used.add(auto)
         slug = unique_slug(auto, slugs_used)
         slugs_used.add(slug)
         name = name_overrides.get(slug, auto)
 
-        rep = representative(members, mfeatures, centroid)
-        dominant_sym = Counter(p["symmetry"] for p in members).most_common(1)[0][0]
-        variations = generate_variations(dominant_sym, n_variations, rng)
+        # find indices of these members in the liked list for CLIP lookup
+        member_clip = None
+        if clip_embeddings is not None:
+            member_indices = [i for i, p in enumerate(liked) if
+                              p["palette"] == pal and p["symmetry"] == sym]
+            valid_idx = [i for i in member_indices if i in liked_to_clip]
+            if len(valid_idx) >= 3:
+                member_clip = clip_embeddings[valid_idx]
+                clip_members = [liked[i] for i in valid_idx]
+                rep = representative(clip_members, clip_embeddings=member_clip)
+            else:
+                rep = representative(members)
+        else:
+            rep = representative(members)
+
+        variations = generate_variations(pal, sym, members, n_variations, rng)
 
         families.append({
             "name": name,
@@ -537,7 +585,7 @@ def main():  # pylint: disable=too-many-locals,too-many-statements,too-many-bran
             print(f"  (dropped {n_dropped} quilts with missing CLIP embeddings)")
         liked = valid_liked
         clip_emb = valid_emb
-        print(f"  Clustering on {len(clip_emb)} CLIP embeddings (512-dim)")
+        print(f"  Using CLIP embeddings for representative selection ({len(clip_emb)} quilts)")
 
     rng = random.Random(args.seed)
 
