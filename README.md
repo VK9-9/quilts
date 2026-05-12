@@ -42,12 +42,15 @@ the design.
 
 ## Build and deploy the static gallery
 
-**Build** — clusters liked quilts into families, renders variation images,
-writes HTML to `docs/`:
+**Build** — groups liked quilts into families by palette × symmetry,
+renders variation images, writes HTML to `docs/`:
 
 ```bash
-python build_site.py --ratings data/ratings.json --out docs/ --families 18 --variations 18 --clip
+python build_site.py --ratings data/ratings.json --out docs/ --families 18 --variations 18
 ```
+
+Add `--clip` to use CLIP embeddings for picking better family representatives
+(slower, requires embeddings to be backfilled).
 
 **Deploy** — syncs `docs/` to the `gh-pages` branch and pushes to GitHub Pages:
 
@@ -69,7 +72,7 @@ Names are auto-generated from chaos level, symmetry, and other traits
 python build_site.py --dump-names
 
 # Edit family_names.json with better names, then rebuild + deploy
-python build_site.py --ratings data/ratings.json --out docs/ --families 18 --variations 18 --clip
+python build_site.py --ratings data/ratings.json --out docs/ --families 18 --variations 18
 ./deploy.sh
 ```
 
