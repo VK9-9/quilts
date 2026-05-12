@@ -25,7 +25,11 @@ cp -r "$DOCS"/. "$WORKTREE"/
 # Commit and push from the worktree
 cd "$WORKTREE"
 git add -A
-if git diff --cached --quiet; then
+if [ "$1" = "--force" ]; then
+    git commit --allow-empty -m "rebuild gallery"
+    git push origin gh-pages
+    echo "Deployed to gh-pages (forced)."
+elif git diff --cached --quiet; then
     echo "Nothing changed — gh-pages already up to date."
 else
     git commit -m "rebuild gallery"
