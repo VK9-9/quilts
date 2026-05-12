@@ -21,8 +21,10 @@ from sampler import sample_random_params, params_to_render_kwargs, PALETTE_NAMES
 from quilt import render_quilt
 from quilt_id import encode, _V1_PALETTES, _V1_SYMMETRY, _V1_GRADIENT
 
+from palettes import PALETTES as _ALL_PALETTES
+_RENDERABLE_PALETTES = {p[0] for p in _ALL_PALETTES}
 _ACTIVE_PALETTES = set(PALETTE_NAMES)
-_ENCODABLE_PALETTES = set(_V1_PALETTES)
+_ENCODABLE_PALETTES = set(_V1_PALETTES) & _RENDERABLE_PALETTES
 
 
 def nearest_square(n):
