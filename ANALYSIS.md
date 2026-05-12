@@ -1192,6 +1192,15 @@ border probability ~35%, cathedral_windows block
 | wash_alpha | 0.0101 |
 | pal_indigo dye | 0.0100 |
 
+### Changes after Round 13
+
+- Dropped cornerstones entirely (negative 3 rounds: R11-R13)
+- Dropped color_wash entirely (negative 2 rounds: 43% vs 59% in R13)
+- Dropped crosshatch stitch (38%, consistently worst)
+- Dropped palette: plum wine (0% in R13) — 15 palettes remain
+- Cut mega_frac probability: 15% → 5%
+- Boosted palette_2 probability: 5% → 10%
+
 ---
 
 ## Favorites
