@@ -96,7 +96,7 @@ def sample_random_params(rng=None):
         "plain_frac": round(rng.uniform(0.1, 0.4), 2) if rng.random() < 0.30 else 0.0,
         "quilt_stitch": _weighted_stitch(rng) if rng.random() < 0.80 else None,
         "wash_alpha": round(rng.uniform(0.04, 0.18), 2) if rng.random() < 0.15 else 0.0,
-        "palette_2": rng.choice(PALETTE_NAMES) if rng.random() < 0.05 else None,
+        "palette_2": rng.choice(PALETTE_NAMES) if rng.random() < 0.10 else None,
         "palette_mix": rng.choice(PALETTE_NAMES) if rng.random() < 0.05 else None,
         "accent_count": 0,
         "seed": rng.randint(0, 2**31),
