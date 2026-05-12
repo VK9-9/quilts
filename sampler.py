@@ -61,17 +61,13 @@ def _random_wash_direction(rng):
     return (round(math.cos(angle), 3), round(math.sin(angle), 3))
 
 
+_DROP_STITCHES = {"crosshatch"}
+_STITCH_STYLES = [s for s in QUILT_STITCH_STYLES if s not in _DROP_STITCHES]
+
+
 def _weighted_stitch(rng):
-    """Pick a stitch style with equal weights (crosshatch halved)."""
-    weights = [0.5 if s == "crosshatch" else 1.0 for s in QUILT_STITCH_STYLES]
-    total = sum(weights)
-    r = rng.uniform(0, total)
-    cumulative = 0
-    for s, w in zip(QUILT_STITCH_STYLES, weights):
-        cumulative += w
-        if r <= cumulative:
-            return s
-    return QUILT_STITCH_STYLES[-1]
+    """Pick a stitch style with equal weights."""
+    return rng.choice(_STITCH_STYLES)
 
 
 def sample_random_params(rng=None):
