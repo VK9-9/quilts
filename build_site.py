@@ -472,7 +472,7 @@ def params_summary(params):
     return "\n".join(lines)
 
 
-def render_html(families, out, n_families, n_variations):
+def render_html(families, out, n_families, n_variations):  # pylint: disable=too-many-locals
     """Render index, family, and quilt HTML pages to out/."""
     from datetime import datetime  # pylint: disable=import-outside-toplevel
     generated_at = datetime.now().strftime("%Y-%m-%d %H:%M")
