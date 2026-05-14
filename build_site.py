@@ -218,16 +218,13 @@ def generate_variations(palette, symmetry, members, n, rng):
     Derives chaos/tile_size/rows ranges from the cluster members so variations
     look visually coherent with the family representative.
     """
-    # derive ranges from members
-    chaos_vals = [p["chaos"] for p in members]
-    chaos_lo = max(0.0, min(chaos_vals) - 0.05)
-    chaos_hi = min(1.0, max(chaos_vals) + 0.05)
-    tile_vals = [p.get("tile_size", 4) for p in members]
-    tile_lo = max(2, min(tile_vals))  # pylint: disable=nested-min-max
-    tile_hi = max(2, max(tile_vals))  # pylint: disable=nested-min-max
-    row_vals = [p["rows"] for p in members]
-    row_lo = max(8, min(row_vals))  # pylint: disable=nested-min-max
-    row_hi = max(8, max(row_vals))  # pylint: disable=nested-min-max
+    # derive ranges from members (clamp to sane minimums)
+    chaos_lo = max(0.0, min(p["chaos"] for p in members) - 0.05)
+    chaos_hi = min(1.0, max(p["chaos"] for p in members) + 0.05)
+    tile_lo = max(2, min(p.get("tile_size", 4) for p in members))  # pylint: disable=nested-min-max
+    tile_hi = max(2, max(p.get("tile_size", 4) for p in members))  # pylint: disable=nested-min-max
+    row_lo = max(8, min(p["rows"] for p in members))  # pylint: disable=nested-min-max
+    row_hi = max(8, max(p["rows"] for p in members))  # pylint: disable=nested-min-max
 
     variations = []
     for _ in range(n):
