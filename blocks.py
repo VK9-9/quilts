@@ -727,7 +727,7 @@ def cathedral_windows(x, y, size, n_colors):  # pylint: disable=too-many-locals
     return patches
 
 
-def applique(x, y, size, n_colors):
+def applique(x, y, size, n_colors):  # pylint: disable=too-many-locals
     """Appliqué block — circle and leaf shapes layered on a background square.
 
     Background square in color 0, a large circle in color 1, and two leaf
