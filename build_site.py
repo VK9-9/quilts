@@ -223,11 +223,11 @@ def generate_variations(palette, symmetry, members, n, rng):
     chaos_lo = max(0.0, min(chaos_vals) - 0.05)
     chaos_hi = min(1.0, max(chaos_vals) + 0.05)
     tile_vals = [p.get("tile_size", 4) for p in members]
-    tile_lo = max(2, min(tile_vals))
-    tile_hi = max(2, max(tile_vals))
+    tile_lo = max(2, min(tile_vals))  # pylint: disable=nested-min-max
+    tile_hi = max(2, max(tile_vals))  # pylint: disable=nested-min-max
     row_vals = [p["rows"] for p in members]
-    row_lo = max(8, min(row_vals))
-    row_hi = max(8, max(row_vals))
+    row_lo = max(8, min(row_vals))  # pylint: disable=nested-min-max
+    row_hi = max(8, max(row_vals))  # pylint: disable=nested-min-max
 
     variations = []
     for _ in range(n):
