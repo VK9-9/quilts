@@ -247,24 +247,17 @@ def generate_variations(palette, symmetry, members, n, rng):
 
 
 def define_families(liked, n_families, n_variations, rng,  # pylint: disable=too-many-locals,too-many-arguments,too-many-positional-arguments
-                    name_overrides=None, clip_embeddings=None,
-                    liked_indices=None, all_clip_embeddings=None):
+                    name_overrides=None, clip_embeddings=None):
     """Group liked quilts by palette x symmetry and build families.
 
-    clip_embeddings/liked_indices/all_clip_embeddings are used for picking
-    a better representative if available.
+    clip_embeddings is used for picking a better representative if available.
     """
     buckets = bucket_families(liked, n_families)
     families = []
     slugs_used = set()
     names_used = set()
     name_overrides = name_overrides or {}
-
-    # build index mapping liked quilt → clip embedding row
-    liked_to_clip = {}
-    if clip_embeddings is not None:
-        for i in range(len(clip_embeddings)):
-            liked_to_clip[i] = i
+    n_clip = len(clip_embeddings) if clip_embeddings is not None else 0
 
     for pal, sym, members in buckets:
         auto = unique_name(family_name(members), names_used)
@@ -275,13 +268,13 @@ def define_families(liked, n_families, n_variations, rng,  # pylint: disable=too
 
         # find indices of these members in the liked list for CLIP lookup
         member_clip = None
-        if clip_embeddings is not None:
+        if n_clip > 0:
             member_indices = [i for i, p in enumerate(liked) if
-                              p["palette"] == pal and p["symmetry"] == sym]
-            valid_idx = [i for i in member_indices if i in liked_to_clip]
-            if len(valid_idx) >= 3:
-                member_clip = clip_embeddings[valid_idx]
-                clip_members = [liked[i] for i in valid_idx]
+                              p["palette"] == pal and p["symmetry"] == sym
+                              and i < n_clip]
+            if len(member_indices) >= 3:
+                member_clip = clip_embeddings[member_indices]
+                clip_members = [liked[i] for i in member_indices]
                 rep = representative(clip_members, clip_embeddings=member_clip)
             else:
                 rep = representative(members)
