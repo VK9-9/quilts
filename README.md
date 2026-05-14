@@ -92,4 +92,3 @@ keys are stable as long as `--families` and `--seed` stay the same.
 | `build_site.py` | Static site generator |
 | `analyze.py` | Analysis script |
 | `ANALYSIS.md` | Round-by-round findings |
-| `WEBSITE_PLAN.md` | Static gallery design doc |
