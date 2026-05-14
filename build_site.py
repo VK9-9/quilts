@@ -16,7 +16,7 @@ from pathlib import Path
 import numpy as np
 from jinja2 import Environment, BaseLoader
 
-from sampler import sample_random_params, params_to_render_kwargs, PALETTE_NAMES, SYMMETRY_NAMES
+from sampler import sample_random_params, params_to_render_kwargs, SYMMETRY_NAMES
 from quilt import render_quilt
 from quilt_id import encode, _V1_PALETTES, _V1_SYMMETRY, _V1_GRADIENT
 
