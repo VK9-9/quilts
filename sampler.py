@@ -26,8 +26,11 @@ from quilt import BORDER_STYLES, QUILT_STITCH_STYLES, render_quilt
 
 _DROP_PALETTES = {"storm", "midnight moss", "terracotta", "slate and rust", "coral reef",
                    "autumn harvest", "aurora", "deep sea", "amber glow", "sage garden",
-                   "plum wine"}
+                   "plum wine", "copper canyon", "moonstone"}
+# Proven palettes: shown at fixed probability instead of normal rotation
+_PROVEN_PALETTES = {"lavender fields": 0.15}
 PALETTE_NAMES = [p[0] for p in PALETTES if p[0] not in _DROP_PALETTES]
+_EXPLORE_PALETTES = [p for p in PALETTE_NAMES if p not in _PROVEN_PALETTES]
 _DROP_SYMMETRY = {"flower", "emergent", "mirror", "none"}
 SYMMETRY_NAMES = [s for s in SYMMETRY_MODES if s not in _DROP_SYMMETRY]
 
@@ -40,7 +43,7 @@ PARAM_SPACE = {
     "palette": PALETTE_NAMES,
     "n_patterns": (2, 2),
     "n_colors": (3, 4),
-    "tile_size": (2, 10),       # small tiles (1) disliked
+    "tile_size": (4, 10),       # small tiles (1-3) disliked
     "tile_variation": (0.0, 0.3),
 }
 
@@ -71,6 +74,14 @@ def _weighted_stitch(rng):
     return rng.choice(_STITCH_STYLES)
 
 
+def _pick_palette(rng):
+    """Pick a palette, giving proven palettes a fixed probability."""
+    for pal, prob in _PROVEN_PALETTES.items():
+        if rng.random() < prob:
+            return pal
+    return rng.choice(_EXPLORE_PALETTES)
+
+
 def sample_random_params(rng=None):
     """Sample a completely random parameter set."""
     if rng is None:
@@ -82,7 +93,7 @@ def sample_random_params(rng=None):
         "cols": cols,
         "symmetry": rng.choice(PARAM_SPACE["symmetry"]),
         "chaos": round(rng.uniform(*PARAM_SPACE["chaos"]), 2),
-        "palette": rng.choice(PARAM_SPACE["palette"]),
+        "palette": _pick_palette(rng),
         "n_patterns": rng.randint(*PARAM_SPACE["n_patterns"]),
         "n_colors": 4 if rng.random() < 0.70 else 3,
         "tile_size": rng.randint(*PARAM_SPACE["tile_size"]),
