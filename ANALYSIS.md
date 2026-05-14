@@ -1203,6 +1203,154 @@ border probability ~35%, cathedral_windows block
 
 ---
 
+## Round 14 — ratings 3434-3666
+
+**Records:** 3434-3666 (233 ratings)
+**Overall:** 199/233 liked (85.4%)
+**Params:** rows/cols 16-21, symmetry 3 modes (rotational/partial/stripe),
+chaos 0-0.8, 15 palettes, n_patterns 2, n_colors weighted 70% toward 4,
+10% palette diversity cap, quilt_stitch (~80%), cornerstones off,
+color_wash off, mega_frac (~5%), border probability ~35%
+
+### Key findings
+
+- **Best round ever at 85.4%** — massive jump from R13's 53%. The model has
+  converged on the user's taste. After a slow start (60% in first 25), settled
+  at 80-96% for the remaining 200+ ratings. No late-round crash.
+- **Lavender fields is the star** — 95% (104/110), appeared in 47% of all
+  samples. Overwhelmingly dominant. Proven winner — moved to fixed 15%
+  probability for R15 to redirect exploration to other palettes.
+- **All top palettes strong** — wildflower 94%, coastal fog 89%, tide pool 87%,
+  ocean breeze 86%. Even weaker palettes (copper canyon, moonstone at 33%)
+  are dragged up by the overall high rate.
+- **Larger tiles strongly preferred** — tile_size 4+ all 75-100%. Tile size 2
+  is a clear reject at 33%. Minimum raised from 2 to 4 for R15.
+- **Symmetry converged** — rotational (87%), partial (86%), stripe (84%).
+  All three modes equally good. No differentiation.
+- **All border styles positive** — solid 94%, checkerboard 90%, piano_keys 84%,
+  none 83%. Borders add value without risk.
+- **Chaos neutral** — liked mean 0.43 vs disliked 0.38. No strong signal.
+  The user's stated preference for "randomness" may be more about visual
+  complexity (tile patterns, stitch texture) than the chaos parameter itself.
+- **quilt_stitch still #1 feature** — 0.60 importance, consistent with R11-R13.
+  Stitch texture is the single biggest predictor of preference.
+
+### Palette detail
+
+| Palette | Shown | Liked | Rate |
+|---------|-------|-------|------|
+| lavender fields | 110 | 104 | 95% |
+| wildflower | 18 | 17 | 94% |
+| coastal fog | 9 | 8 | 89% |
+| tide pool | 23 | 20 | 87% |
+| ocean breeze | 28 | 24 | 86% |
+| sea glass | 4 | 3 | 75% |
+| indigo dye | 7 | 5 | 71% |
+| wisteria | 6 | 4 | 67% |
+| honey oak | 3 | 2 | 67% |
+| northern lights | 8 | 4 | 50% |
+| winter frost | 2 | 1 | 50% |
+| copper canyon | 6 | 2 | 33% |
+| moonstone | 6 | 2 | 33% |
+| cherry blossom | 3 | 3 | 100% |
+
+### Symmetry detail
+
+| Mode | Shown | Liked | Rate |
+|------|-------|-------|------|
+| rotational | 78 | 68 | 87% |
+| partial | 64 | 55 | 86% |
+| stripe | 91 | 76 | 84% |
+
+### Tile size detail
+
+| Size | Shown | Liked | Rate |
+|------|-------|-------|------|
+| 4 | 11 | 11 | 100% |
+| 10 | 33 | 31 | 94% |
+| 8 | 52 | 48 | 92% |
+| 7 | 37 | 33 | 89% |
+| 9 | 42 | 36 | 86% |
+| 6 | 32 | 26 | 81% |
+| 5 | 8 | 6 | 75% |
+| 3 | 6 | 4 | 67% |
+| 2 | 12 | 4 | 33% |
+
+### Border style detail
+
+| Style | Shown | Liked | Rate |
+|-------|-------|-------|------|
+| solid | 31 | 29 | 94% |
+| checkerboard | 30 | 27 | 90% |
+| piano_keys | 19 | 16 | 84% |
+| none | 153 | 127 | 83% |
+
+### Feature importances (top 15)
+
+| Feature | Importance |
+|---------|----------:|
+| quilt_stitch | 0.6015 |
+| chaos | 0.0503 |
+| pal_lavender fields | 0.0459 |
+| tile_variation | 0.0428 |
+| tile_size | 0.0420 |
+| pal_ocean breeze | 0.0328 |
+| mega_frac | 0.0235 |
+| cornerstones | 0.0173 |
+| n_patterns | 0.0166 |
+| rows | 0.0162 |
+| accent_count | 0.0139 |
+| pal_wildflower | 0.0130 |
+| sym_rotational | 0.0124 |
+| n_colors | 0.0123 |
+| plain_frac | 0.0120 |
+
+### Like rate trend (round 14 only)
+
+```
+3434-3458: 60%
+3459-3483: 88%
+3484-3508: 92%
+3509-3533: 84%
+3534-3558: 88%
+3559-3583: 80%
+3584-3608: 96%
+3609-3633: 96%
+3634-3658: 88%
+3659-3666: 75%
+```
+
+### Palette frequency
+
+(expected ~7% each for 15 palettes)
+
+| Palette | Frequency |
+|---------|-----------|
+| lavender fields | 47.2% |
+| ocean breeze | 12.0% |
+| tide pool | 9.9% |
+| wildflower | 7.7% |
+| coastal fog | 3.9% |
+| northern lights | 3.4% |
+| indigo dye | 3.0% |
+| copper canyon | 2.6% |
+| moonstone | 2.6% |
+| wisteria | 2.6% |
+| sea glass | 1.7% |
+| honey oak | 1.3% |
+| cherry blossom | 1.3% |
+| winter frost | 0.9% |
+
+### Changes after Round 14
+
+- **Lavender fields → proven palette**: removed from normal rotation, shown at
+  fixed 15% probability. 95% like rate across 110 samples — the clear winner.
+  Goal is to redirect exploration toward finding other palette winners.
+- Dropped palettes: copper canyon (33%), moonstone (33%)
+- Raised tile_size minimum: 2 → 4 (tile_size 2 at 33%, all others 67%+)
+
+---
+
 ## Favorites
 
 Standout quilts worth revisiting or using as seeds for future exploration.
