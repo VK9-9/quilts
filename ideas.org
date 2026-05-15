@@ -1,6 +1,5 @@
 * Fabric textures
 * New Patterns
-**
 * Quilting design ideas
 ** Value contrast control
 *** Deliberately bias light colors to one region and dark colors to another (top/bottom, center/edge). Currently palette colors are assigned randomly — intentional value distribution could improve composition.
@@ -11,6 +10,4 @@
 *** Not a block pattern but a new layout mode: vertical strips of varying height that shift up/down to create an undulating wave across the whole quilt. Classic technique, very striking.
 ** Improv/wonky mode
 *** A chaos modifier that jitters vertex positions on any block by a small random amount. Makes everything slightly off-kilter, mimicking modern improv quilting. Global param rather than a new block.
-** Cathedral windows
-*** Overlapping folded-fabric circles creating diamond-shaped reveals of a contrast color. Very distinctive look.
 * Bugs
