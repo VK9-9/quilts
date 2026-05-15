@@ -298,7 +298,7 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylin
                  sash_width=0, color_gradient=None, mega_frac=0.0,
                  cornerstones=False, plain_frac=0.0, quilt_stitch=None,
                  wash_alpha=0.0, palette_name_2=None, palette_mix=None,
-                 accent_count=0, color_wash=None):
+                 accent_count=0, color_wash=None, wonky=0.0):
     """Generate and render a quilt to an image file."""
     if seed is None:
         seed = random.randint(0, 2**31)
@@ -353,6 +353,10 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylin
     else:
         allowed = None
         n_patterns = n_all_patterns
+
+    # bargello bypasses tiling — it's a whole-quilt layout
+    if symmetry == "bargello":
+        tile_size = None
 
     if tile_size is not None:
         grid = _build_tiled_grid(rows, cols, tile_size, tile_variation,
@@ -417,8 +421,16 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylin
             cell["color_map"] = [cm[(i + shift) % n_colors]
                                   for i in range(n_colors)]
 
+    # bargello: force all cells to solid color based on wave pattern
+    if symmetry == "bargello":
+        for cell in grid.values():
+            bi = cell.get("_bargello_color", 0) % n_colors
+            cell["color_map"] = [bi] * n_colors
+
     # plain blocks: random cells rendered as solid color (no pattern)
     plain_cells = set()
+    if symmetry == "bargello":
+        plain_cells = {(r, c) for r in range(rows) for c in range(cols)}
     if plain_frac > 0.0:
         for r in range(rows):
             for c in range(cols):
@@ -516,6 +528,16 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylin
             patches = rotate_patches(patches, cx_block, cy_block,
                                      cell["rotation"])
 
+            if wonky > 0:
+                wonky_rng = random.Random(seed * 10000 + r * 1000 + c)
+                jitter = wonky * block_size
+                patches = [
+                    ([(px + wonky_rng.uniform(-jitter, jitter),
+                       py + wonky_rng.uniform(-jitter, jitter))
+                      for px, py in poly], ci)
+                    for poly, ci in patches
+                ]
+
             color_map = cell["color_map"]
             active_pal = all_palettes[cell.get("palette", 0) % len(all_palettes)]
             for poly, color_idx in patches:
@@ -592,6 +614,16 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylin
         pattern_fn = BLOCK_PATTERNS[cell["pattern"]]
         patches = pattern_fn(bx, by, mega_size, n_colors)
         patches = rotate_patches(patches, cx_block, cy_block, cell["rotation"])
+
+        if wonky > 0:
+            wonky_rng = random.Random(seed * 10000 + mr * 1000 + mc + 500)
+            jitter = wonky * mega_size
+            patches = [
+                ([(px + wonky_rng.uniform(-jitter, jitter),
+                   py + wonky_rng.uniform(-jitter, jitter))
+                  for px, py in poly], ci)
+                for poly, ci in patches
+            ]
 
         color_map = cell["color_map"]
         active_pal = all_palettes[cell.get("palette", 0) % len(all_palettes)]
