@@ -88,6 +88,7 @@ keys are stable as long as `--families` and `--seed` stay the same.
 | `quilt_id.py` | Compact ID encoder/decoder |
 | `palettes.py` | Color palettes |
 | `blocks.py` | Block pattern definitions |
+| `layout.py` | Grid layout engine (symmetry modes) |
 | `app.py` | Rating webapp |
 | `build_site.py` | Static site generator |
 | `analyze.py` | Analysis script |
