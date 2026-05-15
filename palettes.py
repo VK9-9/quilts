@@ -65,6 +65,21 @@ PALETTES = [
     ("honey oak", [
         "#7A5230", "#B8864A", "#D4AA70", "#F0E0C8", "#5C3D20",
     ]),
+    ("thistle", [
+        "#6B5B7B", "#9B89A8", "#C8B8D8", "#E8DDE8", "#7B8B6B",
+    ]),
+    ("river stone", [
+        "#4A5568", "#7B8FA0", "#A8B8C4", "#E0E8EC", "#6B8B7A",
+    ]),
+    ("bluebell", [
+        "#2A3B6B", "#4A6BAB", "#7B9BD0", "#C0D4E8", "#4A7B5C",
+    ]),
+    ("frosted berry", [
+        "#6B3A5C", "#9B6B8A", "#C89BB0", "#E8D0DC", "#5B7B8C",
+    ]),
+    ("dove grey", [
+        "#5A5060", "#8B7F90", "#B8AEBA", "#E0D8E0", "#7A8B7A",
+    ]),
 ]
 
 
