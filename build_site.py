@@ -107,19 +107,37 @@ def load_clip_embeddings(ratings_path, indices):
     return emb, valid
 
 
-def bucket_families(liked, n_families):
-    """Group liked quilts by (palette, symmetry) and return top n_families buckets.
+def _chaos_band(chaos):
+    """Classify chaos value into a named band.
 
-    Returns list of (palette, symmetry, members) sorted by bucket size descending.
+    >>> _chaos_band(0.1)
+    'calm'
+    >>> _chaos_band(0.5)
+    'lively'
+    >>> _chaos_band(0.8)
+    'wild'
+    """
+    if chaos < 0.35:
+        return "calm"
+    if chaos < 0.65:
+        return "lively"
+    return "wild"
+
+
+def bucket_families(liked, n_families):
+    """Group liked quilts by (symmetry, chaos_band) and return top n_families buckets.
+
+    Returns list of (symmetry, chaos_band, members) sorted by bucket size descending.
+    Palette is NOT part of the grouping key so variations can show diverse colors.
     """
     buckets = {}
     for p in liked:
-        key = (p["palette"], p["symmetry"])
+        key = (p["symmetry"], _chaos_band(p["chaos"]))
         buckets.setdefault(key, []).append(p)
     ranked = sorted(buckets.items(), key=lambda kv: -len(kv[1]))
     result = []
-    for (pal, sym), members in ranked[:n_families]:
-        result.append((pal, sym, members))
+    for (sym, band), members in ranked[:n_families]:
+        result.append((sym, band, members))
     return result
 
 
@@ -212,11 +230,12 @@ def unique_name(name, existing):
     return result
 
 
-def generate_variations(palette, symmetry, members, n, rng):
-    """Sample n param sets matching the family's palette, symmetry, and style.
+def generate_variations(symmetry, members, n, rng):
+    """Sample n param sets matching the family's symmetry and style.
 
     Derives chaos/tile_size/rows ranges from the cluster members so variations
-    look visually coherent with the family representative.
+    look structurally coherent.  Palette is NOT constrained — each variation
+    picks a random encodable palette for color diversity.
     """
     # derive ranges from members (clamp to sane minimums)
     chaos_lo = max(0.0, min(p["chaos"] for p in members) - 0.05)
@@ -225,12 +244,13 @@ def generate_variations(palette, symmetry, members, n, rng):
     tile_hi = max(2, max(p.get("tile_size", 4) for p in members))  # pylint: disable=nested-min-max
     row_lo = max(8, min(p["rows"] for p in members))  # pylint: disable=nested-min-max
     row_hi = max(8, max(p["rows"] for p in members))  # pylint: disable=nested-min-max
+    encodable_palettes = list(_ENCODABLE_PALETTES)
 
     variations = []
     for _ in range(n):
         while True:
             p = sample_random_params(rng)
-            p["palette"] = palette
+            p["palette"] = rng.choice(encodable_palettes)
             p["symmetry"] = symmetry
             p["chaos"] = round(rng.uniform(chaos_lo, chaos_hi), 2)
             p["tile_size"] = rng.randint(tile_lo, tile_hi)
@@ -256,7 +276,7 @@ def define_families(liked, n_families, n_variations, rng,  # pylint: disable=too
     name_overrides = name_overrides or {}
     n_clip = len(clip_embeddings) if clip_embeddings is not None else 0
 
-    for pal, sym, members in buckets:
+    for sym, _band, members in buckets:
         auto = unique_name(family_name(members), names_used)
         names_used.add(auto)
         slug = unique_slug(auto, slugs_used)
@@ -267,7 +287,8 @@ def define_families(liked, n_families, n_variations, rng,  # pylint: disable=too
         member_clip = None
         if n_clip > 0:
             member_indices = [i for i, p in enumerate(liked) if
-                              p["palette"] == pal and p["symmetry"] == sym
+                              p["symmetry"] == sym
+                              and _chaos_band(p["chaos"]) == _band
                               and i < n_clip]
             if len(member_indices) >= 3:
                 member_clip = clip_embeddings[member_indices]
@@ -278,7 +299,7 @@ def define_families(liked, n_families, n_variations, rng,  # pylint: disable=too
         else:
             rep = representative(members)
 
-        variations = generate_variations(pal, sym, members, n_variations, rng)
+        variations = generate_variations(sym, members, n_variations, rng)
 
         families.append({
             "name": name,
