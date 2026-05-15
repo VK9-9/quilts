@@ -1,8 +1,7 @@
 * Fabric textures
-* Public webapp
 * New Patterns
+**
 * Quilting design ideas
-** Actual quilt patterns
 ** Value contrast control
 *** Deliberately bias light colors to one region and dark colors to another (top/bottom, center/edge). Currently palette colors are assigned randomly — intentional value distribution could improve composition.
 * Designs
