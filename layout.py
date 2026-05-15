@@ -3,6 +3,8 @@
 Assigns block patterns and color indices to each cell in the grid,
 respecting the chosen symmetry mode.
 """
+import math
+
 import noise
 
 
@@ -275,6 +277,32 @@ def layout_emergent(rows, cols, n_patterns, _n_palettes, rng):  # pylint: disabl
     return grid
 
 
+def layout_bargello(rows, cols, _n_patterns, _n_palettes, rng):
+    """Bargello: vertical strips with undulating color waves.
+
+    Each column has the same repeating color sequence, shifted up/down
+    by a wave function to create the characteristic bargello undulation.
+    Cells store a _bargello_color index used by the renderer.
+    """
+    grid = {}
+    amplitude = rng.uniform(2.0, min(rows * 0.3, 6))
+    period = rng.uniform(cols * 0.3, cols * 0.8)
+    phase = rng.random() * 2 * math.pi
+    strip_h = rng.choice([1, 1, 2])  # height of each color strip
+
+    for r in range(rows):
+        for c in range(cols):
+            shift = amplitude * math.sin(2 * math.pi * c / period + phase)
+            color_row = int((r + shift) / max(strip_h, 1))
+            grid[(r, c)] = {
+                "pattern": 0,
+                "palette": 0,
+                "rotation": 0,
+                "_bargello_color": color_row,
+            }
+    return grid
+
+
 SYMMETRY_MODES = {
     "none": layout_none,
     "mirror": layout_mirror4,
@@ -283,4 +311,5 @@ SYMMETRY_MODES = {
     "partial": layout_partial,
     "flower": layout_flower,
     "emergent": layout_emergent,
+    "bargello": layout_bargello,
 }
