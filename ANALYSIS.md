@@ -1351,6 +1351,175 @@ color_wash off, mega_frac (~5%), border probability ~35%
 
 ---
 
+## Round 15 — ratings 3667-3873
+
+**Records:** 3667-3873 (207 ratings)
+**Overall:** 168/207 liked (81.2%)
+**Params:** rows/cols 16-21, symmetry 3 modes (rotational/partial/stripe),
+chaos 0-0.8, 13 palettes (lavender fields at 15% proven probability),
+n_patterns 2, n_colors weighted 70% toward 4, 10% palette diversity cap,
+quilt_stitch (~80%), tile_size 4-10, mega_frac (~5%), border ~35%
+
+### Key findings
+
+- **Like rate 81.2%** — slight dip from R14's 85.4% but still second-best
+  round ever. The proven palette cap didn't tank approval.
+- **Lavender fields still over-exploited** — appeared in 70.5% of samples
+  despite the 15% candidate probability cap. The model's exploitation phase
+  always picks lavender fields candidates because they score highest.
+  **Fix:** exclude proven palettes from exploitation candidates entirely;
+  only inject during exploration phase. Expected rate after fix: ~15%.
+- **Lavender fields still strong** — 89% (130/146). Slightly down from R14's
+  95% but still dominant.
+- **Other palettes getting more signal** — sea glass 100% (5/5), winter frost
+  86% (6/7), wisteria 86% (6/7) all looking strong with small samples.
+  Ocean breeze 71%, indigo dye 40%, coastal fog 40%.
+- **Partial symmetry top** — 86% vs stripe 80%, rotational 78%. Partial
+  edging ahead for the first time.
+- **Tile size 8-9 sweet spot** — 91-94% like rate. Tile size 4 weakest at 62%.
+  Signal towards larger tiles continues.
+- **Stitch styles converged** — sashiko_wave 84%, grid 83%, diagonal 82%.
+  sashiko_asanoha slightly behind at 75%. No stitch: 80% (small sample of 15).
+- **Piano keys border best** — 89% vs none 83%, solid 75%, checkerboard 70%.
+  Checkerboard dropped notably.
+- **Feature params all neutral** — plain_frac, palette_2, wash_alpha all
+  slightly positive (~83-84% vs 80-81%). mega_frac slightly negative (67% on
+  3 samples). No strong signals.
+- **quilt_stitch still #1** — 0.61 importance. lavender fields jumped to #2
+  at 0.079 (up from 0.046 in R14) due to over-representation.
+
+### Palette detail
+
+| Palette | Shown | Liked | Rate |
+|---------|-------|-------|------|
+| sea glass | 5 | 5 | 100% |
+| tide pool | 1 | 1 | 100% |
+| lavender fields | 146 | 130 | 89% |
+| winter frost | 7 | 6 | 86% |
+| wisteria | 7 | 6 | 86% |
+| ocean breeze | 7 | 5 | 71% |
+| twilight | 3 | 2 | 67% |
+| northern lights | 4 | 2 | 50% |
+| wildflower | 6 | 3 | 50% |
+| indigo dye | 10 | 4 | 40% |
+| coastal fog | 5 | 2 | 40% |
+| cherry blossom | 3 | 1 | 33% |
+| honey oak | 3 | 1 | 33% |
+
+### Symmetry detail
+
+| Mode | Shown | Liked | Rate |
+|------|-------|-------|------|
+| partial | 64 | 55 | 86% |
+| stripe | 66 | 53 | 80% |
+| rotational | 77 | 60 | 78% |
+
+### Tile size detail
+
+| Size | Shown | Liked | Rate |
+|------|-------|-------|------|
+| 9 | 34 | 32 | 94% |
+| 8 | 45 | 41 | 91% |
+| 5 | 12 | 10 | 83% |
+| 7 | 32 | 25 | 78% |
+| 10 | 38 | 29 | 76% |
+| 6 | 30 | 21 | 70% |
+| 4 | 16 | 10 | 62% |
+
+### Border style detail
+
+| Style | Shown | Liked | Rate |
+|-------|-------|-------|------|
+| piano_keys | 18 | 16 | 89% |
+| none | 142 | 118 | 83% |
+| solid | 24 | 18 | 75% |
+| checkerboard | 23 | 16 | 70% |
+
+### Stitch detail
+
+| Style | Shown | Liked | Rate |
+|-------|-------|-------|------|
+| sashiko_wave | 44 | 37 | 84% |
+| grid | 63 | 52 | 83% |
+| diagonal | 45 | 37 | 82% |
+| None | 15 | 12 | 80% |
+| sashiko_asanoha | 40 | 30 | 75% |
+
+### Feature params detail
+
+| Param | On | Off |
+|-------|----|-----|
+| wash_alpha | 21/25 (84%) | 147/182 (81%) |
+| plain_frac | 58/69 (84%) | 110/138 (80%) |
+| palette_2 | 15/18 (83%) | 153/189 (81%) |
+| mega_frac | 2/3 (67%) | 166/204 (81%) |
+| palette_mix | 4/6 (67%) | 164/201 (82%) |
+
+### Feature importances (top 15)
+
+| Feature | Importance |
+|---------|----------:|
+| quilt_stitch | 0.6091 |
+| pal_lavender fields | 0.0788 |
+| tile_size | 0.0404 |
+| tile_variation | 0.0390 |
+| pal_ocean breeze | 0.0291 |
+| chaos | 0.0283 |
+| mega_frac | 0.0244 |
+| n_patterns | 0.0140 |
+| color_wash | 0.0127 |
+| n_colors | 0.0126 |
+| cornerstones | 0.0123 |
+| accent_count | 0.0112 |
+| sym_rotational | 0.0111 |
+| pal_wildflower | 0.0103 |
+| pal_winter frost | 0.0099 |
+
+### Like rate trend (round 15 only)
+
+```
+3667-3691: 100%
+3692-3716: 80%
+3717-3741: 92%
+3742-3766: 72%
+3767-3791: 84%
+3792-3816: 64%
+3817-3841: 88%
+3842-3866: 80%
+3867-3873: 43%
+```
+
+### Palette frequency
+
+(expected ~8% each for 13 palettes, lavender fields capped at 15%)
+
+| Palette | Frequency |
+|---------|-----------|
+| lavender fields | 70.5% |
+| indigo dye | 4.8% |
+| ocean breeze | 3.4% |
+| winter frost | 3.4% |
+| wisteria | 3.4% |
+| wildflower | 2.9% |
+| sea glass | 2.4% |
+| coastal fog | 2.4% |
+| northern lights | 1.9% |
+| twilight | 1.4% |
+| cherry blossom | 1.4% |
+| honey oak | 1.4% |
+| tide pool | 0.5% |
+
+### Changes after Round 15
+
+- **Fixed proven palette cap**: excluded proven palettes from exploitation
+  candidates entirely. Lavender fields now only appears during exploration
+  phase (30% of suggestions × 50% probability = ~15% of shown quilts).
+  Previous implementation only capped candidate generation, but model
+  always selected lavender fields from the pool anyway (70.5% actual).
+- Tile size minimum stays at 4 (tile_size 4 at 62% is still acceptable)
+
+---
+
 ## Favorites
 
 Standout quilts worth revisiting or using as seeds for future exploration.
