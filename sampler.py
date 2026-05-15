@@ -28,7 +28,7 @@ _DROP_PALETTES = {"storm", "midnight moss", "terracotta", "slate and rust", "cor
                    "autumn harvest", "aurora", "deep sea", "amber glow", "sage garden",
                    "plum wine", "copper canyon", "moonstone"}
 # Proven palettes: shown at fixed probability instead of normal rotation
-_PROVEN_PALETTES = {"lavender fields": 0.15}
+_PROVEN_PALETTES = {"lavender fields": 0.50}
 PALETTE_NAMES = [p[0] for p in PALETTES if p[0] not in _DROP_PALETTES]
 _EXPLORE_PALETTES = [p for p in PALETTE_NAMES if p not in _PROVEN_PALETTES]
 _DROP_SYMMETRY = {"flower", "emergent", "mirror", "none"}
@@ -74,15 +74,20 @@ def _weighted_stitch(rng):
     return rng.choice(_STITCH_STYLES)
 
 
-def _pick_palette(rng):
-    """Pick a palette, giving proven palettes a fixed probability."""
-    for pal, prob in _PROVEN_PALETTES.items():
-        if rng.random() < prob:
-            return pal
+def _pick_palette(rng, explore_only=False):
+    """Pick a palette, giving proven palettes a fixed probability.
+
+    If explore_only=True, only pick from exploration palettes (used for
+    exploitation candidates so the model can't over-select proven winners).
+    """
+    if not explore_only:
+        for pal, prob in _PROVEN_PALETTES.items():
+            if rng.random() < prob:
+                return pal
     return rng.choice(_EXPLORE_PALETTES)
 
 
-def sample_random_params(rng=None):
+def sample_random_params(rng=None, explore_only=False):
     """Sample a completely random parameter set."""
     if rng is None:
         rng = random.Random()
@@ -93,7 +98,7 @@ def sample_random_params(rng=None):
         "cols": cols,
         "symmetry": rng.choice(PARAM_SPACE["symmetry"]),
         "chaos": round(rng.uniform(*PARAM_SPACE["chaos"]), 2),
-        "palette": _pick_palette(rng),
+        "palette": _pick_palette(rng, explore_only=explore_only),
         "n_patterns": rng.randint(*PARAM_SPACE["n_patterns"]),
         "n_colors": 4 if rng.random() < 0.70 else 3,
         "tile_size": rng.randint(*PARAM_SPACE["tile_size"]),
@@ -306,7 +311,8 @@ class QuiltExplorer:  # pylint: disable=too-many-instance-attributes
             return sample_random_params(rng)
 
         # generate candidates with palette diversity cap
-        candidates = [sample_random_params(rng) for _ in range(200)]
+        # explore_only=True excludes proven palettes from exploitation candidates
+        candidates = [sample_random_params(rng, explore_only=True) for _ in range(200)]
         max_per_palette = max(1, int(len(candidates) * MAX_PALETTE_FRAC))
         palette_counts = {}
         filtered = []
