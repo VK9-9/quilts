@@ -112,14 +112,18 @@ def _chaos_band(chaos):
 
     >>> _chaos_band(0.1)
     'calm'
-    >>> _chaos_band(0.5)
+    >>> _chaos_band(0.35)
+    'steady'
+    >>> _chaos_band(0.55)
     'lively'
     >>> _chaos_band(0.8)
     'wild'
     """
-    if chaos < 0.35:
+    if chaos < 0.25:
         return "calm"
-    if chaos < 0.65:
+    if chaos < 0.50:
+        return "steady"
+    if chaos < 0.70:
         return "lively"
     return "wild"
 
@@ -157,9 +161,9 @@ def representative(members, clip_embeddings=None):
 
 
 _CHAOS_ADJ = [
-    (0.25, "Ordered"),
-    (0.45, "Calm"),
-    (0.62, "Lively"),
+    (0.25, "Calm"),
+    (0.50, "Steady"),
+    (0.70, "Lively"),
     (1.00, "Wild"),
 ]
 
