@@ -131,8 +131,8 @@ PRESETS = {
     },
 }
 
-_RENDER_SIZE = 600   # px for preview renders
-_DOWNLOAD_SIZE = 1200  # px for downloads
+_RENDER_BLOCK_SIZE = 36    # ~576px for a 16-row quilt
+_DOWNLOAD_BLOCK_SIZE = 72  # ~1152px for download
 
 
 def _params_from_request(defaults=None):
@@ -176,10 +176,9 @@ def _params_from_request(defaults=None):
     }
 
 
-def _render_png(params, size):
-    """Render params to PNG bytes at the given pixel size."""
-    kwargs = params_to_render_kwargs(params)
-    kwargs["size"] = size
+def _render_png(params, block_size):
+    """Render params to PNG bytes at the given block_size."""
+    kwargs = params_to_render_kwargs(params, block_size=block_size)
     return render_quilt(**kwargs)
 
 
@@ -230,7 +229,7 @@ def create():
 def render():
     """Render quilt PNG from query params."""
     params = _params_from_request()
-    png_bytes = _render_png(params, _RENDER_SIZE)
+    png_bytes = _render_png(params, _RENDER_BLOCK_SIZE)
     return Response(png_bytes, mimetype="image/png",
                     headers={"Cache-Control": "no-store"})
 
@@ -240,7 +239,7 @@ def download():
     """Render high-res quilt PNG as file download."""
     params = _params_from_request()
     qid = encode(params)
-    png_bytes = _render_png(params, _DOWNLOAD_SIZE)
+    png_bytes = _render_png(params, _DOWNLOAD_BLOCK_SIZE)
     return Response(
         png_bytes,
         mimetype="image/png",
