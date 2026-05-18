@@ -318,25 +318,41 @@
   }
 
   let debounceTimer = null;
+  let fetchController = null;
   const img = document.getElementById("quilt-img");
   const spinner = document.getElementById("spinner");
-
-  img.addEventListener("load", () => {
-    img.classList.remove("loading");
-    spinner.classList.remove("active");
-  });
-  img.addEventListener("error", () => {
-    img.classList.remove("loading");
-    spinner.classList.remove("active");
-  });
 
   function updateQuilt() {
     const p = getParams();
     const qs = buildQuery(p);
 
+    // Cancel any in-flight request
+    if (fetchController) fetchController.abort();
+    fetchController = new AbortController();
+
     img.classList.add("loading");
     spinner.classList.add("active");
-    img.src = "/render?" + qs + "&_t=" + Date.now();
+
+    const signal = fetchController.signal;
+    fetch("/render?" + qs, { signal, cache: "no-store" })
+      .then(r => r.blob())
+      .then(blob => {
+        const url = URL.createObjectURL(blob);
+        const prev = img.src;
+        img.onload = () => {
+          URL.revokeObjectURL(url);
+          img.classList.remove("loading");
+          spinner.classList.remove("active");
+        };
+        img.src = url;
+        if (prev.startsWith("blob:")) URL.revokeObjectURL(prev);
+      })
+      .catch(e => {
+        if (e.name !== "AbortError") {
+          img.classList.remove("loading");
+          spinner.classList.remove("active");
+        }
+      });
 
     history.replaceState(null, "", "/create?" + qs);
     document.getElementById("download-btn").href = "/download?" + qs;
