@@ -1520,6 +1520,161 @@ quilt_stitch (~80%), tile_size 4-10, mega_frac (~5%), border ~35%
 
 ---
 
+## Round 16 — ratings 3874-4128
+
+**Records:** 3874-4128 (255 ratings)
+**Overall:** 204/255 liked (80.0%)
+**New features:** bargello layout (10%), wonky/improv jitter (15%),
+5 new palettes (thistle, river stone, bluebell, frosted berry, dove grey)
+
+### Key findings
+
+- **Bargello is a massive hit** — 96% like rate (171/179). The model
+  immediately exploited it hard: 70% of shown quilts were bargello despite
+  being set at 10% in the sampler. Classic proven-winner problem.
+- **Bargello works with almost every palette** — tide pool, wildflower,
+  sea glass, bluebell, frosted berry all at 100% in bargello; wisteria 98%,
+  thistle 95%, winter frost 93%.
+- **Lavender fields dropped to 40%** (17/42) — not because lavender got
+  worse, but because it's now shown almost exclusively in non-bargello
+  exploration quilts. Non-bargello symmetries overall ran 39-46% in R16
+  (exploration-only territory). Lavender in bargello: 1/1 (100%).
+  Lavender in non-bargello: 16/41 (39%). Not a lavender problem.
+- **Non-bargello under-sampled and weak** — only 76 non-bargello quilts
+  shown (30% of R16). All landed in 39-46% range — consistent with
+  random exploration rather than optimized exploitation.
+- **Wonky neutral** — 80% on, 80% off. No signal either way yet (35 samples).
+- **New palettes excellent** — thistle 95% (20/21), wisteria 94% (47/50),
+  tide pool 94% (32/34), frosted berry 100% (6/6), bluebell 80% (8/10).
+- **n_colors=4 strongly preferred** — 84% vs 59% for n_colors=3. Signal
+  strengthening.
+- **No stitch is bad** — 47% without stitch vs 81-84% with any stitch.
+  Stitch should be nearly mandatory.
+- **Tile size 5 and 9 best** — both at 88%. Size 4 weakest at 67%.
+- **Solid border surprising winner** — 93% (25/27), up from 75% in R15.
+- **Feature importance shifted**: accent_count jumped to #1 (0.47),
+  likely as a proxy for bargello (bargello cells have no accent). quilt_stitch
+  dropped. chaos and tile_variation now 2nd and 3rd.
+
+### Palette detail (R16, ≥3 shown)
+
+| Palette | Shown | Liked | Rate |
+|---------|-------|-------|------|
+| wildflower | 15 | 15 | 100% |
+| frosted berry | 6 | 6 | 100% |
+| thistle | 21 | 20 | 95% |
+| tide pool | 34 | 32 | 94% |
+| wisteria | 50 | 47 | 94% |
+| twilight | 13 | 12 | 92% |
+| sea glass | 8 | 7 | 88% |
+| ocean breeze | 13 | 11 | 85% |
+| winter frost | 20 | 16 | 80% |
+| bluebell | 10 | 8 | 80% |
+| cherry blossom | 4 | 3 | 75% |
+| northern lights | 3 | 2 | 67% |
+| honey oak | 11 | 7 | 64% |
+| lavender fields | 42 | 17 | 40% |
+| coastal fog | 3 | 0 | 0% |
+
+### Symmetry detail (R16)
+
+| Mode | Shown | Liked | Rate |
+|------|-------|-------|------|
+| bargello | 179 | 171 | 96% |
+| rotational | 28 | 13 | 46% |
+| stripe | 25 | 11 | 44% |
+| partial | 23 | 9 | 39% |
+
+### Tile size detail (R16)
+
+| Size | Shown | Liked | Rate |
+|------|-------|-------|------|
+| 5 | 32 | 28 | 88% |
+| 9 | 52 | 46 | 88% |
+| 6 | 24 | 19 | 79% |
+| 8 | 47 | 37 | 79% |
+| 10 | 41 | 32 | 78% |
+| 7 | 38 | 28 | 74% |
+| 4 | 21 | 14 | 67% |
+
+### Stitch detail (R16)
+
+| Style | Shown | Liked | Rate |
+|-------|-------|-------|------|
+| diagonal | 79 | 66 | 84% |
+| grid | 66 | 54 | 82% |
+| sashiko_wave | 59 | 48 | 81% |
+| sashiko_asanoha | 36 | 29 | 81% |
+| None | 15 | 7 | 47% |
+
+### Feature importances (top 15, all rounds)
+
+| Feature | Importance |
+|---------|----------:|
+| accent_count | 0.4733 |
+| chaos | 0.0726 |
+| tile_variation | 0.0572 |
+| tile_size | 0.0456 |
+| pal_tide pool | 0.0449 |
+| pal_honey oak | 0.0416 |
+| mega_frac | 0.0300 |
+| rows | 0.0241 |
+| pal_lavender fields | 0.0219 |
+| plain_frac | 0.0209 |
+| n_patterns | 0.0164 |
+| n_colors | 0.0163 |
+| cornerstones | 0.0145 |
+| pal_indigo dye | 0.0138 |
+| sym_stripe | 0.0109 |
+
+### Like rate trend (round 16 only)
+
+```
+3874-3898: 92%
+3899-3923: 68%
+3924-3948: 68%
+3949-3973: 84%
+3974-3998: 64%
+3999-4023: 84%
+4024-4048: 84%
+4049-4073: 76%
+4074-4098: 88%
+4099-4123: 92%
+4124-4128: 80%
+```
+
+### Palette frequency (R16)
+
+| Palette | Frequency | Like Rate |
+|---------|-----------|-----------|
+| wisteria | 19.6% | 94% |
+| lavender fields | 16.5% | 40% |
+| tide pool | 13.3% | 94% |
+| thistle | 8.2% | 95% |
+| winter frost | 7.8% | 80% |
+| wildflower | 5.9% | 100% |
+| ocean breeze | 5.1% | 85% |
+| twilight | 5.1% | 92% |
+| honey oak | 4.3% | 64% |
+| bluebell | 3.9% | 80% |
+
+### Changes after Round 16
+
+- **Bargello → proven symmetry**: model exploited to 70% despite 10% setting.
+  Add explore_only mechanism for bargello symmetry, same as lavender fields palette.
+  Target ~15% of shown quilts (30% explore × 50% bargello-in-explore).
+- **Lavender fields**: kept as proven palette. Its 40% R16 rate is an artifact
+  of appearing in random non-bargello exploration quilts — not a true signal.
+  Will reassess after R17.
+- **Drop coastal fog**: 0/3 in R16, weak in R15 too (40%).
+- **Promote thistle, wisteria, tide pool**: strong across two rounds — consider
+  adding as proven palettes after R17 if signal holds.
+- **Stitch nearly mandatory**: 47% without vs 81%+ with. Increase stitch
+  probability or make it required.
+- **n_colors=4 preference strengthening**: increase 4-color weight further.
+
+---
+
 ## Favorites
 
 Standout quilts worth revisiting or using as seeds for future exploration.
