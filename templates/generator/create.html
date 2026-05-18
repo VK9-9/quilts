@@ -318,7 +318,6 @@
   }
 
   let debounceTimer = null;
-  let fetchController = null;
   const img = document.getElementById("quilt-img");
   const spinner = document.getElementById("spinner");
 
@@ -326,33 +325,21 @@
     const p = getParams();
     const qs = buildQuery(p);
 
-    // Cancel any in-flight request
-    if (fetchController) fetchController.abort();
-    fetchController = new AbortController();
-
     img.classList.add("loading");
     spinner.classList.add("active");
 
-    const signal = fetchController.signal;
-    fetch("/render?" + qs, { signal, cache: "no-store" })
-      .then(r => r.blob())
-      .then(blob => {
-        const url = URL.createObjectURL(blob);
-        const prev = img.src;
-        img.onload = () => {
-          URL.revokeObjectURL(url);
-          img.classList.remove("loading");
-          spinner.classList.remove("active");
-        };
-        img.src = url;
-        if (prev.startsWith("blob:")) URL.revokeObjectURL(prev);
-      })
-      .catch(e => {
-        if (e.name !== "AbortError") {
-          img.classList.remove("loading");
-          spinner.classList.remove("active");
-        }
-      });
+    const url = "/render?" + qs + "&_t=" + Date.now();
+    const probe = new Image();
+    probe.onload = () => {
+      img.src = probe.src;
+      img.classList.remove("loading");
+      spinner.classList.remove("active");
+    };
+    probe.onerror = () => {
+      img.classList.remove("loading");
+      spinner.classList.remove("active");
+    };
+    probe.src = url;
 
     history.replaceState(null, "", "/create?" + qs);
     document.getElementById("download-btn").href = "/download?" + qs;
