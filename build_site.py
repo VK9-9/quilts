@@ -18,11 +18,11 @@ from jinja2 import Environment, BaseLoader
 
 from sampler import sample_random_params, params_to_render_kwargs, SYMMETRY_NAMES
 from quilt import render_quilt
-from quilt_id import encode, _V1_PALETTES, _V1_SYMMETRY, _V1_GRADIENT
+from quilt_id import encode, _V2_PALETTES, _V2_SYMMETRY
 
 from palettes import PALETTES as _ALL_PALETTES
 _RENDERABLE_PALETTES = {p[0] for p in _ALL_PALETTES}
-_ENCODABLE_PALETTES = set(_V1_PALETTES) & _RENDERABLE_PALETTES
+_ENCODABLE_PALETTES = set(_V2_PALETTES) & _RENDERABLE_PALETTES
 
 
 def nearest_square(n):
@@ -40,11 +40,9 @@ def nearest_square(n):
 
 
 def _encodable(params):
-    """Return True if params can be rendered and encoded as a v1 quilt ID."""
-    gradient = params.get("color_gradient") or "none"
+    """Return True if params can be rendered and encoded as a v2 quilt ID."""
     return (params.get("palette") in _ENCODABLE_PALETTES
-            and params.get("symmetry") in _V1_SYMMETRY
-            and gradient in _V1_GRADIENT)
+            and params.get("symmetry") in _V2_SYMMETRY)
 
 
 # ---------------------------------------------------------------------------

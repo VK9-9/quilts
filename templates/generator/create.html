@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Quilt Generator</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 14px;
+      background: #f5f4f1;
+      color: #2c2c2c;
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* Sidebar */
+    #sidebar {
+      width: 260px;
+      flex-shrink: 0;
+      background: #fff;
+      border-right: 1px solid #e0ddd8;
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    #sidebar h1 {
+      font-size: 16px;
+      font-weight: 600;
+      color: #1a1a1a;
+    }
+    #sidebar h1 a {
+      font-size: 12px;
+      font-weight: 400;
+      color: #888;
+      text-decoration: none;
+      margin-left: 8px;
+    }
+    #sidebar h1 a:hover { color: #555; }
+
+    .section-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #999;
+      margin-bottom: 8px;
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .control {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .control label {
+      font-size: 12px;
+      color: #555;
+      display: flex;
+      justify-content: space-between;
+    }
+    .control label span { color: #999; font-size: 11px; }
+    .control.disabled { opacity: 0.35; pointer-events: none; }
+
+    select, input[type=range], input[type=number] {
+      width: 100%;
+      font-size: 13px;
+    }
+    select {
+      padding: 5px 6px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      background: #fafafa;
+      color: #2c2c2c;
+    }
+    input[type=range] { accent-color: #6b5ea8; cursor: pointer; }
+    input[type=number] {
+      padding: 5px 6px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      background: #fafafa;
+    }
+
+    .seed-row {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+    .seed-row input { flex: 1; }
+    .seed-row button {
+      padding: 5px 8px;
+      font-size: 13px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      background: #fafafa;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .seed-row button:hover { background: #f0eeea; }
+
+    .action-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 9px 12px;
+      font-size: 13px;
+      font-weight: 500;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      text-align: center;
+      text-decoration: none;
+      transition: background 0.15s;
+    }
+    .btn-primary { background: #6b5ea8; color: #fff; }
+    .btn-primary:hover { background: #5a4e8e; }
+    .btn-secondary { background: #eceaf5; color: #6b5ea8; border: 1px solid #d5d0ea; }
+    .btn-secondary:hover { background: #ddd8f0; }
+
+    /* Main preview area */
+    #main {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      overflow: hidden;
+    }
+
+    #quilt-wrap {
+      position: relative;
+      display: inline-block;
+    }
+
+    #quilt-img {
+      display: block;
+      max-width: min(100%, calc(100vh - 48px));
+      max-height: calc(100vh - 48px);
+      border-radius: 4px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.12);
+      transition: opacity 0.1s;
+    }
+    #quilt-img.loading { opacity: 0.4; }
+
+    #spinner {
+      display: none;
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 28px;
+      animation: spin 0.8s linear infinite;
+    }
+    #spinner.active { display: block; }
+    @keyframes spin { to { transform: translate(-50%,-50%) rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+<div id="sidebar">
+  <h1>Quilt Generator <a href="/">← Styles</a></h1>
+
+  <!-- Style -->
+  <div>
+    <div class="section-label">Style</div>
+    <div class="control-group">
+      <div class="control">
+        <label>Symmetry</label>
+        <select id="symmetry">
+          {% for s in symmetry_names %}
+          <option value="{{ s }}" {% if params.symmetry == s %}selected{% endif %}>{{ s }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="control">
+        <label>Palette</label>
+        <select id="palette">
+          {% for p in palette_names %}
+          <option value="{{ p }}" {% if params.palette == p %}selected{% endif %}>{{ p }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="control">
+        <label>Colors</label>
+        <select id="n_colors">
+          <option value="3" {% if params.n_colors == 3 %}selected{% endif %}>3 colors</option>
+          <option value="4" {% if params.n_colors == 4 %}selected{% endif %}>4 colors</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Structure -->
+  <div>
+    <div class="section-label">Structure</div>
+    <div class="control-group">
+      <div class="control chaos-control">
+        <label>Chaos <span id="chaos-val">{{ params.chaos }}</span></label>
+        <input type="range" id="chaos" min="0" max="0.80" step="0.05"
+               value="{{ params.chaos }}">
+      </div>
+      <div class="control">
+        <label>Grid size <span id="rows-val">{{ params.rows }}</span></label>
+        <input type="range" id="rows" min="14" max="20" step="1"
+               value="{{ params.rows }}">
+      </div>
+      <div class="control tiling-control">
+        <label>Tile size <span id="tile_size-val">{{ params.tile_size }}</span></label>
+        <input type="range" id="tile_size" min="2" max="10" step="1"
+               value="{{ params.tile_size }}">
+      </div>
+      <div class="control tiling-control">
+        <label>Tile variation <span id="tile_variation-val">{{ params.tile_variation }}</span></label>
+        <input type="range" id="tile_variation" min="0" max="0.30" step="0.05"
+               value="{{ params.tile_variation }}">
+      </div>
+    </div>
+  </div>
+
+  <!-- Details -->
+  <div>
+    <div class="section-label">Details</div>
+    <div class="control-group">
+      <div class="control">
+        <label>Border</label>
+        <select id="border_style">
+          {% for b in border_styles %}
+          <option value="{{ b }}" {% if params.border_style == b %}selected{% endif %}>{{ b }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="control">
+        <label>Stitch overlay</label>
+        <select id="quilt_stitch">
+          {% for s in stitch_styles %}
+          <option value="{{ s }}"
+            {% if (params.quilt_stitch or 'none') == s %}selected{% endif %}>{{ s }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="control">
+        <label>Wonky <span id="wonky-val">{{ params.wonky }}</span></label>
+        <input type="range" id="wonky" min="0" max="0.06" step="0.01"
+               value="{{ params.wonky }}">
+      </div>
+      <div class="control">
+        <label>Mega blocks <span id="mega_frac-val">{{ params.mega_frac }}</span></label>
+        <input type="range" id="mega_frac" min="0" max="0.25" step="0.05"
+               value="{{ params.mega_frac }}">
+      </div>
+      <div class="control">
+        <label>Plain fill <span id="plain_frac-val">{{ params.plain_frac }}</span></label>
+        <input type="range" id="plain_frac" min="0" max="0.40" step="0.05"
+               value="{{ params.plain_frac }}">
+      </div>
+    </div>
+  </div>
+
+  <!-- Seed -->
+  <div>
+    <div class="section-label">Seed</div>
+    <div class="seed-row">
+      <input type="number" id="seed" min="0" max="2147483647"
+             value="{{ params.seed }}">
+      <button id="randomize">&#x1F3B2;</button>
+    </div>
+  </div>
+
+  <!-- Actions -->
+  <div class="action-buttons">
+    <a id="download-btn" class="btn btn-primary" href="#">Download PNG</a>
+    <button id="share-btn" class="btn btn-secondary">Copy share link</button>
+  </div>
+</div>
+
+<div id="main">
+  <div id="quilt-wrap">
+    <img id="quilt-img" src="" alt="Quilt preview">
+    <div id="spinner">&#x231B;</div>
+  </div>
+</div>
+
+<script>
+  const CONTROLS = [
+    "symmetry","palette","n_colors",
+    "chaos","rows","tile_size","tile_variation",
+    "border_style","quilt_stitch","wonky","mega_frac","plain_frac",
+    "seed",
+  ];
+  const RANGE_DISPLAYS = ["chaos","rows","tile_size","tile_variation","wonky","mega_frac","plain_frac"];
+
+  function getParams() {
+    const p = {};
+    for (const id of CONTROLS) {
+      p[id] = document.getElementById(id).value;
+    }
+    return p;
+  }
+
+  function buildQuery(p) {
+    return new URLSearchParams(p).toString();
+  }
+
+  let debounceTimer = null;
+  const img = document.getElementById("quilt-img");
+  const spinner = document.getElementById("spinner");
+
+  function updateQuilt() {
+    const p = getParams();
+    const qs = buildQuery(p);
+
+    img.classList.add("loading");
+    spinner.classList.add("active");
+
+    const url = "/render?" + qs + "&_t=" + Date.now();
+    const probe = new Image();
+    probe.onload = () => {
+      img.src = probe.src;
+      img.classList.remove("loading");
+      spinner.classList.remove("active");
+    };
+    probe.onerror = () => {
+      img.classList.remove("loading");
+      spinner.classList.remove("active");
+    };
+    probe.src = url;
+
+    history.replaceState(null, "", "/create?" + qs);
+    document.getElementById("download-btn").href = "/download?" + qs;
+  }
+
+  function scheduleUpdate() {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(updateQuilt, 150);
+  }
+
+  // Wire up all controls
+  for (const id of CONTROLS) {
+    document.getElementById(id).addEventListener("input", () => {
+      if (RANGE_DISPLAYS.includes(id)) {
+        document.getElementById(id + "-val").textContent =
+          document.getElementById(id).value;
+      }
+      scheduleUpdate();
+    });
+    document.getElementById(id).addEventListener("change", scheduleUpdate);
+  }
+
+  // Grey out controls that don't apply to the current symmetry
+  function updateSymmetryControls() {
+    const sym = document.getElementById("symmetry").value;
+    for (const el of document.querySelectorAll(".tiling-control")) {
+      el.classList.toggle("disabled", sym !== "none");
+    }
+    for (const el of document.querySelectorAll(".chaos-control")) {
+      el.classList.toggle("disabled", sym !== "partial");
+    }
+  }
+  document.getElementById("symmetry").addEventListener("change", updateSymmetryControls);
+  updateSymmetryControls();
+
+  // Randomize seed
+  document.getElementById("randomize").addEventListener("click", () => {
+    document.getElementById("seed").value =
+      Math.floor(Math.random() * 2147483647);
+    scheduleUpdate();
+  });
+
+  // Share link
+  document.getElementById("share-btn").addEventListener("click", () => {
+    const url = location.href;
+    navigator.clipboard.writeText(url).then(() => {
+      const btn = document.getElementById("share-btn");
+      const orig = btn.textContent;
+      btn.textContent = "Copied!";
+      setTimeout(() => { btn.textContent = orig; }, 1500);
+    });
+  });
+
+  // Initial render
+  updateQuilt();
+</script>
+</body>
+</html>

@@ -303,7 +303,6 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylin
     if seed is None:
         seed = random.randint(0, 2**31)
     rng = random.Random(seed)
-    print(f"Seed: {seed}")
 
     palette_colors = pick_palettes(palette_name, 1, rng)
     if max_colors is not None:
@@ -354,8 +353,8 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylin
         allowed = None
         n_patterns = n_all_patterns
 
-    # bargello bypasses tiling — it's a whole-quilt layout
-    if symmetry == "bargello":
+    # Non-trivial symmetries bypass tiling — they use SYMMETRY_MODES layouts
+    if symmetry != "none":
         tile_size = None
 
     if tile_size is not None:
