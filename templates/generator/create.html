@@ -72,6 +72,7 @@
       justify-content: space-between;
     }
     .control label span { color: #999; font-size: 11px; }
+    .control.disabled { opacity: 0.35; pointer-events: none; }
 
     select, input[type=range], input[type=number] {
       width: 100%;
@@ -220,12 +221,12 @@
         <input type="range" id="rows" min="14" max="20" step="1"
                value="{{ params.rows }}">
       </div>
-      <div class="control">
+      <div class="control tiling-control">
         <label>Tile size <span id="tile_size-val">{{ params.tile_size }}</span></label>
         <input type="range" id="tile_size" min="2" max="10" step="1"
                value="{{ params.tile_size }}">
       </div>
-      <div class="control">
+      <div class="control tiling-control">
         <label>Tile variation <span id="tile_variation-val">{{ params.tile_variation }}</span></label>
         <input type="range" id="tile_variation" min="0" max="0.30" step="0.05"
                value="{{ params.tile_variation }}">
@@ -361,6 +362,16 @@
     });
     document.getElementById(id).addEventListener("change", scheduleUpdate);
   }
+
+  // Grey out tiling controls when symmetry != "none"
+  function updateTilingControls() {
+    const off = document.getElementById("symmetry").value !== "none";
+    for (const el of document.querySelectorAll(".tiling-control")) {
+      el.classList.toggle("disabled", off);
+    }
+  }
+  document.getElementById("symmetry").addEventListener("change", updateTilingControls);
+  updateTilingControls();
 
   // Randomize seed
   document.getElementById("randomize").addEventListener("click", () => {
