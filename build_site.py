@@ -636,7 +636,7 @@ def main():  # pylint: disable=too-many-locals,too-many-statements,too-many-bran
 
     total = sum(len(f["variations"]) for f in families)
     print(f"\nDone. {len(families)} families, {total} quilts → {out}/")
-    print("Push to GitHub to deploy: git add docs/ && git commit -m 'rebuild gallery' && git push")
+    print("Deploy: ./deploy.sh")
 
 
 if __name__ == "__main__":
