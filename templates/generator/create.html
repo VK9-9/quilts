@@ -318,15 +318,14 @@
   }
 
   let debounceTimer = null;
-  let currentSrc = null;
+  let requestId = 0;
 
   function updateQuilt() {
     const p = getParams();
     const qs = buildQuery(p);
     const src = "/render?" + qs;
-    if (src === currentSrc) return;
-    currentSrc = src;
 
+    const thisRequest = ++requestId;
     const img = document.getElementById("quilt-img");
     const spinner = document.getElementById("spinner");
 
@@ -335,11 +334,13 @@
 
     const fresh = new Image();
     fresh.onload = () => {
+      if (thisRequest !== requestId) return;  // stale — discard
       img.src = fresh.src;
       img.classList.remove("loading");
       spinner.classList.remove("active");
     };
     fresh.onerror = () => {
+      if (thisRequest !== requestId) return;
       img.classList.remove("loading");
       spinner.classList.remove("active");
     };
