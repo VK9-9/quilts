@@ -13,6 +13,7 @@ _BLOCK_SIZE = 25  # ~400px for a 16-row quilt
 
 
 def main():
+    """Render all preset family thumbnails to static/generator/families/."""
     _OUT.mkdir(parents=True, exist_ok=True)
     for key, preset in PRESETS.items():
         out_path = _OUT / f"{key}.png"

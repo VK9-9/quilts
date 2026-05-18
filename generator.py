@@ -6,15 +6,13 @@ Routes:
     GET /render         Render quilt PNG from query params
     GET /download       Same as /render but as file download
 """
-import io
 import os
-import random
 import sys
 
 sys.path.insert(0, os.path.dirname(__file__))
 
 # pylint: disable=wrong-import-position
-from flask import Flask, render_template, request, Response, redirect, url_for
+from flask import Flask, render_template, request, Response
 from quilt import render_quilt
 from sampler import params_to_render_kwargs
 from palettes import PALETTES as _ALL_PALETTES
