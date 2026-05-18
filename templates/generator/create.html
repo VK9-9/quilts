@@ -211,7 +211,7 @@
   <div>
     <div class="section-label">Structure</div>
     <div class="control-group">
-      <div class="control">
+      <div class="control chaos-control">
         <label>Chaos <span id="chaos-val">{{ params.chaos }}</span></label>
         <input type="range" id="chaos" min="0" max="0.80" step="0.05"
                value="{{ params.chaos }}">
@@ -363,15 +363,18 @@
     document.getElementById(id).addEventListener("change", scheduleUpdate);
   }
 
-  // Grey out tiling controls when symmetry != "none"
-  function updateTilingControls() {
-    const off = document.getElementById("symmetry").value !== "none";
+  // Grey out controls that don't apply to the current symmetry
+  function updateSymmetryControls() {
+    const sym = document.getElementById("symmetry").value;
     for (const el of document.querySelectorAll(".tiling-control")) {
-      el.classList.toggle("disabled", off);
+      el.classList.toggle("disabled", sym !== "none");
+    }
+    for (const el of document.querySelectorAll(".chaos-control")) {
+      el.classList.toggle("disabled", sym !== "partial");
     }
   }
-  document.getElementById("symmetry").addEventListener("change", updateTilingControls);
-  updateTilingControls();
+  document.getElementById("symmetry").addEventListener("change", updateSymmetryControls);
+  updateSymmetryControls();
 
   // Randomize seed
   document.getElementById("randomize").addEventListener("click", () => {
