@@ -1,0 +1,6 @@
+flask
+gunicorn
+pycairo
+numpy
+noise
+scikit-learn

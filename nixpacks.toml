@@ -1,2 +1,5 @@
 [phases.setup]
 aptPkgs = ["libcairo2-dev", "pkg-config", "libgirepository1.0-dev", "python3-dev"]
+
+[phases.install]
+cmds = ["pip install -r requirements-railway.txt"]
