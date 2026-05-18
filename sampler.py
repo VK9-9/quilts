@@ -26,7 +26,7 @@ from quilt import BORDER_STYLES, QUILT_STITCH_STYLES, render_quilt
 
 _DROP_PALETTES = {"storm", "midnight moss", "terracotta", "slate and rust", "coral reef",
                    "autumn harvest", "aurora", "deep sea", "amber glow", "sage garden",
-                   "plum wine", "copper canyon", "moonstone"}
+                   "plum wine", "copper canyon", "moonstone", "coastal fog"}
 # Proven palettes: shown at fixed probability instead of normal rotation
 _PROVEN_PALETTES = {"lavender fields": 0.50}
 PALETTE_NAMES = [p[0] for p in PALETTES if p[0] not in _DROP_PALETTES]
