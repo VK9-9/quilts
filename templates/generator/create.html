@@ -318,44 +318,33 @@
   }
 
   let debounceTimer = null;
-  let requestId = 0;
+  const img = document.getElementById("quilt-img");
+  const spinner = document.getElementById("spinner");
+
+  img.addEventListener("load", () => {
+    img.classList.remove("loading");
+    spinner.classList.remove("active");
+  });
+  img.addEventListener("error", () => {
+    img.classList.remove("loading");
+    spinner.classList.remove("active");
+  });
 
   function updateQuilt() {
     const p = getParams();
     const qs = buildQuery(p);
-    const src = "/render?" + qs;
-
-    const thisRequest = ++requestId;
-    const img = document.getElementById("quilt-img");
-    const spinner = document.getElementById("spinner");
 
     img.classList.add("loading");
     spinner.classList.add("active");
+    img.src = "/render?" + qs + "&_t=" + Date.now();
 
-    const fresh = new Image();
-    fresh.onload = () => {
-      if (thisRequest !== requestId) return;  // stale — discard
-      img.src = fresh.src;
-      img.classList.remove("loading");
-      spinner.classList.remove("active");
-    };
-    fresh.onerror = () => {
-      if (thisRequest !== requestId) return;
-      img.classList.remove("loading");
-      spinner.classList.remove("active");
-    };
-    fresh.src = src;
-
-    // Update URL without reload
     history.replaceState(null, "", "/create?" + qs);
-
-    // Update download link
     document.getElementById("download-btn").href = "/download?" + qs;
   }
 
   function scheduleUpdate() {
     clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(updateQuilt, 120);
+    debounceTimer = setTimeout(updateQuilt, 150);
   }
 
   // Wire up all controls
