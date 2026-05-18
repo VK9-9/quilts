@@ -5,19 +5,24 @@ Encodes all parameters needed to reproduce a quilt into a short base58 string.
 The version field (top 4 bits) selects the decode schema, so new params can be
 added in future versions without breaking existing IDs.
 
-Version 1: 76 bits → 13 base58 characters
+Version 1: 76 bits → 13 base58 characters (FROZEN)
     version(4) seed(31) palette(4) symmetry(3) chaos(7) rows(3)
     n_patterns(1) n_colors(1) tile_size(4) tile_variation(5)
     border_style(2) sash_width(1) cornerstones(1) color_gradient(1)
     mega_frac(4) plain_frac(4)
 
-To add parameters in a future round: define _V2_SCHEMA with the new fields,
-add a version==2 branch in decode(), and update encode() to write version 2.
-Old version-1 IDs will still decode correctly via the version==1 branch.
+Version 2: 80 bits → 14 base58 characters (current)
+    version(4) seed(31) palette(5) symmetry(4) chaos(7) rows(3)
+    n_patterns(1) n_colors(1) tile_size(4) tile_variation(5)
+    border_style(2) mega_frac(4) plain_frac(4)
+    quilt_stitch(3) wonky(2)
+    Drops: sash_width, cornerstones, color_gradient (all hardcoded off)
+    Adds: all symmetry modes (bargello, flower, emergent), all current palettes,
+          quilt_stitch, wonky
 
 Usage:
     from quilt_id import encode, decode
-    qid = encode(params)          # e.g. "3xKm7pRt2nWqA"
+    qid = encode(params)          # e.g. "3xKm7pRt2nWqA4"
     params = decode(qid)
 """
 
@@ -90,6 +95,54 @@ _V1_TOTAL_BITS = sum(bits for _, bits in _V1_SCHEMA)  # 76
 _V1_LEN = 13   # ceil(76 / log2(58)) = 13 chars
 
 
+# ---------------------------------------------------------------------------
+# Version 2 schema — current. Adds bargello/flower/emergent symmetry, all
+# current palettes, quilt_stitch, wonky. Drops sash_width/cornerstones/
+# color_gradient (all hardcoded off in sampler).
+# ---------------------------------------------------------------------------
+
+_V2_PALETTES = [
+    "ocean breeze", "wildflower", "indigo dye", "northern lights",
+    "cherry blossom", "tide pool", "lavender fields", "winter frost",
+    "twilight", "sea glass", "wisteria", "honey oak",
+    "thistle", "river stone", "bluebell", "frosted berry", "dove grey",
+]  # 5 bits → max 31 entries
+
+_V2_SYMMETRY = [
+    "none", "mirror", "rotational", "stripe", "partial",
+    "flower", "emergent", "bargello",
+]  # 4 bits → max 15 entries
+
+_V2_BORDER = ["none", "solid", "checkerboard", "piano_keys"]  # 2 bits (same as V1)
+
+# 0 = no stitch; 1-4 = style index+1
+_V2_STITCH = ["grid", "diagonal", "sashiko_wave", "sashiko_asanoha"]  # 3 bits → max 7 styles
+
+# wonky: 0=off, 1=0.02, 2=0.04, 3=0.06
+_V2_WONKY = [0.0, 0.02, 0.04, 0.06]  # 2 bits
+
+_V2_SCHEMA = [
+    ("version",        4),
+    ("seed",          31),
+    ("palette",        5),
+    ("symmetry",       4),
+    ("chaos",          7),  # 0–80 representing 0.00–0.80 in steps of 0.01
+    ("rows",           3),  # offset 14: stored as rows-14, range 0–7
+    ("n_patterns",     1),  # offset 1: stored as n_patterns-1
+    ("n_colors",       1),  # offset 3: stored as n_colors-3
+    ("tile_size",      4),  # 0–10
+    ("tile_variation", 5),  # 0–30 representing 0.00–0.30 in steps of 0.01
+    ("border_style",   2),
+    ("mega_frac",      4),  # 0=off, 1–15 → 0.10–0.24 in steps of 0.01
+    ("plain_frac",     4),  # 0=off, 1–15 → 0.10–0.38 in steps of 0.02
+    ("quilt_stitch",   3),  # 0=none, 1-4=style
+    ("wonky",          2),  # 0=off, 1=0.02, 2=0.04, 3=0.06
+]
+
+_V2_TOTAL_BITS = sum(bits for _, bits in _V2_SCHEMA)  # 80
+_V2_LEN = 14   # ceil(80 / log2(58)) = 14 chars
+
+
 def _pack(schema_values):
     """Pack list of (value, nbits) tuples into a single int, MSB first."""
     n = 0
@@ -121,92 +174,131 @@ def _dequantize(idx, lo, step):
     return round(lo + (idx - 1) * step, 4)
 
 
-def encode(params):
-    """Encode a params dict to a 13-character quilt ID string.
+def _encode_wonky(val):
+    """Quantize wonky float to 2-bit index (nearest of 0.0/0.02/0.04/0.06)."""
+    if val == 0.0:
+        return 0
+    return min(3, max(1, round(val / 0.02)))
 
-    >>> p = {'seed': 12345, 'palette': 'ocean breeze', 'symmetry': 'partial',
+
+def encode(params):
+    """Encode a params dict to a 14-character quilt ID string (version 2).
+
+    >>> p = {'seed': 12345, 'palette': 'ocean breeze', 'symmetry': 'bargello',
     ...      'chaos': 0.3, 'rows': 16, 'cols': 16, 'n_patterns': 2,
     ...      'n_colors': 4, 'tile_size': 0, 'tile_variation': 0.05,
-    ...      'border_style': 'none', 'sash_width': 0, 'cornerstones': False,
-    ...      'color_gradient': 'none', 'mega_frac': 0.0, 'plain_frac': 0.0}
+    ...      'border_style': 'none', 'mega_frac': 0.0, 'plain_frac': 0.0,
+    ...      'quilt_stitch': 'sashiko_wave', 'wonky': 0.04}
     >>> qid = encode(p)
     >>> len(qid)
-    13
+    14
     >>> decode(qid)['seed']
     12345
-    >>> decode(qid)['palette']
-    'ocean breeze'
+    >>> decode(qid)['symmetry']
+    'bargello'
+    >>> decode(qid)['quilt_stitch']
+    'sashiko_wave'
+    >>> abs(decode(qid)['wonky'] - 0.04) < 0.01
+    True
     """
-    border   = params.get("border_style",   "none") or "none"
-    gradient = params.get("color_gradient", "none") or "none"
+    border = params.get("border_style", "none") or "none"
+    stitch = params.get("quilt_stitch") or None
+    stitch_idx = (_V2_STITCH.index(stitch) + 1) if stitch in _V2_STITCH else 0
 
     fields = [
-        (1,                                                            4),  # version
+        (2,                                                            4),  # version
         (params["seed"] & ((1 << 31) - 1),                           31),
-        (_V1_PALETTES.index(params["palette"]),                        4),
-        (_V1_SYMMETRY.index(params["symmetry"]),                       3),
+        (_V2_PALETTES.index(params["palette"]),                        5),
+        (_V2_SYMMETRY.index(params["symmetry"]),                       4),
         (round(params["chaos"] * 100),                                 7),
         (params["rows"] - 14,                                          3),
         (params["n_patterns"] - 1,                                     1),
         (params["n_colors"] - 3,                                       1),
         (params.get("tile_size", 0),                                   4),
         (round(params.get("tile_variation", 0.0) * 100),               5),
-        (_V1_BORDER.index(border),                                     2),
-        (1 if params.get("sash_width", 0) > 0 else 0,                 1),
-        (1 if params.get("cornerstones", False) else 0,                1),
-        (_V1_GRADIENT.index(gradient),                                 1),
+        (_V2_BORDER.index(border),                                     2),
         (_quantize(params.get("mega_frac",  0.0), 0.10, 0.01, 15),    4),
         (_quantize(params.get("plain_frac", 0.0), 0.10, 0.02, 15),    4),
+        (stitch_idx,                                                   3),
+        (_encode_wonky(params.get("wonky", 0.0)),                      2),
     ]
-    return _b58enc(_pack(fields), _V1_LEN)
+    return _b58enc(_pack(fields), _V2_LEN)
 
 
 def decode(qid):
     """Decode a quilt ID string back to a params dict.
 
-    >>> p = {'seed': 99999, 'palette': 'farmhouse', 'symmetry': 'mirror',
-    ...      'chaos': 0.55, 'rows': 14, 'cols': 14, 'n_patterns': 1,
-    ...      'n_colors': 3, 'tile_size': 5, 'tile_variation': 0.1,
-    ...      'border_style': 'checkerboard', 'sash_width': 5,
-    ...      'cornerstones': True, 'color_gradient': 'diagonal',
-    ...      'mega_frac': 0.15, 'plain_frac': 0.2}
+    V1 (13 chars) and V2 (14 chars) are both supported.
+
+    >>> p = {'seed': 99999, 'palette': 'ocean breeze', 'symmetry': 'bargello',
+    ...      'chaos': 0.55, 'rows': 16, 'cols': 16, 'n_patterns': 2,
+    ...      'n_colors': 4, 'tile_size': 5, 'tile_variation': 0.1,
+    ...      'border_style': 'checkerboard', 'mega_frac': 0.15, 'plain_frac': 0.2,
+    ...      'quilt_stitch': 'grid', 'wonky': 0.0}
     >>> decoded = decode(encode(p))
     >>> decoded['palette']
-    'farmhouse'
-    >>> decoded['sash_width']
-    5
-    >>> decoded['cornerstones']
-    True
+    'ocean breeze'
+    >>> decoded['symmetry']
+    'bargello'
+    >>> decoded['quilt_stitch']
+    'grid'
     >>> abs(decoded['chaos'] - 0.55) < 0.01
     True
     >>> abs(decoded['mega_frac'] - 0.15) < 0.02
     True
     """
     n = _b58dec(qid)
-    version = n >> (_V1_TOTAL_BITS - 4)
 
-    if version == 1:
-        raw = _unpack(n, _V1_SCHEMA)
-        return {
-            "seed":           raw["seed"],
-            "palette":        _V1_PALETTES[raw["palette"]],
-            "symmetry":       _V1_SYMMETRY[raw["symmetry"]],
-            "chaos":          round(raw["chaos"] / 100, 2),
-            "rows":           raw["rows"] + 14,
-            "cols":           raw["rows"] + 14,
-            "n_patterns":     raw["n_patterns"] + 1,
-            "n_colors":       raw["n_colors"] + 3,
-            "tile_size":      raw["tile_size"],
-            "tile_variation": round(raw["tile_variation"] / 100, 2),
-            "border_style":   _V1_BORDER[raw["border_style"]],
-            "sash_width":     5 if raw["sash_width"] else 0,
-            "cornerstones":   bool(raw["cornerstones"]),
-            "color_gradient": _V1_GRADIENT[raw["color_gradient"]],
-            "mega_frac":      _dequantize(raw["mega_frac"],  0.10, 0.01),
-            "plain_frac":     _dequantize(raw["plain_frac"], 0.10, 0.02),
-        }
+    if len(qid) == _V1_LEN:
+        version = n >> (_V1_TOTAL_BITS - 4)
+        if version == 1:
+            raw = _unpack(n, _V1_SCHEMA)
+            return {
+                "seed":           raw["seed"],
+                "palette":        _V1_PALETTES[raw["palette"]],
+                "symmetry":       _V1_SYMMETRY[raw["symmetry"]],
+                "chaos":          round(raw["chaos"] / 100, 2),
+                "rows":           raw["rows"] + 14,
+                "cols":           raw["rows"] + 14,
+                "n_patterns":     raw["n_patterns"] + 1,
+                "n_colors":       raw["n_colors"] + 3,
+                "tile_size":      raw["tile_size"],
+                "tile_variation": round(raw["tile_variation"] / 100, 2),
+                "border_style":   _V1_BORDER[raw["border_style"]],
+                "sash_width":     5 if raw["sash_width"] else 0,
+                "cornerstones":   bool(raw["cornerstones"]),
+                "color_gradient": _V1_GRADIENT[raw["color_gradient"]],
+                "mega_frac":      _dequantize(raw["mega_frac"],  0.10, 0.01),
+                "plain_frac":     _dequantize(raw["plain_frac"], 0.10, 0.02),
+            }
 
-    raise ValueError(f"Unknown quilt ID version: {version}")
+    if len(qid) == _V2_LEN:
+        version = n >> (_V2_TOTAL_BITS - 4)
+        if version == 2:
+            raw = _unpack(n, _V2_SCHEMA)
+            stitch_idx = raw["quilt_stitch"]
+            return {
+                "seed":           raw["seed"],
+                "palette":        _V2_PALETTES[raw["palette"]],
+                "symmetry":       _V2_SYMMETRY[raw["symmetry"]],
+                "chaos":          round(raw["chaos"] / 100, 2),
+                "rows":           raw["rows"] + 14,
+                "cols":           raw["rows"] + 14,
+                "n_patterns":     raw["n_patterns"] + 1,
+                "n_colors":       raw["n_colors"] + 3,
+                "tile_size":      raw["tile_size"],
+                "tile_variation": round(raw["tile_variation"] / 100, 2),
+                "border_style":   _V2_BORDER[raw["border_style"]],
+                "sash_width":     0,
+                "cornerstones":   False,
+                "color_gradient": "none",
+                "mega_frac":      _dequantize(raw["mega_frac"],  0.10, 0.01),
+                "plain_frac":     _dequantize(raw["plain_frac"], 0.10, 0.02),
+                "quilt_stitch":   _V2_STITCH[stitch_idx - 1] if stitch_idx else None,
+                "wonky":          _V2_WONKY[raw["wonky"]],
+            }
+
+    raise ValueError(f"Unknown quilt ID version (len={len(qid)})")
 
 
 def _decode_cmd(args):
