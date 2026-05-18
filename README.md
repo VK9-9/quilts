@@ -11,18 +11,34 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-## Rating webapp
+## Generator webapp
+
+```bash
+python generator.py
+```
+
+Opens at `http://localhost:5001`. Pick a preset family or tweak params
+(symmetry, palette, chaos, etc.) and see the quilt update live. Download
+high-res PNGs.
+
+Deploy to Railway:
+
+```bash
+./deploy-railway.sh
+```
+
+## Rating webapp (private)
 
 ```bash
 python app.py
 ```
 
-Opens a Flask server at `http://localhost:5000`. Rate quilts like/dislike;
+Opens at `http://localhost:5000`. Rate quilts like/dislike;
 the model learns your preferences and biases future suggestions.
 
 ## Quilt ID tool
 
-Each quilt is fully described by a 13-character base58 ID. The ID is
+Each quilt is fully described by a 14-character base58 ID (V2 encoding). The ID is
 self-contained — no database needed to reproduce the image.
 
 ```bash
@@ -55,7 +71,7 @@ Add `--clip` to use CLIP embeddings for picking better family representatives
 **Deploy** — syncs `docs/` to the `gh-pages` branch and pushes to GitHub Pages:
 
 ```bash
-./deploy.sh
+./deploy-site.sh
 ```
 
 The site is served from the `gh-pages` branch (configured in GitHub repo
@@ -73,7 +89,7 @@ python build_site.py --dump-names
 
 # Edit family_names.json with better names, then rebuild + deploy
 python build_site.py --ratings data/ratings.json --out docs/ --families 18 --variations 18
-./deploy.sh
+./deploy-site.sh
 ```
 
 `family_names.json` is read automatically on each build if present. Slug
@@ -89,7 +105,8 @@ keys are stable as long as `--families` and `--seed` stay the same.
 | `palettes.py` | Color palettes |
 | `blocks.py` | Block pattern definitions |
 | `layout.py` | Grid layout engine (symmetry modes) |
-| `app.py` | Rating webapp |
+| `generator.py` | Public generator webapp (Railway) |
+| `app.py` | Private rating webapp |
 | `build_site.py` | Static site generator |
 | `analyze.py` | Analysis script |
 | `ANALYSIS.md` | Round-by-round findings |
