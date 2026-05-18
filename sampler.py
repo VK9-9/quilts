@@ -33,7 +33,9 @@ PALETTE_NAMES = [p[0] for p in PALETTES if p[0] not in _DROP_PALETTES]
 _EXPLORE_PALETTES = [p for p in PALETTE_NAMES if p not in _PROVEN_PALETTES]
 _DROP_SYMMETRY = {"flower", "emergent", "mirror", "none"}
 SYMMETRY_NAMES = [s for s in SYMMETRY_MODES if s not in _DROP_SYMMETRY]
-_BASE_SYMMETRIES = [s for s in SYMMETRY_NAMES if s != "bargello"]
+# Proven symmetries: shown at fixed probability during exploration only
+_PROVEN_SYMMETRIES = {"bargello": 0.50}
+_BASE_SYMMETRIES = [s for s in SYMMETRY_NAMES if s not in _PROVEN_SYMMETRIES]
 
 # parameter ranges
 PARAM_SPACE = {
@@ -97,7 +99,10 @@ def sample_random_params(rng=None, explore_only=False):
     return {
         "rows": rows,
         "cols": cols,
-        "symmetry": "bargello" if rng.random() < 0.10 else rng.choice(_BASE_SYMMETRIES),
+        "symmetry": (
+            next((s for s, p in _PROVEN_SYMMETRIES.items() if rng.random() < p), None)
+            or rng.choice(_BASE_SYMMETRIES)
+        ) if not explore_only else rng.choice(_BASE_SYMMETRIES),
         "chaos": round(rng.uniform(*PARAM_SPACE["chaos"]), 2),
         "palette": _pick_palette(rng, explore_only=explore_only),
         "n_patterns": rng.randint(*PARAM_SPACE["n_patterns"]),
