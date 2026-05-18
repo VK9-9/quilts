@@ -1,0 +1,256 @@
+"""Public-facing quilt generator webapp.
+
+Routes:
+    GET /               Families landing page (preset style cards)
+    GET /create         Param editor with live preview
+    GET /render         Render quilt PNG from query params
+    GET /download       Same as /render but as file download
+"""
+import io
+import os
+import random
+import sys
+
+sys.path.insert(0, os.path.dirname(__file__))
+
+# pylint: disable=wrong-import-position
+from flask import Flask, render_template, request, Response, redirect, url_for
+from quilt import render_quilt
+from sampler import params_to_render_kwargs
+from palettes import PALETTES as _ALL_PALETTES
+from quilt_id import encode, decode, _V2_PALETTES, _V2_SYMMETRY, _V2_STITCH
+# pylint: enable=wrong-import-position
+
+app = Flask(__name__)
+
+PALETTE_NAMES = _V2_PALETTES
+SYMMETRY_NAMES = _V2_SYMMETRY
+BORDER_STYLES = ["none", "solid", "checkerboard", "piano_keys"]
+STITCH_STYLES = ["none"] + _V2_STITCH
+
+# ---------------------------------------------------------------------------
+# Preset families — shown as cards on the landing page.
+# Seeds are fixed so thumbnails are stable/reproducible.
+# ---------------------------------------------------------------------------
+PRESETS = {
+    "bargello-calm": {
+        "name": "Bargello — Calm",
+        "description": "Gentle undulating waves in soft lavender",
+        "params": {
+            "palette": "lavender fields", "symmetry": "bargello",
+            "chaos": 0.15, "rows": 16, "cols": 16, "n_patterns": 2,
+            "n_colors": 4, "tile_size": 6, "tile_variation": 0.1,
+            "border_style": "none", "sash_width": 0, "cornerstones": False,
+            "color_gradient": "none", "mega_frac": 0.0, "plain_frac": 0.0,
+            "quilt_stitch": "grid", "wonky": 0.0, "seed": 1001,
+        },
+    },
+    "bargello-bold": {
+        "name": "Bargello — Bold",
+        "description": "High-contrast waves with deep indigo tones",
+        "params": {
+            "palette": "indigo dye", "symmetry": "bargello",
+            "chaos": 0.55, "rows": 18, "cols": 18, "n_patterns": 2,
+            "n_colors": 4, "tile_size": 5, "tile_variation": 0.15,
+            "border_style": "solid", "sash_width": 0, "cornerstones": False,
+            "color_gradient": "none", "mega_frac": 0.0, "plain_frac": 0.0,
+            "quilt_stitch": "diagonal", "wonky": 0.0, "seed": 1002,
+        },
+    },
+    "mirror-geometric": {
+        "name": "Mirror — Geometric",
+        "description": "Clean four-fold reflection with ocean tones",
+        "params": {
+            "palette": "ocean breeze", "symmetry": "mirror",
+            "chaos": 0.30, "rows": 16, "cols": 16, "n_patterns": 2,
+            "n_colors": 4, "tile_size": 7, "tile_variation": 0.1,
+            "border_style": "none", "sash_width": 0, "cornerstones": False,
+            "color_gradient": "none", "mega_frac": 0.0, "plain_frac": 0.0,
+            "quilt_stitch": "sashiko_wave", "wonky": 0.0, "seed": 1003,
+        },
+    },
+    "rotational-lively": {
+        "name": "Rotational — Lively",
+        "description": "Spinning energy with wildflower colours",
+        "params": {
+            "palette": "wildflower", "symmetry": "rotational",
+            "chaos": 0.55, "rows": 16, "cols": 16, "n_patterns": 2,
+            "n_colors": 4, "tile_size": 6, "tile_variation": 0.2,
+            "border_style": "none", "sash_width": 0, "cornerstones": False,
+            "color_gradient": "none", "mega_frac": 0.0, "plain_frac": 0.0,
+            "quilt_stitch": "grid", "wonky": 0.0, "seed": 1004,
+        },
+    },
+    "stripe-serene": {
+        "name": "Stripe — Serene",
+        "description": "Calm banded layout in northern lights palette",
+        "params": {
+            "palette": "northern lights", "symmetry": "stripe",
+            "chaos": 0.20, "rows": 16, "cols": 16, "n_patterns": 2,
+            "n_colors": 4, "tile_size": 8, "tile_variation": 0.05,
+            "border_style": "none", "sash_width": 0, "cornerstones": False,
+            "color_gradient": "none", "mega_frac": 0.0, "plain_frac": 0.0,
+            "quilt_stitch": "diagonal", "wonky": 0.0, "seed": 1005,
+        },
+    },
+    "flower-medallion": {
+        "name": "Flower — Medallion",
+        "description": "Centred bloom radiating outward in cherry blossom",
+        "params": {
+            "palette": "cherry blossom", "symmetry": "flower",
+            "chaos": 0.40, "rows": 16, "cols": 16, "n_patterns": 2,
+            "n_colors": 4, "tile_size": 6, "tile_variation": 0.1,
+            "border_style": "none", "sash_width": 0, "cornerstones": False,
+            "color_gradient": "none", "mega_frac": 0.0, "plain_frac": 0.0,
+            "quilt_stitch": "sashiko_asanoha", "wonky": 0.0, "seed": 1006,
+        },
+    },
+    "emergent-wild": {
+        "name": "Emergent — Wild",
+        "description": "Macro patterns emerge from coordinated block rotations",
+        "params": {
+            "palette": "wisteria", "symmetry": "emergent",
+            "chaos": 0.70, "rows": 18, "cols": 18, "n_patterns": 2,
+            "n_colors": 4, "tile_size": 5, "tile_variation": 0.2,
+            "border_style": "none", "sash_width": 0, "cornerstones": False,
+            "color_gradient": "none", "mega_frac": 0.0, "plain_frac": 0.0,
+            "quilt_stitch": "grid", "wonky": 0.0, "seed": 1007,
+        },
+    },
+    "improv-wonky": {
+        "name": "Improv — Wonky",
+        "description": "Modern improv quilting with jittered vertices",
+        "params": {
+            "palette": "thistle", "symmetry": "none",
+            "chaos": 0.60, "rows": 16, "cols": 16, "n_patterns": 2,
+            "n_colors": 4, "tile_size": 6, "tile_variation": 0.15,
+            "border_style": "none", "sash_width": 0, "cornerstones": False,
+            "color_gradient": "none", "mega_frac": 0.0, "plain_frac": 0.0,
+            "quilt_stitch": "diagonal", "wonky": 0.05, "seed": 1008,
+        },
+    },
+}
+
+_RENDER_SIZE = 600   # px for preview renders
+_DOWNLOAD_SIZE = 1200  # px for downloads
+
+
+def _params_from_request(defaults=None):
+    """Parse quilt params from query string, falling back to defaults."""
+    a = request.args
+    base = defaults or {}
+
+    def _get(key, cast, fallback):
+        v = a.get(key)
+        if v is not None:
+            try:
+                return cast(v)
+            except (ValueError, TypeError):
+                pass
+        return base.get(key, fallback)
+
+    stitch = a.get("quilt_stitch", base.get("quilt_stitch", "none"))
+    if stitch == "none":
+        stitch = None
+
+    rows = _get("rows", int, 16)
+    return {
+        "palette":        _get("palette",        str,   "lavender fields"),
+        "symmetry":       _get("symmetry",        str,   "bargello"),
+        "chaos":          _get("chaos",           float, 0.3),
+        "rows":           rows,
+        "cols":           rows,
+        "n_patterns":     2,
+        "n_colors":       _get("n_colors",        int,   4),
+        "tile_size":      _get("tile_size",        int,   6),
+        "tile_variation": _get("tile_variation",   float, 0.1),
+        "border_style":   _get("border_style",     str,   "none"),
+        "sash_width":     0,
+        "cornerstones":   False,
+        "color_gradient": "none",
+        "mega_frac":      _get("mega_frac",        float, 0.0),
+        "plain_frac":     _get("plain_frac",       float, 0.0),
+        "quilt_stitch":   stitch,
+        "wonky":          _get("wonky",            float, 0.0),
+        "seed":           _get("seed",             int,   42),
+    }
+
+
+def _render_png(params, size):
+    """Render params to PNG bytes at the given pixel size."""
+    kwargs = params_to_render_kwargs(params)
+    kwargs["size"] = size
+    return render_quilt(**kwargs)
+
+
+@app.route("/")
+def index():
+    """Families landing page."""
+    return render_template("generator/index.html", presets=PRESETS)
+
+
+@app.route("/create")
+def create():
+    """Param editor page."""
+    # Load from quilt ID if provided
+    qid = request.args.get("id")
+    if qid:
+        try:
+            params = decode(qid)
+        except (ValueError, KeyError, IndexError):
+            params = None
+        if params:
+            return render_template(
+                "generator/create.html",
+                params=params,
+                palette_names=PALETTE_NAMES,
+                symmetry_names=SYMMETRY_NAMES,
+                border_styles=BORDER_STYLES,
+                stitch_styles=STITCH_STYLES,
+            )
+
+    # Load from preset
+    preset_key = request.args.get("preset")
+    if preset_key and preset_key in PRESETS:
+        params = dict(PRESETS[preset_key]["params"])
+    else:
+        params = _params_from_request()
+
+    return render_template(
+        "generator/create.html",
+        params=params,
+        palette_names=PALETTE_NAMES,
+        symmetry_names=SYMMETRY_NAMES,
+        border_styles=BORDER_STYLES,
+        stitch_styles=STITCH_STYLES,
+    )
+
+
+@app.route("/render")
+def render():
+    """Render quilt PNG from query params."""
+    params = _params_from_request()
+    png_bytes = _render_png(params, _RENDER_SIZE)
+    return Response(png_bytes, mimetype="image/png",
+                    headers={"Cache-Control": "no-store"})
+
+
+@app.route("/download")
+def download():
+    """Render high-res quilt PNG as file download."""
+    params = _params_from_request()
+    qid = encode(params)
+    png_bytes = _render_png(params, _DOWNLOAD_SIZE)
+    return Response(
+        png_bytes,
+        mimetype="image/png",
+        headers={
+            "Content-Disposition": f'attachment; filename="quilt-{qid}.png"',
+            "Cache-Control": "no-store",
+        },
+    )
+
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5001))
+    app.run(debug=True, port=port)
