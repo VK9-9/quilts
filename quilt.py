@@ -303,7 +303,6 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylin
     if seed is None:
         seed = random.randint(0, 2**31)
     rng = random.Random(seed)
-    print(f"Seed: {seed}")
 
     palette_colors = pick_palettes(palette_name, 1, rng)
     if max_colors is not None:
