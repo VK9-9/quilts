@@ -134,6 +134,7 @@
     .btn-primary:hover { background: #5a4e8e; }
     .btn-secondary { background: #eceaf5; color: #6b5ea8; border: 1px solid #d5d0ea; }
     .btn-secondary:hover { background: #ddd8f0; }
+    .build-info { font-size: 10px; color: #bbb; text-align: center; margin-top: 12px; }
 
     /* Main preview area */
     #main {
@@ -288,6 +289,8 @@
     <a id="download-btn" class="btn btn-primary" href="#">Download PNG</a>
     <button id="share-btn" class="btn btn-secondary">Copy share link</button>
   </div>
+
+  <div class="build-info">{{ build_commit }} &middot; {{ build_time }}</div>
 </div>
 
 <div id="main">

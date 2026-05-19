@@ -7,6 +7,7 @@ Routes:
     GET /download       Same as /render but as file download
 """
 import os
+import subprocess
 import sys
 
 sys.path.insert(0, os.path.dirname(__file__))
@@ -20,6 +21,22 @@ from quilt_id import encode, decode, _V2_PALETTES, _V2_SYMMETRY, _V2_STITCH
 # pylint: enable=wrong-import-position
 
 app = Flask(__name__)
+
+# Build info — captured once at import time
+try:
+    _COMMIT = subprocess.check_output(
+        ["git", "rev-parse", "--short", "HEAD"],
+        stderr=subprocess.DEVNULL, text=True,
+    ).strip()
+except (OSError, subprocess.SubprocessError):
+    _COMMIT = "unknown"
+_BUILD_TIME = __import__("datetime").datetime.now(
+    __import__("datetime").timezone.utc
+).strftime("%Y-%m-%d %H:%M UTC")
+
+@app.context_processor
+def _inject_build_info():
+    return {"build_commit": _COMMIT, "build_time": _BUILD_TIME}
 
 PALETTE_NAMES = _V2_PALETTES
 SYMMETRY_NAMES = _V2_SYMMETRY
