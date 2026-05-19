@@ -106,6 +106,7 @@ _V2_PALETTES = [
     "cherry blossom", "tide pool", "lavender fields", "winter frost",
     "twilight", "sea glass", "wisteria", "honey oak",
     "thistle", "river stone", "bluebell", "frosted berry", "dove grey",
+    "handloom",
 ]  # 5 bits → max 31 entries
 
 _V2_SYMMETRY = [
