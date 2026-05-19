@@ -19,7 +19,6 @@
    stitch," the remaining param scores are essentially noise — all candidates
    in that neighborhood score similarly. At that point, CLIP should dominate
    the final selection.
-
    Proposal: use the param model only as a coarse filter (accept/reject), then
    let CLIP rank among all accepted candidates. Could implement as a threshold
    on param score rather than top-N ranking.
