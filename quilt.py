@@ -208,7 +208,7 @@ def _draw_border(ctx, width, height, border, quilt_x, quilt_y, quilt_w,  # pylin
             ctx.fill()
 
 
-BORDER_STYLES = ["solid", "checkerboard", "piano_keys"]
+BORDER_STYLES = ["solid", "stripes", "checkerboard", "piano_keys"]
 
 QUILT_STITCH_STYLES = ["grid", "diagonal", "crosshatch",
                        "sashiko_wave", "sashiko_asanoha"]
