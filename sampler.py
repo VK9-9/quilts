@@ -317,7 +317,9 @@ class QuiltExplorer:  # pylint: disable=too-many-instance-attributes
         rng = random.Random()
 
         if self.model is None or rng.random() < explore_prob:
-            return sample_random_params(rng)
+            params = sample_random_params(rng)
+            params["_source"] = "explore"
+            return params
 
         # generate candidates with palette diversity cap
         # explore_only=True excludes proven palettes from exploitation candidates
@@ -337,7 +339,9 @@ class QuiltExplorer:  # pylint: disable=too-many-instance-attributes
         param_probs = self.model.predict_proba(features)[:, 1]
 
         if self.clip_model is None:
-            return candidates[int(np.argmax(param_probs))]
+            pick = candidates[int(np.argmax(param_probs))]
+            pick["_source"] = "exploit_param"
+            return pick
 
         # stage 2: render + embed top N, pick best by CLIP model
         top_indices = np.argsort(param_probs)[-_CLIP_TOP_N:]
@@ -348,7 +352,9 @@ class QuiltExplorer:  # pylint: disable=too-many-instance-attributes
         from clip_embed import embed_images  # pylint: disable=import-outside-toplevel
         embs = embed_images(png_list)
         clip_probs = self.clip_model.predict_proba(embs)[:, 1]
-        return top_candidates[int(np.argmax(clip_probs))]
+        pick = top_candidates[int(np.argmax(clip_probs))]
+        pick["_source"] = "exploit_clip"
+        return pick
 
     def stats(self):
         """Return summary stats about ratings so far."""
