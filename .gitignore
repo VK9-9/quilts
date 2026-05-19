@@ -10,3 +10,4 @@ family/
 quilt/
 .gh-pages-worktree/
 /.agent-shell/
+.coverage
