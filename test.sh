@@ -20,6 +20,9 @@ if [ $VERBOSE -eq 1 ]; then
     echo "=== Doctests ==="
     $PYTHON -m doctest -v quilt_id.py clip_embed.py
     echo ""
+    echo "=== pytest + coverage ==="
+    $PYTHON -m pytest -v
+    echo ""
     echo "=== pylint ==="
     $PYTHON -m pylint *.py
     exit 0
