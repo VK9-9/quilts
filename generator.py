@@ -277,7 +277,10 @@ def create():
 def render():
     """Render quilt PNG from query params."""
     params = _params_from_request()
-    qid = encode(params)
+    try:
+        qid = encode(params)
+    except (ValueError, KeyError):
+        qid = "unknown"
     png_bytes = _render_png(params, _RENDER_BLOCK_SIZE)
     return Response(png_bytes, mimetype="image/png",
                     headers={"Cache-Control": "no-store",
@@ -288,7 +291,10 @@ def render():
 def download():
     """Render high-res quilt PNG as file download."""
     params = _params_from_request()
-    qid = encode(params)
+    try:
+        qid = encode(params)
+    except (ValueError, KeyError):
+        qid = "unknown"
     png_bytes = _render_png(params, _DOWNLOAD_BLOCK_SIZE)
     return Response(
         png_bytes,
