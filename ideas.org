@@ -6,5 +6,4 @@
 ** Asymmetric grid
 *** Vary row heights or column widths — creates a "strippy quilt" feel very different from the current uniform grid.
 * Infra
-** Testing!
 * Bugs
