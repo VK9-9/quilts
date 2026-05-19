@@ -9,7 +9,7 @@ import random
 
 def half_square_triangle(x, y, size, _n_colors):
     """Two triangles split along the diagonal."""
-    direction = random.randint(0, 1)
+    direction = hash((x, y)) % 2
     if direction == 0:
         # top-left to bottom-right diagonal
         return [
@@ -561,7 +561,7 @@ def cherry_blossom(x, y, size, n_colors):  # pylint: disable=too-many-locals,unu
     ))
 
     # generate blossoms at several points along and near the branch
-    rng = random.Random()
+    rng = random.Random(hash((x, y)))
     blossom_centers = [
         (x + s * 0.20, y + s * 0.75),
         (x + s * 0.40, y + s * 0.55),
