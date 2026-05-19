@@ -7,3 +7,30 @@
 *** Vary row heights or column widths — creates a "strippy quilt" feel very different from the current uniform grid.
 * Infra
 * Bugs
+* Test Quality — Future Work
+** Add "params differ → output differs" tests
+   Most test_quilt.py feature tests only check PNG header bytes.
+   Add tests that render with two different values of a parameter and
+   assert the bytes differ. E.g.:
+   - wonky=0 vs wonky=0.05
+   - sash_width=0 vs sash_width=5
+   - border_style=None vs border_style="solid"
+   - quilt_stitch=None vs quilt_stitch="grid"
+   - wash_alpha=0 vs wash_alpha=0.3
+   This catches silent regressions where a parameter is accepted but ignored.
+** Strengthen generator route tests
+   Several tests only check status 200 without verifying behavior:
+   - test_create_with_invalid_preset: verify default params used
+   - test_invalid_int_falls_back: verify default rows value in rendered output
+   - test_stitch_none_string: verify stitch=None in render kwargs
+** Edge case tests
+   - rows=1, cols=1 (minimum grid)
+   - tile_size=1 (smallest tile)
+   - n_colors boundary values (accent_count=0, accent_count=n_colors)
+** Reduce probabilistic test fragility
+   test_layout.py test_all_macro_templates_reachable sweeps 100 seeds
+   hoping to hit all 4 emergent macros. Could hardcode known-good seeds
+   for each macro instead.
+** Expand doctest coverage
+   test.sh only runs doctests for quilt_id.py and clip_embed.py.
+   Could add doctests to blocks.py, layout.py, quilt.py.

@@ -208,7 +208,7 @@ def _draw_border(ctx, width, height, border, quilt_x, quilt_y, quilt_w,  # pylin
             ctx.fill()
 
 
-BORDER_STYLES = ["solid", "checkerboard", "piano_keys"]
+BORDER_STYLES = ["solid", "stripes", "checkerboard", "piano_keys"]
 
 QUILT_STITCH_STYLES = ["grid", "diagonal", "crosshatch",
                        "sashiko_wave", "sashiko_asanoha"]
@@ -289,7 +289,7 @@ def _draw_quilt_stitching(ctx, qx, qy, qw, qh, style, spacing):  # pylint: disab
     ctx.restore()
 
 
-GRADIENT_MODES = ["diagonal"]
+GRADIENT_MODES = ["horizontal", "vertical", "diagonal", "radial"]
 
 
 def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals,too-many-branches,too-many-statements
