@@ -120,6 +120,12 @@ class TestRenderRoute:
         resp = client.get("/render?seed=42&symmetry=bargello&palette=ocean+breeze&rows=4")
         assert resp.headers.get("Cache-Control") == "no-store"
 
+    def test_render_returns_quilt_id(self, client):
+        resp = client.get("/render?seed=42&symmetry=bargello&palette=ocean+breeze&rows=4")
+        qid = resp.headers.get("X-Quilt-Id")
+        assert qid is not None
+        assert len(qid) == 14  # V2 encoding
+
     def test_render_with_params(self, client):
         resp = client.get(
             "/render?seed=42&symmetry=bargello&palette=lavender+fields"

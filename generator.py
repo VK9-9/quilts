@@ -277,9 +277,11 @@ def create():
 def render():
     """Render quilt PNG from query params."""
     params = _params_from_request()
+    qid = encode(params)
     png_bytes = _render_png(params, _RENDER_BLOCK_SIZE)
     return Response(png_bytes, mimetype="image/png",
-                    headers={"Cache-Control": "no-store"})
+                    headers={"Cache-Control": "no-store",
+                             "X-Quilt-Id": qid})
 
 
 @app.route("/download")

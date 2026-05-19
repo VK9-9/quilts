@@ -290,6 +290,15 @@
     <button id="share-btn" class="btn btn-secondary">Copy share link</button>
   </div>
 
+  <div id="quilt-id-box" style="
+    font-size: 11px; color: #777; text-align: center; margin-top: 12px;
+    background: #f5f4f1; border: 1px solid #e0ddd8; border-radius: 4px;
+    padding: 6px 8px; word-break: break-all; display: none;
+  ">
+    <div style="font-size: 10px; color: #999; margin-bottom: 2px;">Share this ID to reconstruct the quilt</div>
+    <span id="quilt-id" style="font-family: monospace; font-size: 13px; color: #6b5ea8; user-select: all;"></span>
+  </div>
+
   <div class="build-info">{{ build_commit }} &middot; {{ build_time }}</div>
 </div>
 
@@ -333,17 +342,21 @@
     spinner.classList.add("active");
 
     const url = "/render?" + qs + "&_t=" + Date.now();
-    const probe = new Image();
-    probe.onload = () => {
-      img.src = probe.src;
+    fetch(url).then(resp => {
+      const qid = resp.headers.get("X-Quilt-Id");
+      if (qid) {
+        document.getElementById("quilt-id").textContent = qid;
+        document.getElementById("quilt-id-box").style.display = "block";
+      }
+      return resp.blob();
+    }).then(blob => {
+      img.src = URL.createObjectURL(blob);
       img.classList.remove("loading");
       spinner.classList.remove("active");
-    };
-    probe.onerror = () => {
+    }).catch(() => {
       img.classList.remove("loading");
       spinner.classList.remove("active");
-    };
-    probe.src = url;
+    });
 
     history.replaceState(null, "", "/create?" + qs);
     document.getElementById("download-btn").href = "/download?" + qs;
