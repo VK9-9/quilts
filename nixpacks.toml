@@ -1,9 +1,11 @@
 [phases.setup]
-aptPkgs = ["libcairo2-dev", "pkg-config", "libgirepository1.0-dev", "python3-dev"]
+aptPkgs = ["libcairo2-dev", "pkg-config", "libgirepository1.0-dev", "python3-dev", "libxcb1-dev"]
 
+# Override install to use slim requirements (no pytorch/sklearn)
 [phases.install]
-cmds = ["pip install --no-cache-dir -r requirements-railway.txt"]
+cmds = ["python -m venv --copies /opt/venv && . /opt/venv/bin/activate && pip install -r requirements-railway.txt"]
+paths = ["/opt/venv/bin"]
 
-# Prevent nixpacks from also auto-installing requirements.txt
-[phases.pip_install]
-cmds = []
+# Nix gcc needs /usr/include to find apt-installed headers (xcb/xcb.h)
+[variables]
+CPATH = "/usr/include"

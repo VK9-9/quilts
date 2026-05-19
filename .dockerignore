@@ -1,0 +1,26 @@
+venv/
+data/
+docs/
+__pycache__/
+*.pyc
+.git/
+.gh-pages-worktree/
+.agent-shell/
+.pytest_cache/
+.claude/
+CLAUDE.md
+ANALYSIS.md
+README.md
+convergence.png
+# Scripts not needed at runtime
+deploy-site.sh
+deploy-railway.sh
+test.sh
+render_family_thumbnails.py
+build_site.py
+visualize_convergence.py
+backfill_embeddings.py
+clip_embed.py
+# Scoring app (not used by generator)
+app.py
+sampler.py

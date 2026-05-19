@@ -15,8 +15,6 @@ sys.path.insert(0, os.path.dirname(__file__))
 # pylint: disable=wrong-import-position
 from flask import Flask, render_template, request, Response
 from quilt import render_quilt
-from sampler import params_to_render_kwargs
-from palettes import PALETTES as _ALL_PALETTES
 from quilt_id import encode, decode, _V2_PALETTES, _V2_SYMMETRY, _V2_STITCH
 # pylint: enable=wrong-import-position
 
@@ -191,9 +189,41 @@ def _params_from_request(defaults=None):
     }
 
 
+def _params_to_render_kwargs(params, block_size=40):
+    """Convert param dict to kwargs for render_quilt."""
+    kwargs = {
+        "rows": params["rows"],
+        "cols": params["cols"],
+        "block_size": block_size,
+        "symmetry": params["symmetry"],
+        "chaos": params["chaos"],
+        "palette_name": params["palette"],
+        "seed": params["seed"],
+        "output": None,
+        "border": 15,
+        "max_patterns": params["n_patterns"],
+        "max_colors": params["n_colors"],
+        "tile_size": params["tile_size"] if params["tile_size"] > 0 else None,
+        "tile_variation": params["tile_variation"],
+        "border_style": params.get("border_style", "none"),
+        "sash_width": params.get("sash_width", 0),
+        "color_gradient": params.get("color_gradient", "none"),
+        "mega_frac": params.get("mega_frac", 0.0),
+        "plain_frac": params.get("plain_frac", 0.0),
+        "cornerstones": params.get("cornerstones", False),
+        "quilt_stitch": params.get("quilt_stitch"),
+        "wonky": params.get("wonky", 0.0),
+    }
+    if kwargs["border_style"] == "none":
+        kwargs["border_style"] = None
+    if kwargs["color_gradient"] == "none":
+        kwargs["color_gradient"] = None
+    return kwargs
+
+
 def _render_png(params, block_size):
     """Render params to PNG bytes at the given block_size."""
-    kwargs = params_to_render_kwargs(params, block_size=block_size)
+    kwargs = _params_to_render_kwargs(params, block_size=block_size)
     return render_quilt(**kwargs)
 
 
