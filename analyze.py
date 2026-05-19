@@ -63,7 +63,7 @@ def load_rounds(path="ratings_rounds.json"):
         return json.load(f)
 
 
-def round_summary(ratings, rounds):
+def round_summary(ratings, rounds):  # pylint: disable=too-many-locals
     """Print per-round like rates and explore/exploit breakdown."""
     print("--- Per-round summary ---")
     for i, rnd in enumerate(rounds):
