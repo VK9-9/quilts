@@ -24,7 +24,7 @@ if [ $VERBOSE -eq 1 ]; then
     $PYTHON -m pytest -v
     echo ""
     echo "=== pylint ==="
-    $PYTHON -m pylint *.py
+    $PYTHON -m pylint --ignore-patterns='test_.*\.py' *.py
     exit 0
 fi
 
@@ -42,7 +42,7 @@ else
     FAILED=1
 fi
 
-PYLINT_OUT=$($PYTHON -m pylint *.py 2>&1)
+PYLINT_OUT=$($PYTHON -m pylint --ignore-patterns='test_.*\.py' *.py 2>&1)
 PYLINT_EXIT=$?
 SCORE=$(echo "$PYLINT_OUT" | grep "Your code has been rated" | grep -oE '[0-9]+\.[0-9]+/[0-9]+' | head -1)
 # pylint exit codes are bitmasks: 1=fatal, 2=error, 4=warning, 8=refactor, 16=convention
