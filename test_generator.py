@@ -184,8 +184,7 @@ class TestPresets:
         """Each preset should produce a valid PNG via /render."""
         for key, preset in PRESETS.items():
             params = preset["params"]
-            qs = "&".join(f"{k}={v}" for k, v in params.items()
-                         if k not in ("cornerstones",))
+            qs = "&".join(f"{k}={v}" for k, v in params.items())
             resp = client.get(f"/render?{qs}")
             assert resp.status_code == 200, f"Preset {key} failed to render"
             assert resp.data[:8] == b'\x89PNG\r\n\x1a\n'
