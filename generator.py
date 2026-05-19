@@ -21,13 +21,16 @@ from quilt_id import encode, decode, _V2_PALETTES, _V2_SYMMETRY, _V2_STITCH
 app = Flask(__name__)
 
 # Build info — captured once at import time
-try:
-    _COMMIT = subprocess.check_output(
-        ["git", "rev-parse", "--short", "HEAD"],
-        stderr=subprocess.DEVNULL, text=True,
-    ).strip()
-except (OSError, subprocess.SubprocessError):
-    _COMMIT = "unknown"
+# Railway sets RAILWAY_GIT_COMMIT_SHA; fall back to local git
+_COMMIT = os.environ.get("RAILWAY_GIT_COMMIT_SHA", "")[:7]
+if not _COMMIT:
+    try:
+        _COMMIT = subprocess.check_output(
+            ["git", "rev-parse", "--short", "HEAD"],
+            stderr=subprocess.DEVNULL, text=True,
+        ).strip()
+    except (OSError, subprocess.SubprocessError):
+        _COMMIT = "unknown"
 _BUILD_TIME = __import__("datetime").datetime.now(
     __import__("datetime").timezone.utc
 ).strftime("%Y-%m-%d %H:%M UTC")
