@@ -11,3 +11,10 @@ omit =
     backfill_embeddings.py
     visualize_convergence.py
     render_family_thumbnails.py
+
+[report]
+exclude_lines =
+    if __name__ == .__main__
+    def main\(
+    def _cli\(
+    def _decode_cmd\(

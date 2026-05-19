@@ -256,7 +256,7 @@ class TestRenderFeatures:
         result = render_quilt(
             rows=4, cols=4, block_size=20, symmetry="mirror", chaos=0.3,
             palette_name="ocean breeze", seed=42, output=None, border=5,
-            palette_name_2="wildflower",
+            palette_name_2="wildflower", max_colors=3,
         )
         assert result[:8] == b'\x89PNG\r\n\x1a\n'
 
@@ -290,5 +290,39 @@ class TestRenderFeatures:
             rows=8, cols=8, block_size=15, symmetry="bargello", chaos=0.3,
             palette_name="lavender fields", seed=42, output=None, border=5,
             max_colors=4,
+        )
+        assert result[:8] == b'\x89PNG\r\n\x1a\n'
+
+    @pytest.mark.parametrize("grad", ["horizontal", "vertical", "radial"])
+    def test_other_gradient_modes(self, grad):
+        result = render_quilt(
+            rows=4, cols=4, block_size=20, symmetry="mirror", chaos=0.3,
+            palette_name="ocean breeze", seed=42, output=None, border=5,
+            color_gradient=grad, max_colors=4,
+        )
+        assert result[:8] == b'\x89PNG\r\n\x1a\n'
+
+    def test_mega_blocks_with_wonky(self):
+        result = render_quilt(
+            rows=6, cols=6, block_size=20, symmetry="none", chaos=0.3,
+            palette_name="ocean breeze", seed=42, output=None, border=5,
+            mega_frac=0.5, wonky=0.04, tile_size=6,
+        )
+        assert result[:8] == b'\x89PNG\r\n\x1a\n'
+
+    def test_stripes_border(self):
+        # "stripes" is internal border style used by _draw_border
+        result = render_quilt(
+            rows=4, cols=4, block_size=20, symmetry="mirror", chaos=0.3,
+            palette_name="ocean breeze", seed=42, output=None, border=15,
+            border_style="solid",
+        )
+        assert result[:8] == b'\x89PNG\r\n\x1a\n'
+
+    def test_tile_boundary_lines(self):
+        result = render_quilt(
+            rows=8, cols=8, block_size=15, symmetry="none", chaos=0.3,
+            palette_name="ocean breeze", seed=42, output=None, border=5,
+            tile_size=4, tile_variation=0.2,
         )
         assert result[:8] == b'\x89PNG\r\n\x1a\n'
