@@ -44,7 +44,7 @@ echo -e "${GREEN}Pushed release branch — Railway deploy triggered${NC}"
 
 # --- poll for completion ---
 echo "Monitoring deployment..."
-TIMEOUT=300  # 5 minutes
+TIMEOUT=600  # 10 minutes
 ELAPSED=0
 INTERVAL=10
 
