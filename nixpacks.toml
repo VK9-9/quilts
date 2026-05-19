@@ -2,4 +2,8 @@
 aptPkgs = ["libcairo2-dev", "pkg-config", "libgirepository1.0-dev", "python3-dev"]
 
 [phases.install]
-cmds = ["pip install -r requirements-railway.txt"]
+cmds = ["pip install --no-cache-dir -r requirements-railway.txt"]
+
+# Prevent nixpacks from also auto-installing requirements.txt
+[phases.pip_install]
+cmds = []
