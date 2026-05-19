@@ -14,20 +14,6 @@
    anything from it. This means the param model has a hard ceiling: it can find
    good parameter neighborhoods but can't distinguish good vs bad quilts within
    that neighborhood.
-
-** Give CLIP more candidates to rank
-   Currently: stage 1 (GradientBoosting on params) filters 200 → top N, then
-   stage 2 (CLIP LogisticRegression) picks from those N. The bottleneck is that
-   CLIP only sees N candidates. If N is small (e.g. 10), there may not be a
-   visually great quilt among them.
-
-   Proposal: increase the CLIP candidate pool. Render 30-40 candidates instead
-   of 10. Preview renders are small (~576px) and fast. This gives the visual
-   model more chances to find a winner.
-
-   Where to change: sampler.py _sample_batch() — the top_n parameter that
-   controls how many param-filtered candidates get rendered and CLIP-scored.
-
 ** Shift weight from params to CLIP
    Once the param model has converged on "bargello + lavender fields + grid
    stitch," the remaining param scores are essentially noise — all candidates
@@ -37,7 +23,6 @@
    Proposal: use the param model only as a coarse filter (accept/reject), then
    let CLIP rank among all accepted candidates. Could implement as a threshold
    on param score rather than top-N ranking.
-
 ** Cheap visual pre-filters (before CLIP)
    CLIP embedding is expensive (requires forward pass through ViT-B/32). Before
    running CLIP, compute quick image statistics to reject obviously bad quilts:
@@ -45,16 +30,13 @@
    - Contrast ratio: reject low-contrast quilts
    - Spatial balance: reject quilts where all pattern interest is in one corner
    - Edge density: proxy for visual complexity
-
    These are pure numpy/PIL operations on the rendered image — much cheaper than
    CLIP. Could cut the CLIP candidate pool in half while keeping quality.
-
 ** Track visual feature importances
    After each round, extract simple image stats (entropy, contrast, balance)
    from liked vs disliked quilts. This would reveal whether "good seeds" share
    measurable visual properties — and whether those properties are learnable
    without CLIP.
-
 * Infra
 * Bugs
 * Test Quality — Future Work
