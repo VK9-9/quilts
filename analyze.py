@@ -57,11 +57,51 @@ def palette_frequency(ratings):
     return Counter(r["params"]["palette"] for r in ratings)
 
 
-def print_report(ratings):  # pylint: disable=too-many-locals
+def load_rounds(path="ratings_rounds.json"):
+    """Load round boundaries."""
+    with open(path, encoding="utf-8") as f:
+        return json.load(f)
+
+
+def round_summary(ratings, rounds):
+    """Print per-round like rates and explore/exploit breakdown."""
+    print("--- Per-round summary ---")
+    for i, rnd in enumerate(rounds):
+        start = rnd["start_index"]
+        end = rounds[i + 1]["start_index"] if i + 1 < len(rounds) else len(ratings)
+        chunk = ratings[start:end]
+        if not chunk:
+            continue
+        total = len(chunk)
+        liked = sum(1 for r in chunk if r["liked"])
+        pct = liked / total * 100
+
+        # explore/exploit breakdown (only available if _source is tracked)
+        sources = defaultdict(lambda: [0, 0])
+        for r in chunk:
+            src = r["params"].get("_source", "unknown")
+            sources[src][0] += 1
+            if r["liked"]:
+                sources[src][1] += 1
+
+        label = rnd.get("label", f"R{rnd['round']}")
+        parts = [f"{label}: {liked}/{total} ({pct:.0f}%)"]
+        for src in sorted(sources):
+            st, sl = sources[src]
+            sp = sl / st * 100 if st else 0
+            parts.append(f"{src}={sl}/{st} ({sp:.0f}%)")
+        print(f"  {' | '.join(parts)}")
+    print()
+
+
+def print_report(ratings, rounds=None):  # pylint: disable=too-many-locals
     """Print a full analysis report to stdout."""
     n = len(ratings)
     liked = sum(1 for r in ratings if r["liked"])
     print(f"Total: {n} ratings, {liked} liked ({liked/n*100:.1f}%)\n")
+
+    if rounds:
+        round_summary(ratings, rounds)
 
     # Categorical / integer params
     for param in ["symmetry", "palette", "n_patterns", "n_colors", "rows",
@@ -96,5 +136,8 @@ def print_report(ratings):  # pylint: disable=too-many-locals
 
 
 if __name__ == "__main__":
+    import os
     _path = sys.argv[1] if len(sys.argv) > 1 else "ratings.json"
-    print_report(load_ratings(_path))
+    _rounds_path = os.path.join(os.path.dirname(_path), "ratings_rounds.json")
+    _rounds = load_rounds(_rounds_path) if os.path.exists(_rounds_path) else None
+    print_report(load_ratings(_path), rounds=_rounds)

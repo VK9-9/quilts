@@ -305,16 +305,16 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylin
     rng = random.Random(seed)
 
     palette_colors = pick_palettes(palette_name, 1, rng)
-    if max_colors is not None:
-        palette_colors = palette_colors[:max_colors]
+    if max_colors is not None and max_colors < len(palette_colors):
+        palette_colors = rng.sample(palette_colors, max_colors)
 
     # palette mixing: blend colors from two palettes into a single hybrid palette
     if palette_mix is not None:
         mix_known = {p[0] for p in PALETTES}
         if palette_mix in mix_known:
             mix_colors = pick_palettes(palette_mix, 1, rng)
-            if max_colors is not None:
-                mix_colors = mix_colors[:max_colors]
+            if max_colors is not None and max_colors < len(mix_colors):
+                mix_colors = rng.sample(mix_colors, max_colors)
             # interleave: take alternating colors from each palette
             hybrid = []
             for i in range(max(len(palette_colors), len(mix_colors))):
@@ -335,8 +335,8 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylin
         palette_name_2 = None  # retired palette — silently drop
     if palette_name_2 is not None:
         palette_colors_2 = pick_palettes(palette_name_2, 1, rng)
-        if max_colors is not None:
-            palette_colors_2 = palette_colors_2[:max_colors]
+        if max_colors is not None and max_colors < len(palette_colors_2):
+            palette_colors_2 = rng.sample(palette_colors_2, max_colors)
         all_palettes = [palette_colors, palette_colors_2]
         n_palettes = 2
     else:

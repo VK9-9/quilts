@@ -5,6 +5,37 @@
 * Designs
 ** Asymmetric grid
 *** Vary row heights or column widths — creates a "strippy quilt" feel very different from the current uniform grid.
+* Sampler / Preference Model
+** The seed problem
+   Observation: with fixed params (symmetry, palette, stitch, etc.), changing
+   only the seed can take a quilt from hated to loved. The seed controls which
+   block patterns land in which cells, diagonal directions, color shuffling, etc.
+   But the seed is just a hash input — the param model literally cannot learn
+   anything from it. This means the param model has a hard ceiling: it can find
+   good parameter neighborhoods but can't distinguish good vs bad quilts within
+   that neighborhood.
+** Shift weight from params to CLIP
+   Once the param model has converged on "bargello + lavender fields + grid
+   stitch," the remaining param scores are essentially noise — all candidates
+   in that neighborhood score similarly. At that point, CLIP should dominate
+   the final selection.
+   Proposal: use the param model only as a coarse filter (accept/reject), then
+   let CLIP rank among all accepted candidates. Could implement as a threshold
+   on param score rather than top-N ranking.
+** Cheap visual pre-filters (before CLIP)
+   CLIP embedding is expensive (requires forward pass through ViT-B/32). Before
+   running CLIP, compute quick image statistics to reject obviously bad quilts:
+   - Color entropy: reject quilts dominated by one color
+   - Contrast ratio: reject low-contrast quilts
+   - Spatial balance: reject quilts where all pattern interest is in one corner
+   - Edge density: proxy for visual complexity
+   These are pure numpy/PIL operations on the rendered image — much cheaper than
+   CLIP. Could cut the CLIP candidate pool in half while keeping quality.
+** Track visual feature importances
+   After each round, extract simple image stats (entropy, contrast, balance)
+   from liked vs disliked quilts. This would reveal whether "good seeds" share
+   measurable visual properties — and whether those properties are learnable
+   without CLIP.
 * Infra
 * Bugs
 * Test Quality — Future Work

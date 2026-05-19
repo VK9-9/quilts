@@ -80,6 +80,9 @@ PALETTES = [
     ("dove grey", [
         "#5A5060", "#8B7F90", "#B8AEBA", "#E0D8E0", "#7A8B7A",
     ]),
+    ("handloom", [
+        "#F5EDE3", "#D4793A", "#B51E4A", "#1C3D52", "#E8907A", "#D4503E",
+    ]),
 ]
 
 
