@@ -1,0 +1,13 @@
+[run]
+source = .
+omit =
+    test_*.py
+    venv/*
+    app.py
+    sampler.py
+    clip_embed.py
+    build_site.py
+    analyze.py
+    backfill_embeddings.py
+    visualize_convergence.py
+    render_family_thumbnails.py
