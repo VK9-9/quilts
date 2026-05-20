@@ -178,6 +178,7 @@ def _params_from_request(defaults=None):
         "plain_frac":     _get("plain_frac",       float, 0.0),
         "quilt_stitch":   stitch,
         "wonky":          _get("wonky",            float, 0.0),
+        "strippy":        _get("strippy",          float, 0.0),
         "seed":           _get("seed",             int,   42),
     }
 
@@ -206,6 +207,7 @@ def _params_to_render_kwargs(params, block_size=40):
         "cornerstones": params.get("cornerstones", False),
         "quilt_stitch": params.get("quilt_stitch"),
         "wonky": params.get("wonky", 0.0),
+        "strippy": params.get("strippy", 0.0),
     }
     if kwargs["border_style"] == "none":
         kwargs["border_style"] = None

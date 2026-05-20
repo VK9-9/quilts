@@ -272,6 +272,11 @@
         <input type="range" id="plain_frac" min="0" max="0.40" step="0.05"
                value="{{ params.plain_frac }}">
       </div>
+      <div class="control">
+        <label>Strippy <span id="strippy-val">{{ params.strippy }}</span></label>
+        <input type="range" id="strippy" min="0" max="0.60" step="0.05"
+               value="{{ params.strippy }}">
+      </div>
     </div>
   </div>
 
@@ -314,10 +319,10 @@
   const CONTROLS = [
     "symmetry","palette","n_colors",
     "chaos","rows","tile_size","tile_variation",
-    "border_style","quilt_stitch","wonky","mega_frac","plain_frac",
+    "border_style","quilt_stitch","wonky","mega_frac","plain_frac","strippy",
     "seed",
   ];
-  const RANGE_DISPLAYS = ["chaos","rows","tile_size","tile_variation","wonky","mega_frac","plain_frac"];
+  const RANGE_DISPLAYS = ["chaos","rows","tile_size","tile_variation","wonky","mega_frac","plain_frac","strippy"];
 
   function getParams() {
     const p = {};

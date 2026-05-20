@@ -292,13 +292,32 @@ def _draw_quilt_stitching(ctx, qx, qy, qw, qh, style, spacing):  # pylint: disab
 GRADIENT_MODES = ["horizontal", "vertical", "diagonal", "radial"]
 
 
+def _build_strip_sizes(n, base_size, variation, rng):
+    """Generate n strip sizes with seeded variation around base_size.
+
+    Returns (sizes, positions) where sizes[i] is the pixel size of strip i
+    and positions[i] is the cumulative pixel offset.
+    """
+    if variation <= 0:
+        sizes = [base_size] * n
+    else:
+        sizes = []
+        for _ in range(n):
+            factor = 1.0 + rng.uniform(-variation, variation)
+            sizes.append(max(1, round(base_size * factor)))
+    positions = [0]
+    for s in sizes:
+        positions.append(positions[-1] + s)
+    return sizes, positions
+
+
 def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals,too-many-branches,too-many-statements
                  seed, output, border, max_patterns=None, max_colors=None,
                  tile_size=None, tile_variation=0.05, border_style=None,
                  sash_width=0, color_gradient=None, mega_frac=0.0,
                  cornerstones=False, plain_frac=0.0, quilt_stitch=None,
                  wash_alpha=0.0, palette_name_2=None, palette_mix=None,
-                 accent_count=0, color_wash=None, wonky=0.0):
+                 accent_count=0, color_wash=None, wonky=0.0, strippy=0.0):
     """Generate and render a quilt to an image file."""
     if seed is None:
         seed = random.randint(0, 2**31)
@@ -460,10 +479,15 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylin
     if border_style is not None:
         border = max(border, int(block_size * 0.75))
 
-    # image dimensions (sashing adds gaps between blocks)
+    # strippy grid: varying row heights and column widths
     sash = sash_width
-    quilt_w = cols * block_size + max(0, cols - 1) * sash
-    quilt_h = rows * block_size + max(0, rows - 1) * sash
+    strip_rng = random.Random(seed + 7777)
+    col_sizes, col_pos = _build_strip_sizes(cols, block_size, strippy, strip_rng)
+    row_sizes, row_pos = _build_strip_sizes(rows, block_size, strippy, strip_rng)
+
+    # image dimensions (sashing adds gaps between blocks)
+    quilt_w = col_pos[-1] + max(0, cols - 1) * sash
+    quilt_h = row_pos[-1] + max(0, rows - 1) * sash
     width = quilt_w + 2 * border
     height = quilt_h + 2 * border
     quilt_x, quilt_y = border, border
@@ -496,18 +520,18 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylin
                      [border_c1, border_c2], block_size)
 
     # render blocks (skip cells covered by mega-blocks)
-    stride = block_size + sash
     for r in range(rows):
         for c in range(cols):
             if (r, c) in mega_covered:
                 continue
             cell = grid[(r, c)]
-            bx = border + c * stride
-            by = border + r * stride
+            cw, ch = col_sizes[c], row_sizes[r]
+            bx = border + col_pos[c] + c * sash
+            by = border + row_pos[r] + r * sash
 
             if (r, c) in accent_cells:
                 ctx.set_source_rgb(*accent_cells[(r, c)])
-                ctx.rectangle(bx, by, block_size, block_size)
+                ctx.rectangle(bx, by, cw, ch)
                 ctx.fill()
                 continue
 
@@ -515,17 +539,16 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylin
                 ci = cell["color_map"][0]
                 active_pal = all_palettes[cell.get("palette", 0) % len(all_palettes)]
                 ctx.set_source_rgb(*active_pal[ci])
-                ctx.rectangle(bx, by, block_size, block_size)
+                ctx.rectangle(bx, by, cw, ch)
                 ctx.fill()
                 continue
 
-            cx_block = bx + block_size / 2
-            cy_block = by + block_size / 2
-
+            # Generate pattern in square coordinates, then scale to cell
             pattern_fn = BLOCK_PATTERNS[cell["pattern"]]
-            patches = pattern_fn(bx, by, block_size, n_colors)
-            patches = rotate_patches(patches, cx_block, cy_block,
-                                     cell["rotation"])
+            patches = pattern_fn(0, 0, block_size, n_colors)
+            cx_sq = block_size / 2
+            cy_sq = block_size / 2
+            patches = rotate_patches(patches, cx_sq, cy_sq, cell["rotation"])
 
             if wonky > 0:
                 wonky_rng = random.Random(seed * 10000 + r * 1000 + c)
@@ -537,6 +560,8 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylin
                     for poly, ci in patches
                 ]
 
+            # Scale pattern from square (block_size) to cell (cw × ch)
+            sx, sy = cw / block_size, ch / block_size
             color_map = cell["color_map"]
             active_pal = all_palettes[cell.get("palette", 0) % len(all_palettes)]
             for poly, color_idx in patches:
@@ -546,9 +571,9 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylin
                     ci = color_map[color_idx % n_colors]
                     r_c, g_c, b_c = active_pal[ci]
                 ctx.set_source_rgb(r_c, g_c, b_c)
-                ctx.move_to(*poly[0])
+                ctx.move_to(bx + poly[0][0] * sx, by + poly[0][1] * sy)
                 for pt in poly[1:]:
-                    ctx.line_to(*pt)
+                    ctx.line_to(bx + pt[0] * sx, by + pt[1] * sy)
                 ctx.close_path()
                 ctx.fill()
 
@@ -559,8 +584,8 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylin
         ctx.set_source_rgb(*cs_color)
         for cr in range(rows - 1):
             for cc in range(cols - 1):
-                cx = border + cc * stride + block_size
-                cy = border + cr * stride + block_size
+                cx = border + col_pos[cc + 1] + cc * sash
+                cy = border + row_pos[cr + 1] + cr * sash
                 ctx.rectangle(cx, cy, sash, sash)
                 ctx.fill()
 
@@ -574,14 +599,14 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylin
         for r in range(rows + 1):
             if r in mega_skip_rows:
                 continue
-            y = border + r * stride
+            y = border + row_pos[min(r, rows)]
             ctx.move_to(border, y)
             ctx.line_to(border + quilt_w, y)
             ctx.stroke()
         for c in range(cols + 1):
             if c in mega_skip_cols:
                 continue
-            x = border + c * stride
+            x = border + col_pos[min(c, cols)]
             ctx.move_to(x, border)
             ctx.line_to(x, border + quilt_h)
             ctx.stroke()
@@ -591,32 +616,35 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylin
         ctx.set_source_rgba(0, 0, 0, 0.4)
         ctx.set_line_width(2.5)
         for tr in range(math.ceil(rows / tile_size) + 1):
-            y = border + min(tr * tile_size, rows) * stride
+            ri = min(tr * tile_size, rows)
+            y = border + row_pos[ri] + ri * sash
             ctx.move_to(border, y)
             ctx.line_to(border + quilt_w, y)
             ctx.stroke()
         for tc in range(math.ceil(cols / tile_size) + 1):
-            x = border + min(tc * tile_size, cols) * stride
+            ci = min(tc * tile_size, cols)
+            x = border + col_pos[ci] + ci * sash
             ctx.move_to(x, border)
             ctx.line_to(x, border + quilt_h)
             ctx.stroke()
 
     # render mega-blocks (after grid lines so they paint over interior seams)
-    mega_size = 2 * block_size + sash
     for (mr, mc) in mega_tl:
         cell = grid[(mr, mc)]
-        bx = border + mc * stride
-        by = border + mr * stride
-        cx_block = bx + mega_size / 2
-        cy_block = by + mega_size / 2
+        bx = border + col_pos[mc] + mc * sash
+        by = border + row_pos[mr] + mr * sash
+        mw = col_sizes[mc] + col_sizes[mc + 1] + sash
+        mh = row_sizes[mr] + row_sizes[mr + 1] + sash
+        mega_sq = 2 * block_size + sash  # square coord size for pattern
 
         pattern_fn = BLOCK_PATTERNS[cell["pattern"]]
-        patches = pattern_fn(bx, by, mega_size, n_colors)
-        patches = rotate_patches(patches, cx_block, cy_block, cell["rotation"])
+        patches = pattern_fn(0, 0, mega_sq, n_colors)
+        patches = rotate_patches(patches, mega_sq / 2, mega_sq / 2,
+                                 cell["rotation"])
 
         if wonky > 0:
             wonky_rng = random.Random(seed * 10000 + mr * 1000 + mc + 500)
-            jitter = wonky * mega_size
+            jitter = wonky * mega_sq
             patches = [
                 ([(px + wonky_rng.uniform(-jitter, jitter),
                    py + wonky_rng.uniform(-jitter, jitter))
@@ -624,6 +652,7 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylin
                 for poly, ci in patches
             ]
 
+        sx, sy = mw / mega_sq, mh / mega_sq
         color_map = cell["color_map"]
         active_pal = all_palettes[cell.get("palette", 0) % len(all_palettes)]
         for poly, color_idx in patches:
@@ -633,9 +662,9 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylin
                 ci = color_map[color_idx % n_colors]
                 r_c, g_c, b_c = active_pal[ci]
             ctx.set_source_rgb(r_c, g_c, b_c)
-            ctx.move_to(*poly[0])
+            ctx.move_to(bx + poly[0][0] * sx, by + poly[0][1] * sy)
             for pt in poly[1:]:
-                ctx.line_to(*pt)
+                ctx.line_to(bx + pt[0] * sx, by + pt[1] * sy)
             ctx.close_path()
             ctx.fill()
 
@@ -647,38 +676,41 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylin
             if (r, c) in mega_covered or (r, c) in plain_cells or (r, c) in accent_cells:
                 continue
             cell = grid[(r, c)]
-            bx = border + c * stride
-            by = border + r * stride
-            cx_block = bx + block_size / 2
-            cy_block = by + block_size / 2
+            cw, ch = col_sizes[c], row_sizes[r]
+            bx = border + col_pos[c] + c * sash
+            by = border + row_pos[r] + r * sash
+            sx, sy = cw / block_size, ch / block_size
 
             pattern_fn = BLOCK_PATTERNS[cell["pattern"]]
-            patches = pattern_fn(bx, by, block_size, n_colors)
-            patches = rotate_patches(patches, cx_block, cy_block,
+            patches = pattern_fn(0, 0, block_size, n_colors)
+            patches = rotate_patches(patches, block_size / 2, block_size / 2,
                                      cell["rotation"])
 
             for poly, _ in patches:
-                ctx.move_to(*poly[0])
+                ctx.move_to(bx + poly[0][0] * sx, by + poly[0][1] * sy)
                 for pt in poly[1:]:
-                    ctx.line_to(*pt)
+                    ctx.line_to(bx + pt[0] * sx, by + pt[1] * sy)
                 ctx.close_path()
                 ctx.stroke()
 
     for (mr, mc) in mega_tl:
         cell = grid[(mr, mc)]
-        bx = border + mc * stride
-        by = border + mr * stride
-        cx_block = bx + mega_size / 2
-        cy_block = by + mega_size / 2
+        bx = border + col_pos[mc] + mc * sash
+        by = border + row_pos[mr] + mr * sash
+        mw = col_sizes[mc] + col_sizes[mc + 1] + sash
+        mh = row_sizes[mr] + row_sizes[mr + 1] + sash
+        mega_sq = 2 * block_size + sash
+        sx, sy = mw / mega_sq, mh / mega_sq
 
         pattern_fn = BLOCK_PATTERNS[cell["pattern"]]
-        patches = pattern_fn(bx, by, mega_size, n_colors)
-        patches = rotate_patches(patches, cx_block, cy_block, cell["rotation"])
+        patches = pattern_fn(0, 0, mega_sq, n_colors)
+        patches = rotate_patches(patches, mega_sq / 2, mega_sq / 2,
+                                 cell["rotation"])
 
         for poly, _ in patches:
-            ctx.move_to(*poly[0])
+            ctx.move_to(bx + poly[0][0] * sx, by + poly[0][1] * sy)
             for pt in poly[1:]:
-                ctx.line_to(*pt)
+                ctx.line_to(bx + pt[0] * sx, by + pt[1] * sy)
             ctx.close_path()
             ctx.stroke()
 
