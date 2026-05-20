@@ -8,8 +8,8 @@ Two preference models run in parallel:
   - clip_model:  LogisticRegression on CLIP image embeddings (visual)
 
 suggest_params() uses a two-stage pipeline:
-  1. param_model scores 200 random candidates → keep top 20
-  2. clip_model renders those 20 at low-res, embeds, picks best predicted
+  1. param_model scores 200 random candidates → keep top 30
+  2. clip_model renders those 30 at low-res, embeds, picks best predicted
 """
 import json
 import os
@@ -45,7 +45,7 @@ PARAM_SPACE = {
     "chaos": (0.0, 0.8),
     "palette": PALETTE_NAMES,
     "n_patterns": (2, 2),
-    "n_colors": (3, 4),
+    "n_colors": (3, 5),
     "tile_size": (4, 10),       # small tiles (1-3) disliked
     "tile_variation": (0.0, 0.3),
 }
@@ -106,17 +106,17 @@ def sample_random_params(rng=None, explore_only=False):
         "chaos": round(rng.uniform(*PARAM_SPACE["chaos"]), 2),
         "palette": _pick_palette(rng, explore_only=explore_only),
         "n_patterns": rng.randint(*PARAM_SPACE["n_patterns"]),
-        "n_colors": 4 if rng.random() < 0.85 else 3,
+        "n_colors": rng.choices([3, 4, 5], weights=[8, 72, 20])[0],
         "tile_size": rng.randint(*PARAM_SPACE["tile_size"]),
         "tile_variation": round(rng.uniform(*PARAM_SPACE["tile_variation"]), 2),
-        "border_style": rng.choice(BORDER_STYLES) if rng.random() < 0.35 else "none",
+        "border_style": rng.choice([b for b in BORDER_STYLES if b != "stripes"]) if rng.random() < 0.35 else "none",
         "sash_width": 0,
         "cornerstones": False,
         "color_gradient": "none",
         "color_wash": None,
         "mega_frac": round(rng.uniform(0.1, 0.25), 2) if rng.random() < 0.05 else 0.0,
         "plain_frac": round(rng.uniform(0.1, 0.4), 2) if rng.random() < 0.30 else 0.0,
-        "quilt_stitch": _weighted_stitch(rng) if rng.random() < 0.92 else None,
+        "quilt_stitch": _weighted_stitch(rng) if rng.random() < 0.98 else None,
         "wash_alpha": round(rng.uniform(0.04, 0.18), 2) if rng.random() < 0.15 else 0.0,
         "palette_2": rng.choice(PALETTE_NAMES) if rng.random() < 0.10 else None,
         "palette_mix": rng.choice(PALETTE_NAMES) if rng.random() < 0.05 else None,
