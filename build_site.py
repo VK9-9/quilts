@@ -634,7 +634,7 @@ def main():  # pylint: disable=too-many-locals,too-many-statements,too-many-bran
 
     total = sum(len(f["variations"]) for f in families)
     print(f"\nDone. {len(families)} families, {total} quilts → {out}/")
-    print("Deploy: ./deploy.sh")
+    print("Deploy: ./deploy-site.sh")
 
 
 if __name__ == "__main__":
