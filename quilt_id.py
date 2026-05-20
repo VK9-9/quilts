@@ -264,7 +264,7 @@ def encode(params):
     return _b58enc(_pack(fields), _V3_LEN)
 
 
-def _decode_v2_v3(n, schema, total_bits):
+def _decode_v2_v3(n, schema, _total_bits):
     """Shared decoder for V2 and V3 schemas (identical except n_colors width)."""
     raw = _unpack(n, schema)
     stitch_idx = raw["quilt_stitch"]
