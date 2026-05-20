@@ -109,7 +109,8 @@ def sample_random_params(rng=None, explore_only=False):
         "n_colors": rng.choices([3, 4, 5], weights=[8, 72, 20])[0],
         "tile_size": rng.randint(*PARAM_SPACE["tile_size"]),
         "tile_variation": round(rng.uniform(*PARAM_SPACE["tile_variation"]), 2),
-        "border_style": rng.choice([b for b in BORDER_STYLES if b != "stripes"]) if rng.random() < 0.35 else "none",
+        "border_style": (rng.choice([b for b in BORDER_STYLES if b != "stripes"])
+                         if rng.random() < 0.35 else "none"),
         "sash_width": 0,
         "cornerstones": False,
         "color_gradient": "none",
