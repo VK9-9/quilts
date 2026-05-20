@@ -11,7 +11,7 @@ Version 1: 76 bits → 13 base58 characters (FROZEN)
     border_style(2) sash_width(1) cornerstones(1) color_gradient(1)
     mega_frac(4) plain_frac(4)
 
-Version 2: 80 bits → 14 base58 characters (current)
+Version 2: 80 bits → 14 base58 characters (FROZEN)
     version(4) seed(31) palette(5) symmetry(4) chaos(7) rows(3)
     n_patterns(1) n_colors(1) tile_size(4) tile_variation(5)
     border_style(2) mega_frac(4) plain_frac(4)
@@ -19,6 +19,9 @@ Version 2: 80 bits → 14 base58 characters (current)
     Drops: sash_width, cornerstones, color_gradient (all hardcoded off)
     Adds: all symmetry modes (bargello, flower, emergent), all current palettes,
           quilt_stitch, wonky
+
+Version 3: 81 bits → 14 base58 characters (current)
+    Same as V2 but n_colors expanded from 1 bit to 2 bits (supports 3-6 colors).
 
 Usage:
     from quilt_id import encode, decode
@@ -144,6 +147,33 @@ _V2_TOTAL_BITS = sum(bits for _, bits in _V2_SCHEMA)  # 80
 _V2_LEN = 14   # ceil(80 / log2(58)) = 14 chars
 
 
+# ---------------------------------------------------------------------------
+# Version 3 schema — same as V2 but n_colors expanded to 2 bits (3-6 colors).
+# Still fits in 14 base58 characters (81 bits < log2(58^14) ≈ 82.0).
+# ---------------------------------------------------------------------------
+
+_V3_SCHEMA = [
+    ("version",        4),
+    ("seed",          31),
+    ("palette",        5),
+    ("symmetry",       4),
+    ("chaos",          7),
+    ("rows",           3),
+    ("n_patterns",     1),
+    ("n_colors",       2),  # offset 3: stored as n_colors-3, range 0–3 (3-6 colors)
+    ("tile_size",      4),
+    ("tile_variation", 5),
+    ("border_style",   2),
+    ("mega_frac",      4),
+    ("plain_frac",     4),
+    ("quilt_stitch",   3),
+    ("wonky",          2),
+]
+
+_V3_TOTAL_BITS = sum(bits for _, bits in _V3_SCHEMA)  # 81
+_V3_LEN = 14   # ceil(81 / log2(58)) = 14 chars
+
+
 def _pack(schema_values):
     """Pack list of (value, nbits) tuples into a single int, MSB first."""
     n = 0
@@ -183,7 +213,7 @@ def _encode_wonky(val):
 
 
 def encode(params):
-    """Encode a params dict to a 14-character quilt ID string (version 2).
+    """Encode a params dict to a 14-character quilt ID string (version 3).
 
     >>> p = {'seed': 12345, 'palette': 'ocean breeze', 'symmetry': 'bargello',
     ...      'chaos': 0.3, 'rows': 16, 'cols': 16, 'n_patterns': 2,
@@ -201,20 +231,28 @@ def encode(params):
     'sashiko_wave'
     >>> abs(decode(qid)['wonky'] - 0.04) < 0.01
     True
+    >>> encode({'seed': 1, 'palette': 'handloom', 'symmetry': 'partial',
+    ...         'chaos': 0.5, 'rows': 18, 'cols': 18, 'n_patterns': 2,
+    ...         'n_colors': 5, 'tile_size': 6, 'tile_variation': 0.1,
+    ...         'border_style': 'solid', 'mega_frac': 0.0, 'plain_frac': 0.0,
+    ...         'quilt_stitch': 'grid', 'wonky': 0.0})
+    '6PpafDL86tkRBR'
+    >>> decode('6PpafDL86tkRBR')['n_colors']
+    5
     """
     border = params.get("border_style", "none") or "none"
     stitch = params.get("quilt_stitch") or None
     stitch_idx = (_V2_STITCH.index(stitch) + 1) if stitch in _V2_STITCH else 0
 
     fields = [
-        (2,                                                            4),  # version
+        (3,                                                            4),  # version
         (params["seed"] & ((1 << 31) - 1),                           31),
         (_V2_PALETTES.index(params["palette"]),                        5),
         (_V2_SYMMETRY.index(params["symmetry"]),                       4),
         (round(params["chaos"] * 100),                                 7),
         (params["rows"] - 14,                                          3),
         (params["n_patterns"] - 1,                                     1),
-        (params["n_colors"] - 3,                                       1),
+        (params["n_colors"] - 3,                                       2),
         (params.get("tile_size", 0),                                   4),
         (round(params.get("tile_variation", 0.0) * 100),               5),
         (_V2_BORDER.index(border),                                     2),
@@ -223,13 +261,39 @@ def encode(params):
         (stitch_idx,                                                   3),
         (_encode_wonky(params.get("wonky", 0.0)),                      2),
     ]
-    return _b58enc(_pack(fields), _V2_LEN)
+    return _b58enc(_pack(fields), _V3_LEN)
+
+
+def _decode_v2_v3(n, schema, total_bits):
+    """Shared decoder for V2 and V3 schemas (identical except n_colors width)."""
+    raw = _unpack(n, schema)
+    stitch_idx = raw["quilt_stitch"]
+    return {
+        "seed":           raw["seed"],
+        "palette":        _V2_PALETTES[raw["palette"]],
+        "symmetry":       _V2_SYMMETRY[raw["symmetry"]],
+        "chaos":          round(raw["chaos"] / 100, 2),
+        "rows":           raw["rows"] + 14,
+        "cols":           raw["rows"] + 14,
+        "n_patterns":     raw["n_patterns"] + 1,
+        "n_colors":       raw["n_colors"] + 3,
+        "tile_size":      raw["tile_size"],
+        "tile_variation": round(raw["tile_variation"] / 100, 2),
+        "border_style":   _V2_BORDER[raw["border_style"]],
+        "sash_width":     0,
+        "cornerstones":   False,
+        "color_gradient": "none",
+        "mega_frac":      _dequantize(raw["mega_frac"],  0.10, 0.01),
+        "plain_frac":     _dequantize(raw["plain_frac"], 0.10, 0.02),
+        "quilt_stitch":   _V2_STITCH[stitch_idx - 1] if stitch_idx else None,
+        "wonky":          _V2_WONKY[raw["wonky"]],
+    }
 
 
 def decode(qid):
     """Decode a quilt ID string back to a params dict.
 
-    V1 (13 chars) and V2 (14 chars) are both supported.
+    V1 (13 chars), V2 (14 chars), and V3 (14 chars) are supported.
 
     >>> p = {'seed': 99999, 'palette': 'ocean breeze', 'symmetry': 'bargello',
     ...      'chaos': 0.55, 'rows': 16, 'cols': 16, 'n_patterns': 2,
@@ -274,30 +338,13 @@ def decode(qid):
             }
 
     if len(qid) == _V2_LEN:
+        # Try V3 first (81 bits), then V2 (80 bits)
+        version = n >> (_V3_TOTAL_BITS - 4)
+        if version == 3:
+            return _decode_v2_v3(n, _V3_SCHEMA, _V3_TOTAL_BITS)
         version = n >> (_V2_TOTAL_BITS - 4)
         if version == 2:
-            raw = _unpack(n, _V2_SCHEMA)
-            stitch_idx = raw["quilt_stitch"]
-            return {
-                "seed":           raw["seed"],
-                "palette":        _V2_PALETTES[raw["palette"]],
-                "symmetry":       _V2_SYMMETRY[raw["symmetry"]],
-                "chaos":          round(raw["chaos"] / 100, 2),
-                "rows":           raw["rows"] + 14,
-                "cols":           raw["rows"] + 14,
-                "n_patterns":     raw["n_patterns"] + 1,
-                "n_colors":       raw["n_colors"] + 3,
-                "tile_size":      raw["tile_size"],
-                "tile_variation": round(raw["tile_variation"] / 100, 2),
-                "border_style":   _V2_BORDER[raw["border_style"]],
-                "sash_width":     0,
-                "cornerstones":   False,
-                "color_gradient": "none",
-                "mega_frac":      _dequantize(raw["mega_frac"],  0.10, 0.01),
-                "plain_frac":     _dequantize(raw["plain_frac"], 0.10, 0.02),
-                "quilt_stitch":   _V2_STITCH[stitch_idx - 1] if stitch_idx else None,
-                "wonky":          _V2_WONKY[raw["wonky"]],
-            }
+            return _decode_v2_v3(n, _V2_SCHEMA, _V2_TOTAL_BITS)
 
     raise ValueError(f"Unknown quilt ID version (len={len(qid)})")
 

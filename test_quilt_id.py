@@ -5,7 +5,7 @@ from quilt_id import (
     _quantize, _dequantize, _encode_wonky,
     _V1_PALETTES, _V1_SYMMETRY, _V1_LEN,
     _V2_PALETTES, _V2_SYMMETRY, _V2_STITCH, _V2_WONKY, _V2_LEN,
-    _V2_SCHEMA,
+    _V2_SCHEMA, _V3_LEN,
 )
 
 
@@ -93,8 +93,8 @@ _BASE_PARAMS = {
 }
 
 
-def test_v2_encode_length():
-    assert len(encode(_BASE_PARAMS)) == _V2_LEN
+def test_v3_encode_length():
+    assert len(encode(_BASE_PARAMS)) == _V3_LEN
 
 
 def test_v2_roundtrip_exact_fields():
@@ -250,3 +250,15 @@ def test_encode_unknown_symmetry():
     p = {**_BASE_PARAMS, "symmetry": "nonexistent"}
     with pytest.raises(ValueError):
         encode(p)
+
+
+def test_v3_n_colors_5():
+    p = {**_BASE_PARAMS, "n_colors": 5}
+    d = decode(encode(p))
+    assert d["n_colors"] == 5
+
+
+def test_v3_n_colors_roundtrip():
+    for nc in [3, 4, 5, 6]:
+        p = {**_BASE_PARAMS, "n_colors": nc}
+        assert decode(encode(p))["n_colors"] == nc
