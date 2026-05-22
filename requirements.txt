@@ -8,6 +8,7 @@ noise
 matplotlib
 open_clip_torch
 pillow
+reportlab
 pylint
 pytest
 pytest-cov
