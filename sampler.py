@@ -73,8 +73,9 @@ _STITCH_STYLES = [s for s in QUILT_STITCH_STYLES if s not in _DROP_STITCHES]
 
 
 def _weighted_stitch(rng):
-    """Pick a stitch style with equal weights."""
-    return rng.choice(_STITCH_STYLES)
+    """Pick a stitch style, downweighting sashiko_asanoha."""
+    weights = [0.5 if s == "sashiko_asanoha" else 1.0 for s in _STITCH_STYLES]
+    return rng.choices(_STITCH_STYLES, weights=weights)[0]
 
 
 def _pick_palette(rng, explore_only=False):
@@ -109,8 +110,11 @@ def sample_random_params(rng=None, explore_only=False):
         "n_colors": rng.choices([3, 4, 5], weights=[8, 72, 20])[0],
         "tile_size": rng.randint(*PARAM_SPACE["tile_size"]),
         "tile_variation": round(rng.uniform(*PARAM_SPACE["tile_variation"]), 2),
-        "border_style": (rng.choice([b for b in BORDER_STYLES if b != "stripes"])
-                         if rng.random() < 0.35 else "none"),
+        "border_style": (rng.choices(
+                             [b for b in BORDER_STYLES if b != "stripes"],
+                             weights=[2.0 if b == "solid" else 1.0
+                                      for b in BORDER_STYLES if b != "stripes"],
+                         )[0] if rng.random() < 0.35 else "none"),
         "sash_width": 0,
         "cornerstones": False,
         "color_gradient": "none",
@@ -122,7 +126,7 @@ def sample_random_params(rng=None, explore_only=False):
         "palette_2": rng.choice(PALETTE_NAMES) if rng.random() < 0.10 else None,
         "palette_mix": rng.choice(PALETTE_NAMES) if rng.random() < 0.05 else None,
         "wonky": round(rng.uniform(0.02, 0.06), 3) if rng.random() < 0.15 else 0.0,
-        "strippy": round(rng.uniform(0.2, 0.5), 2) if rng.random() < 0.20 else 0.0,
+        "strippy": round(rng.uniform(0.2, 0.35), 2) if rng.random() < 0.15 else 0.0,
         "accent_count": 0,
         "seed": rng.randint(0, 2**31),
     }
