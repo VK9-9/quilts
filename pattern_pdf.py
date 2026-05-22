@@ -224,6 +224,9 @@ def _draw_cover_page(c, params, quilt_image_path, palette_colors,  # pylint: dis
     # Dimensions info
     y = img_y - 25
     c.setFont("Helvetica", 11)
+    border_style = params.get("border_style")
+    border_width_in = block_size_in * 0.75 if border_style else 0
+
     info_lines = [
         f"Finished size: {quilt_size_in:.0f}\" x {quilt_size_in:.0f}\""
         f"  ({quilt_size_in/12:.1f}' x {quilt_size_in/12:.1f}')",
@@ -231,6 +234,10 @@ def _draw_cover_page(c, params, quilt_image_path, palette_colors,  # pylint: dis
         f"Block size: {block_size_in:.2f}\" x {block_size_in:.2f}\"",
         "Seam allowance: added to all pieces (shown dashed)",
     ]
+    if border_style:
+        info_lines.append(
+            f"Border: {border_style} — {border_width_in:.2f}\" wide"
+        )
     for line in info_lines:
         c.drawString(MARGIN + 20, y, line)
         y -= 16
@@ -854,7 +861,7 @@ def _line_intersection(x1, y1, x2, y2, x3, y3, x4, y4):  # pylint: disable=too-m
 
 
 def _draw_cutting_summary(c, unique_blocks, palette_colors, grid, block_size_in,  # pylint: disable=too-many-locals,too-many-arguments,too-many-positional-arguments
-                          seam_allowance):
+                          seam_allowance, params=None):
     """Draw a cutting summary page tallying total pieces per color."""
     bm = 0.35 * inch
 
@@ -955,6 +962,38 @@ def _draw_cutting_summary(c, unique_blocks, palette_colors, grid, block_size_in,
             c.showPage()
             y = PAGE_H - bm - 20
 
+    # Border strip info
+    if params:
+        border_style = params.get("border_style")
+        if border_style:
+            if y < bm + 80:
+                c.showPage()
+                y = PAGE_H - bm - 20
+            y -= 10
+            border_w = block_size_in * 0.75
+            rows = params["rows"]
+            cols = params.get("cols", rows)
+            quilt_side = block_size_in * max(rows, cols)
+            long_strip = quilt_side + 2 * border_w
+            c.setFont("Helvetica-Bold", 12)
+            c.drawString(bm, y, "Border Strips")
+            y -= 18
+            c.setFont("Helvetica", 9)
+            c.drawString(bm + 5, y,
+                         f"Style: {border_style}")
+            y -= 14
+            c.drawString(bm + 5, y,
+                         f"Strip width: {border_w:.2f}\" "
+                         f"(+ {seam_allowance:.2f}\" seam allowance each side "
+                         f"= cut {border_w + 2*seam_allowance:.2f}\" wide)")
+            y -= 14
+            c.drawString(bm + 5, y,
+                         f"2 strips: {quilt_side:.1f}\" long (top/bottom)")
+            y -= 14
+            c.drawString(bm + 5, y,
+                         f"2 strips: {long_strip:.1f}\" long (sides, "
+                         "including border corners)")
+
     c.showPage()
 
 
@@ -1004,7 +1043,7 @@ def generate_pattern_pdf(params, output_path, quilt_size=96,  # pylint: disable=
 
     if params["symmetry"] != "bargello":
         _draw_cutting_summary(c, unique_blocks, palette_colors, grid,
-                              block_size_in, seam_allowance)
+                              block_size_in, seam_allowance, params)
 
     c.save()
     return output_path
