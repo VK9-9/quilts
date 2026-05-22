@@ -303,6 +303,25 @@ def layout_bargello(rows, cols, _n_patterns, _n_palettes, rng):
     return grid
 
 
+def layout_columns(rows, cols, n_patterns, _n_palettes, rng):
+    """Vertical strip sampler — 4-6 columns, each with its own block pattern."""
+    grid = {}
+    n_strips = rng.randint(4, 6)
+    strip_width = cols // n_strips
+    # assign a distinct pattern to each strip (with repeats if n_patterns < n_strips)
+    patterns = [rng.randint(0, n_patterns - 1) for _ in range(n_strips)]
+
+    for r in range(rows):
+        for c in range(cols):
+            strip = min(c // max(strip_width, 1), n_strips - 1)
+            grid[(r, c)] = {
+                "pattern": patterns[strip],
+                "palette": 0,
+                "rotation": rng.randint(0, 3),
+            }
+    return grid
+
+
 SYMMETRY_MODES = {
     "none": layout_none,
     "mirror": layout_mirror4,
@@ -312,4 +331,5 @@ SYMMETRY_MODES = {
     "flower": layout_flower,
     "emergent": layout_emergent,
     "bargello": layout_bargello,
+    "columns": layout_columns,
 }

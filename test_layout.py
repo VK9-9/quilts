@@ -219,7 +219,7 @@ class TestSymmetryModeRegistry:
 
     def test_all_modes_present(self):
         expected = {"none", "mirror", "rotational", "stripe", "partial",
-                    "flower", "emergent", "bargello"}
+                    "flower", "emergent", "bargello", "columns"}
         assert set(SYMMETRY_MODES.keys()) == expected
 
     def test_all_modes_callable(self):
