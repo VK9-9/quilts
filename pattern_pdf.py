@@ -336,6 +336,119 @@ def _draw_assembly_page(c, grid, unique_blocks, params,  # pylint: disable=too-m
     c.showPage()
 
 
+def _draw_bargello_pages(c, grid, palette_colors, params,  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals
+                         quilt_size_in, block_size_in, seam_allowance):
+    """Draw bargello-specific pattern pages showing strip color arrangement.
+
+    Bargello quilts are made from strips of fabric, not pieced blocks.
+    Each column has a repeating color sequence shifted by the wave function.
+    """
+    rows = params["rows"]
+    cols = params.get("cols", rows)
+    n_colors = len(palette_colors)
+    bm = 0.35 * inch
+
+    c.setFont("Helvetica-Bold", 16)
+    c.drawCentredString(PAGE_W / 2, PAGE_H - bm - 20, "Bargello Strip Layout")
+
+    c.setFont("Helvetica", 10)
+    y = PAGE_H - bm - 40
+    c.drawString(bm, y,
+                 f"Strip width: {block_size_in:.2f}\"  |  "
+                 f"Strip height: {quilt_size_in:.0f}\"  |  "
+                 f"Seam allowance: {seam_allowance:.2f}\"")
+    y -= 16
+    c.drawString(bm, y,
+                 "Each column below shows the color sequence for that strip "
+                 "(top to bottom).")
+    y -= 25
+
+    # Build column color sequences
+    col_sequences = []
+    for col in range(cols):
+        seq = []
+        for row in range(rows):
+            cell = grid.get((row, col), {})
+            bi = cell.get("_bargello_color", 0) % n_colors
+            seq.append(bi)
+        col_sequences.append(seq)
+
+    # Draw strip diagram — show each column as a vertical strip of colored cells
+    strip_display_w = min(25, (PAGE_W - 2 * bm) / (cols + 1))
+    cell_h = min(12, (y - bm - 40) / rows)
+    grid_w = cols * strip_display_w
+    ox = (PAGE_W - grid_w) / 2
+    top_y = y
+
+    # column headers
+    c.setFont("Helvetica", max(5, min(7, strip_display_w * 0.4)))
+    for col in range(cols):
+        cx = ox + col * strip_display_w + strip_display_w / 2
+        c.drawCentredString(cx, top_y + 3, f"C{col + 1}")
+
+    # draw cells
+    for col in range(cols):
+        for row in range(rows):
+            bi = col_sequences[col][row]
+            hex_color = palette_colors[bi % len(palette_colors)]
+            r, g, b = hex_to_rgb(hex_color)
+
+            cell_x = ox + col * strip_display_w
+            cell_y = top_y - (row + 1) * cell_h
+
+            c.setFillColorRGB(r, g, b)
+            c.setStrokeColorRGB(0.5, 0.5, 0.5)
+            c.setLineWidth(0.3)
+            c.rect(cell_x, cell_y, strip_display_w, cell_h, fill=1, stroke=1)
+
+            # color label
+            c.setFillColorRGB(1, 1, 1)
+            c.setFont("Helvetica", max(4, min(6, cell_h * 0.6)))
+            c.drawCentredString(cell_x + strip_display_w / 2,
+                                cell_y + cell_h / 2 - 2,
+                                _color_label(bi))
+
+    # row labels on left
+    c.setFillColorRGB(0, 0, 0)
+    c.setFont("Helvetica", max(5, min(7, cell_h * 0.7)))
+    for row in range(rows):
+        ry = top_y - (row + 1) * cell_h + cell_h / 2 - 2
+        c.drawRightString(ox - 4, ry, str(row + 1))
+
+    # cutting instructions below
+    below_y = top_y - rows * cell_h - 25
+    c.setFillColorRGB(0, 0, 0)
+    c.setFont("Helvetica-Bold", 11)
+    c.drawString(bm, below_y, "Cutting Instructions")
+    below_y -= 16
+
+    c.setFont("Helvetica", 9)
+    cut_w = block_size_in + 2 * seam_allowance
+    cut_h = quilt_size_in / rows + 2 * seam_allowance
+
+    # count strips per color
+    color_counts = {}
+    for col in range(cols):
+        for bi in col_sequences[col]:
+            color_counts[bi] = color_counts.get(bi, 0) + 1
+
+    c.drawString(bm, below_y,
+                 f"Cut each cell: {cut_w:.2f}\" wide x {cut_h:.2f}\" tall "
+                 f"(includes {seam_allowance:.2f}\" seam allowance)")
+    below_y -= 14
+
+    for bi in sorted(color_counts):
+        label = _color_label(bi)
+        hex_color = palette_colors[bi % len(palette_colors)]
+        name = _human_color_name(hex_color)
+        count = color_counts[bi]
+        c.drawString(bm + 10, below_y,
+                     f"Color {label} ({name}): {count} cells")
+        below_y -= 13
+
+    c.showPage()
+
+
 def _draw_grain_arrow(c, pts, cx, cy):
     """Draw a grain line arrow inside the piece, parallel to longest edge."""
     # find longest edge direction
@@ -661,9 +774,13 @@ def generate_pattern_pdf(params, output_path, quilt_size=96,  # pylint: disable=
     _draw_assembly_page(c, grid, unique_blocks, params,
                         quilt_size, block_size_in)
 
-    for blk in unique_blocks:
-        _draw_block_page(c, blk, palette_colors, block_size_in,
-                         seam_allowance)
+    if params["symmetry"] == "bargello":
+        _draw_bargello_pages(c, grid, palette_colors, params,
+                             quilt_size, block_size_in, seam_allowance)
+    else:
+        for blk in unique_blocks:
+            _draw_block_page(c, blk, palette_colors, block_size_in,
+                             seam_allowance)
 
     c.save()
     return output_path
