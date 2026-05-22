@@ -9,6 +9,7 @@ Routes:
 import os
 import subprocess
 import sys
+import tempfile
 
 sys.path.insert(0, os.path.dirname(__file__))
 
@@ -16,6 +17,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 from flask import Flask, render_template, request, Response
 from quilt import render_quilt
 from quilt_id import encode, decode, _V2_PALETTES, _V2_SYMMETRY, _V2_STITCH
+from pattern_pdf import generate_pattern_pdf
 # pylint: enable=wrong-import-position
 
 app = Flask(__name__)
@@ -293,6 +295,32 @@ def download():
         mimetype="image/png",
         headers={
             "Content-Disposition": f'attachment; filename="quilt-{qid}.png"',
+            "Cache-Control": "no-store",
+        },
+    )
+
+
+@app.route("/pattern")
+def pattern():
+    """Generate PDF sewing pattern for the current quilt."""
+    params = _params_from_request()
+    try:
+        qid = encode(params)
+    except (ValueError, KeyError):
+        qid = "unknown"
+    with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
+        tmp_path = tmp.name
+    try:
+        generate_pattern_pdf(params, tmp_path)
+        with open(tmp_path, "rb") as f:
+            pdf_bytes = f.read()
+    finally:
+        os.unlink(tmp_path)
+    return Response(
+        pdf_bytes,
+        mimetype="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="pattern-{qid}.pdf"',
             "Cache-Control": "no-store",
         },
     )
