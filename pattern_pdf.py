@@ -853,6 +853,111 @@ def _line_intersection(x1, y1, x2, y2, x3, y3, x4, y4):  # pylint: disable=too-m
     return (x1 + t * (x2 - x1), y1 + t * (y2 - y1))
 
 
+def _draw_cutting_summary(c, unique_blocks, palette_colors, grid, block_size_in,  # pylint: disable=too-many-locals,too-many-arguments,too-many-positional-arguments
+                          seam_allowance):
+    """Draw a cutting summary page tallying total pieces per color."""
+    bm = 0.35 * inch
+
+    c.setFont("Helvetica-Bold", 16)
+    c.drawCentredString(PAGE_W / 2, PAGE_H - bm - 20, "Cutting Summary")
+    y = PAGE_H - bm - 50
+
+    # Tally pieces: color_idx -> total count across all blocks × block count
+    color_totals = {}  # color_idx -> piece count
+    for blk in unique_blocks:
+        block_count = blk["count"]
+        for _poly, color_idx in blk["polygons"]:
+            if isinstance(color_idx, tuple):
+                continue
+            color_totals[color_idx] = color_totals.get(color_idx, 0) + block_count
+
+    # Table header
+    c.setFont("Helvetica-Bold", 10)
+    col_swatch = bm + 5
+    col_label = col_swatch + 22
+    col_color = col_label + 30
+    col_pieces = col_color + 130
+    c.drawString(col_swatch, y, "")
+    c.drawString(col_label, y, "Color")
+    c.drawString(col_color, y, "Name")
+    c.drawString(col_pieces, y, "Total Pieces")
+    y -= 5
+    c.setLineWidth(0.5)
+    c.setStrokeColorRGB(0.5, 0.5, 0.5)
+    c.line(bm, y, PAGE_W - bm, y)
+    y -= 15
+
+    c.setFont("Helvetica", 10)
+    grand_total = 0
+    for i, hex_color in enumerate(palette_colors):
+        count = color_totals.get(i, 0)
+        grand_total += count
+        r, g, b = hex_to_rgb(hex_color)
+        label = _color_label(i)
+        name = _human_color_name(hex_color)
+
+        # swatch
+        c.setFillColorRGB(r, g, b)
+        c.setStrokeColorRGB(0.3, 0.3, 0.3)
+        c.rect(col_swatch, y - 2, 14, 14, fill=1, stroke=1)
+
+        c.setFillColorRGB(0, 0, 0)
+        c.drawString(col_label, y, label)
+        c.drawString(col_color, y, f"{name}  ({hex_color})")
+        c.drawString(col_pieces, y, str(count))
+        y -= 20
+
+    # Grand total
+    y -= 5
+    c.line(bm, y + 10, PAGE_W - bm, y + 10)
+    c.setFont("Helvetica-Bold", 10)
+    c.drawString(col_color, y, "Total")
+    c.drawString(col_pieces, y, str(grand_total))
+
+    # Per-block breakdown
+    y -= 35
+    c.setFont("Helvetica-Bold", 12)
+    c.drawString(bm, y, "Per-Block Breakdown")
+    y -= 18
+
+    c.setFont("Helvetica", 9)
+    for blk in unique_blocks:
+        design_num = blk["_design_num"]
+        name = blk["pattern_name"].replace("_", " ")
+        rot = blk["rotation"] * 90
+        count = blk["count"]
+
+        title = f"Block #{design_num}: {name}"
+        if rot > 0:
+            title += f" (rotated {rot}\u00b0)"
+        title += f" \u00d7 {count}"
+
+        c.setFont("Helvetica-Bold", 9)
+        c.drawString(bm + 5, y, title)
+        y -= 14
+
+        # count pieces per color in this block
+        block_colors = {}
+        for _poly, color_idx in blk["polygons"]:
+            if isinstance(color_idx, tuple):
+                continue
+            block_colors[color_idx] = block_colors.get(color_idx, 0) + 1
+
+        c.setFont("Helvetica", 9)
+        for ci in sorted(block_colors.keys()):
+            pc = block_colors[ci]
+            label = _color_label(ci)
+            c.drawString(bm + 15, y, f"{label}: {pc} piece{'s' if pc != 1 else ''}")
+            y -= 12
+
+        y -= 6
+        if y < bm + 30:
+            c.showPage()
+            y = PAGE_H - bm - 20
+
+    c.showPage()
+
+
 def generate_pattern_pdf(params, output_path, quilt_size=96,  # pylint: disable=too-many-locals
                          seam_allowance=0.25):
     """Generate a printable PDF pattern from quilt parameters.
@@ -896,6 +1001,10 @@ def generate_pattern_pdf(params, output_path, quilt_size=96,  # pylint: disable=
         for blk in unique_blocks:
             _draw_block_page(c, blk, palette_colors, block_size_in,
                              seam_allowance)
+
+    if params["symmetry"] != "bargello":
+        _draw_cutting_summary(c, unique_blocks, palette_colors, grid,
+                              block_size_in, seam_allowance)
 
     c.save()
     return output_path
