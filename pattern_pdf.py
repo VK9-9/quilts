@@ -336,6 +336,42 @@ def _draw_assembly_page(c, grid, unique_blocks, params,  # pylint: disable=too-m
     c.showPage()
 
 
+def _draw_grain_arrow(c, pts, cx, cy):
+    """Draw a grain line arrow inside the piece, parallel to longest edge."""
+    # find longest edge direction
+    best_len = 0
+    best_dx, best_dy = 0, 1  # default vertical
+    for i in range(len(pts)):
+        x1, y1 = pts[i]
+        x2, y2 = pts[(i + 1) % len(pts)]
+        dx, dy = x2 - x1, y2 - y1
+        edge_len = math.sqrt(dx * dx + dy * dy)
+        if edge_len > best_len:
+            best_len = edge_len
+            best_dx, best_dy = dx / edge_len, dy / edge_len
+
+    # draw arrow centered on piece, 40% of longest edge length
+    arrow_len = best_len * 0.35
+    ax1 = cx - best_dx * arrow_len / 2
+    ay1 = cy - best_dy * arrow_len / 2
+    ax2 = cx + best_dx * arrow_len / 2
+    ay2 = cy + best_dy * arrow_len / 2
+
+    c.setStrokeColorRGB(0.4, 0.4, 0.4)
+    c.setLineWidth(0.6)
+    c.setDash([])
+    c.line(ax1, ay1, ax2, ay2)
+
+    # arrowhead
+    head = 3
+    # perpendicular
+    px, py = -best_dy, best_dx
+    c.line(ax2, ay2, ax2 - best_dx * head + px * head * 0.5,
+           ay2 - best_dy * head + py * head * 0.5)
+    c.line(ax2, ay2, ax2 - best_dx * head - px * head * 0.5,
+           ay2 - best_dy * head - py * head * 0.5)
+
+
 def _draw_block_page(c, block, palette_colors, block_size_in, seam_allowance):  # pylint: disable=too-many-locals,too-many-statements,too-many-branches
     """Draw one block's pattern page with assembled view and individual pieces."""
     design_num = block["_design_num"]
@@ -501,6 +537,9 @@ def _draw_block_page(c, block, palette_colors, block_size_in, seam_allowance):  
         c.setFont("Helvetica", 6)
         c.drawCentredString(cx, cy - 12,
                             f"{piece_w_in:.1f}\" x {piece_h_in:.1f}\"")
+
+        # grain line arrow
+        _draw_grain_arrow(c, pts, cx, cy)
 
         col_x += pw + piece_gap
         row_h = max(row_h, ph)
