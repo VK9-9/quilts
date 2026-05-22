@@ -569,8 +569,7 @@ def _draw_grain_arrow(c, pts, cx, cy):
     # find longest edge direction
     best_len = 0
     best_dx, best_dy = 0, 1  # default vertical
-    for i in range(len(pts)):
-        x1, y1 = pts[i]
+    for i, (x1, y1) in enumerate(pts):
         x2, y2 = pts[(i + 1) % len(pts)]
         dx, dy = x2 - x1, y2 - y1
         edge_len = math.sqrt(dx * dx + dy * dy)
