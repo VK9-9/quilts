@@ -336,7 +336,7 @@ def _draw_assembly_page(c, grid, unique_blocks, params,  # pylint: disable=too-m
     c.showPage()
 
 
-def _draw_bargello_pages(c, grid, palette_colors, params,  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals
+def _draw_bargello_pages(c, grid, palette_colors, params,  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals,too-many-statements
                          quilt_size_in, block_size_in, seam_allowance):
     """Draw bargello-specific pattern pages showing strip color arrangement.
 
@@ -453,7 +453,7 @@ def _draw_bargello_pages(c, grid, palette_colors, params,  # pylint: disable=too
                             seam_allowance)
 
 
-def _draw_bargello_template(c, cell_w_in, cell_h_in, seam_allowance):
+def _draw_bargello_template(c, cell_w_in, cell_h_in, seam_allowance):  # pylint: disable=too-many-locals,too-many-statements
     """Draw a real-size cutting template for bargello cells."""
     bm = 0.35 * inch
 
@@ -564,7 +564,7 @@ def _draw_bargello_template(c, cell_w_in, cell_h_in, seam_allowance):
     c.showPage()
 
 
-def _draw_grain_arrow(c, pts, cx, cy):
+def _draw_grain_arrow(c, pts, cx, cy):  # pylint: disable=too-many-locals
     """Draw a grain line arrow inside the piece, parallel to longest edge."""
     # find longest edge direction
     best_len = 0
