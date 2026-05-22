@@ -448,6 +448,121 @@ def _draw_bargello_pages(c, grid, palette_colors, params,  # pylint: disable=too
 
     c.showPage()
 
+    # --- Page 2: Real-size cutting template ---
+    _draw_bargello_template(c, block_size_in, quilt_size_in / rows,
+                            seam_allowance)
+
+
+def _draw_bargello_template(c, cell_w_in, cell_h_in, seam_allowance):
+    """Draw a real-size cutting template for bargello cells."""
+    bm = 0.35 * inch
+
+    c.setFont("Helvetica-Bold", 16)
+    c.drawCentredString(PAGE_W / 2, PAGE_H - bm - 20,
+                        "Bargello Cutting Template")
+
+    c.setFont("Helvetica", 10)
+    info_y = PAGE_H - bm - 42
+    c.drawString(bm, info_y,
+                 f"Finished size: {cell_w_in:.2f}\" x {cell_h_in:.2f}\"")
+    info_y -= 14
+    cut_w = cell_w_in + 2 * seam_allowance
+    cut_h = cell_h_in + 2 * seam_allowance
+    c.drawString(bm, info_y,
+                 f"Cut size (with {seam_allowance:.2f}\" seam allowance): "
+                 f"{cut_w:.2f}\" x {cut_h:.2f}\"")
+    info_y -= 20
+
+    # Convert to points
+    finished_w = cell_w_in * inch
+    finished_h = cell_h_in * inch
+    cut_w_pt = cut_w * inch
+    cut_h_pt = cut_h * inch
+
+    # Check if it fits on page; scale down if needed
+    avail_w = PAGE_W - 2 * bm
+    avail_h = info_y - bm - 30
+    scale = min(1.0, avail_w / cut_w_pt, avail_h / cut_h_pt)
+
+    if scale < 1.0:
+        c.drawString(bm, info_y,
+                     f"Scaled to {scale * 100:.0f}% to fit page")
+        info_y -= 14
+
+    c.drawString(bm, info_y, "Solid line = finished size  |  "
+                 "Dashed line = cutting line (includes seam allowance)")
+    info_y -= 25
+
+    # Center the template
+    sw = cut_w_pt * scale
+    sh = cut_h_pt * scale
+    rx = (PAGE_W - sw) / 2
+    ry = info_y - sh
+
+    sa_pt = seam_allowance * inch * scale
+
+    # Cutting line (dashed)
+    c.setStrokeColorRGB(0.4, 0.4, 0.4)
+    c.setLineWidth(0.8)
+    c.setDash([4, 3])
+    c.rect(rx, ry, sw, sh, fill=0, stroke=1)
+
+    # Finished size line (solid)
+    c.setStrokeColorRGB(0, 0, 0)
+    c.setLineWidth(1.2)
+    c.setDash([])
+    c.rect(rx + sa_pt, ry + sa_pt,
+           finished_w * scale, finished_h * scale, fill=0, stroke=1)
+
+    # Dimension labels
+    c.setFont("Helvetica", 8)
+    c.setFillColorRGB(0, 0, 0)
+
+    # Width dimension (below)
+    mid_x = rx + sw / 2
+    c.drawCentredString(mid_x, ry - 12, f"{cut_w:.2f}\"")
+
+    # Height dimension (right)
+    mid_y = ry + sh / 2
+    c.saveState()
+    c.translate(rx + sw + 14, mid_y)
+    c.rotate(90)
+    c.drawCentredString(0, 0, f"{cut_h:.2f}\"")
+    c.restoreState()
+
+    # Finished size dimensions (inside)
+    fin_mid_x = rx + sa_pt + finished_w * scale / 2
+    fin_top_y = ry + sa_pt + finished_h * scale
+    c.setFont("Helvetica", 7)
+    c.setFillColorRGB(0.3, 0.3, 0.3)
+    c.drawCentredString(fin_mid_x, fin_top_y + 4,
+                        f"{cell_w_in:.2f}\" x {cell_h_in:.2f}\" finished")
+
+    # Seam allowance annotation
+    c.setFont("Helvetica", 6)
+    c.drawString(rx + 2, ry + sa_pt / 2 - 2,
+                 f"{seam_allowance:.2f}\" SA")
+
+    # Grain line arrow (vertical — parallel to long edge)
+    arrow_len = min(finished_h * scale * 0.4, 50)
+    arrow_x = rx + sa_pt + finished_w * scale / 2
+    arrow_cy = ry + sa_pt + finished_h * scale / 2
+    c.setStrokeColorRGB(0.4, 0.4, 0.4)
+    c.setLineWidth(0.6)
+    c.line(arrow_x, arrow_cy - arrow_len / 2,
+           arrow_x, arrow_cy + arrow_len / 2)
+    # arrowhead
+    c.line(arrow_x, arrow_cy + arrow_len / 2,
+           arrow_x - 3, arrow_cy + arrow_len / 2 - 5)
+    c.line(arrow_x, arrow_cy + arrow_len / 2,
+           arrow_x + 3, arrow_cy + arrow_len / 2 - 5)
+
+    c.setFont("Helvetica", 6)
+    c.setFillColorRGB(0.4, 0.4, 0.4)
+    c.drawCentredString(arrow_x, arrow_cy - arrow_len / 2 - 8, "grain")
+
+    c.showPage()
+
 
 def _draw_grain_arrow(c, pts, cx, cy):
     """Draw a grain line arrow inside the piece, parallel to longest edge."""
@@ -771,8 +886,9 @@ def generate_pattern_pdf(params, output_path, quilt_size=96,  # pylint: disable=
     _draw_cover_page(c, params, quilt_image, palette_colors,
                      quilt_size, block_size_in)
 
-    _draw_assembly_page(c, grid, unique_blocks, params,
-                        quilt_size, block_size_in)
+    if params["symmetry"] != "bargello":
+        _draw_assembly_page(c, grid, unique_blocks, params,
+                            quilt_size, block_size_in)
 
     if params["symmetry"] == "bargello":
         _draw_bargello_pages(c, grid, palette_colors, params,
