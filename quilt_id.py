@@ -114,7 +114,7 @@ _V2_PALETTES = [
 
 _V2_SYMMETRY = [
     "none", "mirror", "rotational", "stripe", "partial",
-    "flower", "emergent", "bargello",
+    "flower", "emergent", "bargello", "columns",
 ]  # 4 bits → max 15 entries
 
 _V2_BORDER = ["none", "solid", "checkerboard", "piano_keys"]  # 2 bits (same as V1)
