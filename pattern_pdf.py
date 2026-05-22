@@ -336,33 +336,27 @@ def _draw_assembly_page(c, grid, unique_blocks, params,  # pylint: disable=too-m
     c.showPage()
 
 
-def _draw_block_page(c, block, palette_colors, block_size_in, seam_allowance):  # pylint: disable=too-many-locals,too-many-statements
+def _draw_block_page(c, block, palette_colors, block_size_in, seam_allowance):  # pylint: disable=too-many-locals,too-many-statements,too-many-branches
     """Draw one block's pattern page with assembled view and individual pieces."""
     design_num = block["_design_num"]
     name = block["pattern_name"].replace("_", " ")
     rot = block["rotation"] * 90
+    polygons = block["polygons"]
+    pattern_size = 100  # polygons generated at size=100
+    bm = 0.35 * inch  # tighter margins for block pages
 
-    # Header
-    c.setFont("Helvetica-Bold", 14)
+    # --- Header row: assembled block (left) + info (right) ---
+    c.setFont("Helvetica-Bold", 13)
     title = f"Block #{design_num}: {name}"
     if rot > 0:
         title += f" (rotated {rot}\u00b0)"
-    c.drawString(MARGIN, PAGE_H - MARGIN - 20, title)
+    c.drawString(bm, PAGE_H - bm - 16, title)
 
-    c.setFont("Helvetica", 10)
-    c.drawString(MARGIN, PAGE_H - MARGIN - 36,
-                 f"Finished size: {block_size_in:.2f}\" x {block_size_in:.2f}\""
-                 f"  |  Count: {block['count']} blocks")
-
-    # Draw assembled block (colored) in top portion
-    polygons = block["polygons"]
-    pattern_size = 100  # polygons generated at size=100
-
-    # scale to fit ~3 inches on page
-    assembled_display = 3.0 * inch
+    # Assembled block — 1.8 inches, top-left
+    assembled_display = 1.8 * inch
     scale = assembled_display / pattern_size
-    ax = MARGIN + 20
-    ay = PAGE_H - MARGIN - 55 - assembled_display
+    ax = bm
+    ay = PAGE_H - bm - 28 - assembled_display
 
     c.setStrokeColorRGB(0.3, 0.3, 0.3)
     c.setLineWidth(0.5)
@@ -372,7 +366,6 @@ def _draw_block_page(c, block, palette_colors, block_size_in, seam_allowance):  
         else:
             hex_color = palette_colors[color_idx % len(palette_colors)]
             r, g, b = hex_to_rgb(hex_color)
-
         path = c.beginPath()
         pts = [(ax + px * scale, ay + assembled_display - py * scale)
                for px, py in poly]
@@ -380,76 +373,94 @@ def _draw_block_page(c, block, palette_colors, block_size_in, seam_allowance):  
         for pt in pts[1:]:
             path.lineTo(*pt)
         path.close()
-
         c.setFillColorRGB(r, g, b)
         c.drawPath(path, fill=1, stroke=1)
-
-        # color label in center of piece
+        # color label in center
         cx = sum(p[0] for p in pts) / len(pts)
         cy = sum(p[1] for p in pts) / len(pts)
         label = _color_label(color_idx) if not isinstance(color_idx, tuple) else "?"
         c.setFillColorRGB(1, 1, 1)
-        c.setFont("Helvetica-Bold", 9)
+        c.setFont("Helvetica-Bold", 8)
         c.drawCentredString(cx, cy - 3, label)
 
-    # Draw individual pieces below
+    # Info text — right of assembled block
+    info_x = ax + assembled_display + 15
+    info_y = PAGE_H - bm - 38
     c.setFillColorRGB(0, 0, 0)
-    c.setFont("Helvetica-Bold", 11)
-    pieces_y = ay - 30
-    c.drawString(MARGIN, pieces_y, "Individual Pieces (with seam allowance)")
-
-    pieces_y -= 15
     c.setFont("Helvetica", 9)
-    c.drawString(MARGIN, pieces_y,
-                 f"Solid line = finished size  |  "
-                 f"Dashed line = cutting line (+{seam_allowance:.2f}\")")
+    c.drawString(info_x, info_y,
+                 f"Finished: {block_size_in:.2f}\" x {block_size_in:.2f}\"")
+    c.drawString(info_x, info_y - 13,
+                 f"Count: {block['count']} blocks")
+    c.drawString(info_x, info_y - 26,
+                 "Solid = finished size")
+    c.drawString(info_x, info_y - 39,
+                 f"Dashed = cut line (+{seam_allowance:.2f}\")")
 
-    # Scale pieces to real inches, fit on remaining page space
-    pieces_y -= 20
+    # --- Individual pieces section ---
+    pieces_top = ay - 15
+    c.setFont("Helvetica-Bold", 10)
+    c.drawString(bm, pieces_top, "Individual Pieces")
+    pieces_top -= 12
 
-    # target: draw each piece at 1:1 if possible
-    real_scale = block_size_in * inch / pattern_size  # points per pattern unit
-    # check if pieces fit at 1:1
-    if block_size_in * inch > PRINTABLE_W * 0.45:
-        # scale down to fit
-        real_scale = PRINTABLE_W * 0.45 / pattern_size
-
-    # lay out pieces in a grid
-    piece_margin = 15
-    col_x = MARGIN + 10
-    cur_y = pieces_y
-
+    # Compute scale: fit pieces as large as possible
+    # First pass: find total area needed at 1:1
+    sa_pattern = seam_allowance * pattern_size / block_size_in
+    piece_bboxes = []
     for poly, color_idx in polygons:
-        # compute bounding box
         xs = [px for px, py in poly]
         ys = [py for px, py in poly]
-        pw = (max(xs) - min(xs)) * real_scale + seam_allowance * 2 * inch
-        ph = (max(ys) - min(ys)) * real_scale + seam_allowance * 2 * inch
+        # bbox in pattern units, including seam allowance
+        pw = max(xs) - min(xs) + 2 * sa_pattern
+        ph = max(ys) - min(ys) + 2 * sa_pattern
+        piece_bboxes.append((pw, ph, min(xs), min(ys)))
 
-        # check if we need to wrap to next row
-        if col_x + pw + piece_margin > PAGE_W - MARGIN:
-            col_x = MARGIN + 10
-            cur_y -= ph + piece_margin + 20
+    real_scale = block_size_in * inch / pattern_size
+    avail_w = PAGE_W - 2 * bm
+    avail_h = pieces_top - bm
 
-        if cur_y - ph < MARGIN:
+    # try fitting at 1:1, then scale down if needed
+    for attempt_scale in [real_scale, real_scale * 0.75, real_scale * 0.5,
+                          real_scale * 0.35, real_scale * 0.25]:
+        fits = _try_layout_pieces(piece_bboxes, attempt_scale, avail_w, avail_h, 8)
+        if fits is not None:
+            real_scale = attempt_scale
+            break
+
+    # draw pieces
+    piece_gap = 8
+    col_x = bm
+    cur_y = pieces_top
+    row_h = 0
+
+    for idx, (poly, color_idx) in enumerate(polygons):
+        pw_pat, ph_pat, ox, oy = piece_bboxes[idx]
+        pw = pw_pat * real_scale
+        ph = ph_pat * real_scale
+
+        # wrap to next row?
+        if col_x + pw + piece_gap > PAGE_W - bm and col_x > bm + 1:
+            col_x = bm
+            cur_y -= row_h + piece_gap
+            row_h = 0
+
+        # new page?
+        if cur_y - ph < bm:
             c.showPage()
-            cur_y = PAGE_H - MARGIN - 30
-            col_x = MARGIN + 10
-            c.setFont("Helvetica-Bold", 11)
-            c.drawString(MARGIN, PAGE_H - MARGIN - 15,
-                         f"Block #{design_num}: {name} (continued)")
-
-        # offset so piece starts at origin
-        ox = min(xs)
-        oy = min(ys)
+            cur_y = PAGE_H - bm - 20
+            col_x = bm
+            row_h = 0
+            c.setFont("Helvetica-Bold", 10)
+            c.drawString(bm, PAGE_H - bm - 10,
+                         f"Block #{design_num} (continued)")
 
         # draw finished size (solid)
         c.setStrokeColorRGB(0, 0, 0)
         c.setLineWidth(0.8)
         c.setDash([])
         path = c.beginPath()
-        pts = [(col_x + (px - ox) * real_scale + seam_allowance * inch,
-                cur_y - (py - oy) * real_scale - seam_allowance * inch)
+        pts = [(col_x + (px - ox + sa_pattern) * real_scale,
+                cur_y - (py - oy + sa_pattern) * real_scale)
                for px, py in poly]
         path.moveTo(*pts[0])
         for pt in pts[1:]:
@@ -458,13 +469,13 @@ def _draw_block_page(c, block, palette_colors, block_size_in, seam_allowance):  
         c.drawPath(path, fill=0, stroke=1)
 
         # draw seam allowance (dashed)
-        sa_poly = _offset_polygon(poly, seam_allowance * pattern_size / block_size_in)
+        sa_poly = _offset_polygon(poly, sa_pattern)
         c.setDash([3, 3])
         c.setLineWidth(0.5)
         c.setStrokeColorRGB(0.5, 0.5, 0.5)
         path_sa = c.beginPath()
-        sa_pts = [(col_x + (px - ox) * real_scale + seam_allowance * inch,
-                   cur_y - (py - oy) * real_scale - seam_allowance * inch)
+        sa_pts = [(col_x + (px - ox + sa_pattern) * real_scale,
+                   cur_y - (py - oy + sa_pattern) * real_scale)
                   for px, py in sa_poly]
         if sa_pts:
             path_sa.moveTo(*sa_pts[0])
@@ -479,19 +490,49 @@ def _draw_block_page(c, block, palette_colors, block_size_in, seam_allowance):  
         cx = sum(p[0] for p in pts) / len(pts)
         cy = sum(p[1] for p in pts) / len(pts)
         c.setFillColorRGB(0, 0, 0)
-        c.setFont("Helvetica-Bold", 10)
+        c.setFont("Helvetica-Bold", 9)
         c.drawCentredString(cx, cy - 3, label)
 
         # dimension label
-        piece_w_in = (max(xs) - min(xs)) / pattern_size * block_size_in
-        piece_h_in = (max(ys) - min(ys)) / pattern_size * block_size_in
-        c.setFont("Helvetica", 7)
-        c.drawCentredString(cx, cy - 14,
-                            f"{piece_w_in:.2f}\" x {piece_h_in:.2f}\"")
+        xs_poly = [p[0] for p in poly]
+        ys_poly = [p[1] for p in poly]
+        piece_w_in = (max(xs_poly) - min(xs_poly)) / pattern_size * block_size_in
+        piece_h_in = (max(ys_poly) - min(ys_poly)) / pattern_size * block_size_in
+        c.setFont("Helvetica", 6)
+        c.drawCentredString(cx, cy - 12,
+                            f"{piece_w_in:.1f}\" x {piece_h_in:.1f}\"")
 
-        col_x += pw + piece_margin
+        col_x += pw + piece_gap
+        row_h = max(row_h, ph)
 
     c.showPage()
+
+
+def _try_layout_pieces(bboxes, scale, avail_w, avail_h, gap):
+    """Check if pieces fit in the available area at the given scale.
+
+    Returns True if they fit, None if not.
+    """
+    col_x = 0.0
+    cur_y = 0.0
+    row_h = 0.0
+
+    for pw_pat, ph_pat, _ox, _oy in bboxes:
+        pw = pw_pat * scale
+        ph = ph_pat * scale
+
+        if col_x + pw > avail_w and col_x > 0.1:
+            col_x = 0.0
+            cur_y += row_h + gap
+            row_h = 0.0
+
+        if cur_y + ph > avail_h:
+            return None
+
+        col_x += pw + gap
+        row_h = max(row_h, ph)
+
+    return True
 
 
 def _offset_polygon(polygon, offset):  # pylint: disable=too-many-locals
