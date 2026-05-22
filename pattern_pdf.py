@@ -15,12 +15,34 @@ from blocks import BLOCK_PATTERNS
 from layout import SYMMETRY_MODES
 from palettes import PALETTES, hex_to_rgb
 from quilt import render_quilt
+from quilt_id import encode
 
 # Page layout constants
 PAGE_W, PAGE_H = letter  # 8.5 x 11 inches in points
 MARGIN = 0.5 * inch
 PRINTABLE_W = PAGE_W - 2 * MARGIN
 PRINTABLE_H = PAGE_H - 2 * MARGIN
+
+
+class _FooterCanvas(rl_canvas.Canvas):
+    """Canvas subclass that adds a footer with quilt_id and page number."""
+
+    def __init__(self, *args, quilt_id="", **kwargs):
+        super().__init__(*args, **kwargs)
+        self._quilt_id = quilt_id
+        self._page_num = 0
+
+    def showPage(self):
+        self._page_num += 1
+        self.saveState()
+        self.setFont("Helvetica", 7)
+        self.setFillColorRGB(0.6, 0.6, 0.6)
+        if self._quilt_id:
+            self.drawString(MARGIN, 0.3 * inch, self._quilt_id)
+        self.drawRightString(PAGE_W - MARGIN, 0.3 * inch,
+                             f"Page {self._page_num}")
+        self.restoreState()
+        super().showPage()
 
 
 def _color_label(index):
@@ -1023,8 +1045,14 @@ def generate_pattern_pdf(params, output_path, quilt_size=96,  # pylint: disable=
     # render quilt image for cover
     quilt_image = _render_quilt_image(params)
 
+    # encode quilt ID for footer
+    try:
+        qid = encode(params)
+    except (ValueError, KeyError):
+        qid = ""
+
     # build PDF
-    c = rl_canvas.Canvas(output_path, pagesize=letter)
+    c = _FooterCanvas(output_path, pagesize=letter, quilt_id=qid)
 
     _draw_cover_page(c, params, quilt_image, palette_colors,
                      quilt_size, block_size_in)
