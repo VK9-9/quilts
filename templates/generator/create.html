@@ -293,6 +293,7 @@
   <!-- Actions -->
   <div class="action-buttons">
     <a id="download-btn" class="btn btn-primary" href="#">Download PNG</a>
+    <a id="pattern-btn" class="btn btn-secondary" href="#">Download Pattern (PDF)</a>
     <button id="share-btn" class="btn btn-secondary">Copy share link</button>
   </div>
 
@@ -366,6 +367,7 @@
 
     history.replaceState(null, "", "/create?" + qs);
     document.getElementById("download-btn").href = "/download?" + qs;
+    document.getElementById("pattern-btn").href = "/pattern?" + qs;
   }
 
   function scheduleUpdate() {
