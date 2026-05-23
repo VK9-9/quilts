@@ -107,7 +107,7 @@ def sample_random_params(rng=None, explore_only=False):
         "chaos": round(rng.uniform(*PARAM_SPACE["chaos"]), 2),
         "palette": _pick_palette(rng, explore_only=explore_only),
         "n_patterns": rng.randint(*PARAM_SPACE["n_patterns"]),
-        "n_colors": rng.choices([3, 4, 5], weights=[8, 72, 20])[0],
+        "n_colors": rng.choices([4, 5, 6], weights=[15, 50, 35])[0],
         "tile_size": rng.randint(*PARAM_SPACE["tile_size"]),
         "tile_variation": round(rng.uniform(*PARAM_SPACE["tile_variation"]), 2),
         "border_style": (rng.choices(
