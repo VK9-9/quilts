@@ -294,7 +294,15 @@
   <!-- Actions -->
   <div class="action-buttons">
     <a id="download-btn" class="btn btn-primary" href="#">Download PNG</a>
-    <a id="pattern-btn" class="btn btn-secondary" href="#">Download Pattern (PDF)</a>
+    <div style="display: flex; gap: 6px; align-items: stretch;">
+      <select id="quilt_size" style="flex: 1; font-size: 12px; padding: 5px 4px;">
+        {% for key, (w, h, label) in quilt_sizes.items() %}
+        <option value="{{ key }}" {% if key == "sq8" %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+      <a id="pattern-btn" class="btn btn-secondary" href="#"
+         style="flex: 0; white-space: nowrap; padding: 9px 10px;">PDF</a>
+    </div>
     <button id="share-btn" class="btn btn-secondary">Copy share link</button>
   </div>
 
@@ -368,7 +376,8 @@
 
     history.replaceState(null, "", "/create?" + qs);
     document.getElementById("download-btn").href = "/download?" + qs;
-    document.getElementById("pattern-btn").href = "/pattern?" + qs;
+    document.getElementById("pattern-btn").href = "/pattern?" + qs +
+      "&quilt_size=" + document.getElementById("quilt_size").value;
   }
 
   function scheduleUpdate() {
@@ -417,6 +426,14 @@
       btn.textContent = "Copied!";
       setTimeout(() => { btn.textContent = orig; }, 1500);
     });
+  });
+
+  // Update pattern link when size changes (no re-render needed)
+  document.getElementById("quilt_size").addEventListener("change", () => {
+    const p = getParams();
+    const qs = buildQuery(p);
+    document.getElementById("pattern-btn").href = "/pattern?" + qs +
+      "&quilt_size=" + document.getElementById("quilt_size").value;
   });
 
   // Initial render

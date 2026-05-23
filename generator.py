@@ -142,6 +142,16 @@ PRESETS = {
 _RENDER_BLOCK_SIZE = 36    # ~576px for a 16-row quilt
 _DOWNLOAD_BLOCK_SIZE = 72  # ~1152px for download
 
+QUILT_SIZES = {
+    "throw":  (50, 65,  "Throw (50\" x 65\")"),
+    "twin":   (65, 85,  "Twin (65\" x 85\")"),
+    "queen":  (85, 108, "Queen (85\" x 108\")"),
+    "king":   (110, 108, "King (110\" x 108\")"),
+    "sq6":    (72, 72,  "Square 6' (72\" x 72\")"),
+    "sq8":    (96, 96,  "Square 8' (96\" x 96\")"),
+    "sq10":   (120, 120, "Square 10' (120\" x 120\")"),
+}
+
 
 def _params_from_request(defaults=None):
     """Parse quilt params from query string, falling back to defaults."""
@@ -248,6 +258,7 @@ def create():
                 symmetry_names=SYMMETRY_NAMES,
                 border_styles=BORDER_STYLES,
                 stitch_styles=STITCH_STYLES,
+                quilt_sizes=QUILT_SIZES,
             )
 
     # Load from preset
@@ -264,6 +275,7 @@ def create():
         symmetry_names=SYMMETRY_NAMES,
         border_styles=BORDER_STYLES,
         stitch_styles=STITCH_STYLES,
+        quilt_sizes=QUILT_SIZES,
     )
 
 
@@ -308,10 +320,12 @@ def pattern():
         qid = encode(params)
     except (ValueError, KeyError):
         qid = "unknown"
+    size_key = request.args.get("quilt_size", "sq8")
+    size_w, size_h, _ = QUILT_SIZES.get(size_key, QUILT_SIZES["sq8"])
     with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
         tmp_path = tmp.name
     try:
-        generate_pattern_pdf(params, tmp_path)
+        generate_pattern_pdf(params, tmp_path, quilt_w=size_w, quilt_h=size_h)
         with open(tmp_path, "rb") as f:
             pdf_bytes = f.read()
     finally:
