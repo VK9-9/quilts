@@ -227,12 +227,19 @@ def _extract_unique_blocks(grid, n_colors):
             pat_fn = BLOCK_PATTERNS[cell["pattern"]]
             polygons = pat_fn(0, 0, 100, n_colors)
             rotated = _rotate_polygons(polygons, cell["rotation"], 100)
+            # remap raw color indices through cell's color_map
+            color_map = cell.get("color_map")
+            if color_map:
+                rotated = [(poly, color_map[ci] if isinstance(ci, int)
+                            and ci < len(color_map) else ci)
+                           for poly, ci in rotated]
             combos[key] = {
                 "pattern_idx": cell["pattern"],
                 "pattern_name": pat_fn.__name__,
                 "rotation": cell["rotation"],
                 "count": 1,
                 "polygons": rotated,
+                "color_map": color_map,
             }
 
     # Second pass: group by shape signature (identical cut pieces)
@@ -251,6 +258,7 @@ def _extract_unique_blocks(grid, n_colors):
                 "rotation": combo["rotation"],
                 "count": combo["count"],
                 "polygons": combo["polygons"],
+                "color_map": combo["color_map"],
                 "variants": [(combo["pattern_idx"], combo["rotation"],
                               combo["count"])],
             }
@@ -827,6 +835,11 @@ def _draw_rotation_summary(c, unique_blocks, palette_colors, n_colors):  # pylin
         pat_idx = blk["pattern_idx"]
         pat_fn = BLOCK_PATTERNS[pat_idx]
         base_polygons = pat_fn(0, 0, 100, n_colors)
+        color_map = blk.get("color_map")
+        if color_map:
+            base_polygons = [(poly, color_map[ci] if isinstance(ci, int)
+                              and ci < len(color_map) else ci)
+                             for poly, ci in base_polygons]
 
         if y - row_height < bm:
             c.showPage()
