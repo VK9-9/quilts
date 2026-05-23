@@ -1031,7 +1031,7 @@ def _draw_cutting_summary(c, unique_blocks, palette_colors, _grid,  # pylint: di
     c.showPage()
 
 
-def _draw_block_breakdown(c, unique_blocks, bm, y):
+def _draw_block_breakdown(c, unique_blocks, bm, y):  # pylint: disable=too-many-locals
     """Draw per-block piece breakdown within the cutting summary."""
     y -= 35
     c.setFont("Helvetica-Bold", 12)
