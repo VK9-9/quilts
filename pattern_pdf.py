@@ -1035,16 +1035,28 @@ def _offset_polygon(polygon, offset):  # pylint: disable=too-many-locals
         ))
 
     # find intersection of adjacent shifted edges
+    # at concave vertices, use both edge endpoints instead of intersection
     result = []
     for i in range(n):
         e1 = edges[i]
         e2 = edges[(i + 1) % n]
-        pt = _line_intersection(e1[0], e1[1], e1[2], e1[3],
-                                e2[0], e2[1], e2[2], e2[3])
-        if pt:
-            result.append(pt)
+        # check if vertex is convex or concave using cross product
+        v_idx = (i + 1) % n
+        px, py = polygon[v_idx]
+        prev = polygon[i]
+        nxt = polygon[(v_idx + 1) % n]
+        cross = ((px - prev[0]) * (nxt[1] - py) -
+                 (py - prev[1]) * (nxt[0] - px))
+        is_convex = (cross * sign) >= 0
+
+        if is_convex:
+            pt = _line_intersection(e1[0], e1[1], e1[2], e1[3],
+                                    e2[0], e2[1], e2[2], e2[3])
+            result.append(pt if pt else (e1[2], e1[3]))
         else:
+            # concave: insert both offset endpoints to go around the vertex
             result.append((e1[2], e1[3]))
+            result.append((e2[0], e2[1]))
 
     return result
 
