@@ -830,6 +830,17 @@ def _try_layout_pieces(bboxes, scale, avail_w, avail_h, gap):
     return True
 
 
+def _polygon_area_signed(polygon):
+    """Compute signed area of polygon (positive = CCW, negative = CW)."""
+    total = 0.0
+    n = len(polygon)
+    for i in range(n):
+        x1, y1 = polygon[i]
+        x2, y2 = polygon[(i + 1) % n]
+        total += x1 * y2 - x2 * y1
+    return total / 2.0
+
+
 def _offset_polygon(polygon, offset):  # pylint: disable=too-many-locals
     """Offset polygon edges outward by offset amount (simple approach).
 
@@ -839,6 +850,9 @@ def _offset_polygon(polygon, offset):  # pylint: disable=too-many-locals
     n = len(polygon)
     if n < 3:
         return polygon
+
+    # detect winding: flip normal direction for CCW polygons
+    sign = -1.0 if _polygon_area_signed(polygon) > 0 else 1.0
 
     # compute outward-shifted edges
     edges = []
@@ -850,8 +864,8 @@ def _offset_polygon(polygon, offset):  # pylint: disable=too-many-locals
         if length < 1e-10:
             edges.append((x1, y1, x2, y2, 0, 0))
             continue
-        # outward normal (assuming clockwise winding)
-        nx, ny = dy / length, -dx / length
+        # outward normal — direction depends on winding
+        nx, ny = sign * dy / length, sign * -dx / length
         edges.append((
             x1 + nx * offset, y1 + ny * offset,
             x2 + nx * offset, y2 + ny * offset,
