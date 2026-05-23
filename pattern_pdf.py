@@ -425,7 +425,7 @@ def _draw_assembly_page(c, grid, unique_blocks, params,  # pylint: disable=too-m
 
 
 def _draw_bargello_pages(c, grid, palette_colors, params,  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals,too-many-statements
-                         quilt_w, quilt_h, block_w_in, block_h_in,
+                         _quilt_w, quilt_h, block_w_in, block_h_in,
                          seam_allowance):
     """Draw bargello-specific pattern pages showing strip color arrangement.
 
