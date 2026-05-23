@@ -24,7 +24,7 @@ PRINTABLE_W = PAGE_W - 2 * MARGIN
 PRINTABLE_H = PAGE_H - 2 * MARGIN
 
 
-class _FooterCanvas(rl_canvas.Canvas):
+class _FooterCanvas(rl_canvas.Canvas):  # pylint: disable=abstract-method
     """Canvas subclass that adds a footer with quilt_id and page number."""
 
     def __init__(self, *args, quilt_id="", **kwargs):
