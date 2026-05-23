@@ -214,6 +214,14 @@
   <div>
     <div class="section-label">Structure</div>
     <div class="control-group">
+      <div class="control">
+        <label>Quilt size</label>
+        <select id="quilt_size">
+          {% for key, (w, h, label) in quilt_sizes.items() %}
+          <option value="{{ key }}" {% if key == "sq8" %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
       <div class="control chaos-control">
         <label>Chaos <span id="chaos-val">{{ params.chaos }}</span></label>
         <input type="range" id="chaos" min="0" max="0.80" step="0.05"
@@ -294,15 +302,7 @@
   <!-- Actions -->
   <div class="action-buttons">
     <a id="download-btn" class="btn btn-primary" href="#">Download PNG</a>
-    <div style="display: flex; gap: 6px; align-items: stretch;">
-      <select id="quilt_size" style="flex: 1; font-size: 12px; padding: 5px 4px;">
-        {% for key, (w, h, label) in quilt_sizes.items() %}
-        <option value="{{ key }}" {% if key == "sq8" %}selected{% endif %}>{{ label }}</option>
-        {% endfor %}
-      </select>
-      <a id="pattern-btn" class="btn btn-secondary" href="#"
-         style="flex: 0; white-space: nowrap; padding: 9px 10px;">PDF</a>
-    </div>
+    <a id="pattern-btn" class="btn btn-secondary" href="#">Download Pattern (PDF)</a>
     <button id="share-btn" class="btn btn-secondary">Copy share link</button>
   </div>
 
@@ -328,7 +328,7 @@
 <script>
   const CONTROLS = [
     "symmetry","palette","n_colors",
-    "chaos","rows","tile_size","tile_variation",
+    "quilt_size","chaos","rows","tile_size","tile_variation",
     "border_style","quilt_stitch","wonky","mega_frac","plain_frac","strippy",
     "seed",
   ];
@@ -376,8 +376,7 @@
 
     history.replaceState(null, "", "/create?" + qs);
     document.getElementById("download-btn").href = "/download?" + qs;
-    document.getElementById("pattern-btn").href = "/pattern?" + qs +
-      "&quilt_size=" + document.getElementById("quilt_size").value;
+    document.getElementById("pattern-btn").href = "/pattern?" + qs;
   }
 
   function scheduleUpdate() {
@@ -426,14 +425,6 @@
       btn.textContent = "Copied!";
       setTimeout(() => { btn.textContent = orig; }, 1500);
     });
-  });
-
-  // Update pattern link when size changes (no re-render needed)
-  document.getElementById("quilt_size").addEventListener("change", () => {
-    const p = getParams();
-    const qs = buildQuery(p);
-    document.getElementById("pattern-btn").href = "/pattern?" + qs +
-      "&quilt_size=" + document.getElementById("quilt_size").value;
   });
 
   // Initial render
