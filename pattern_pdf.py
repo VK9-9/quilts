@@ -711,6 +711,77 @@ def _draw_grain_arrow(c, pts, cx, cy):  # pylint: disable=too-many-locals
            ay2 - best_dy * head - py * head * 0.5)
 
 
+def _draw_block_thumbnail(c, polygons, palette_colors, x, y, display_size,
+                          pattern_size=100):
+    """Draw a small colored block at the given position."""
+    scale = display_size / pattern_size
+    c.setStrokeColorRGB(0.3, 0.3, 0.3)
+    c.setLineWidth(0.4)
+    for poly, color_idx in polygons:
+        if isinstance(color_idx, tuple):
+            r, g, b = color_idx
+        else:
+            hex_color = palette_colors[color_idx % len(palette_colors)]
+            r, g, b = hex_to_rgb(hex_color)
+        path = c.beginPath()
+        pts = [(x + px * scale, y + display_size - py * scale)
+               for px, py in poly]
+        path.moveTo(*pts[0])
+        for pt in pts[1:]:
+            path.lineTo(*pt)
+        path.close()
+        c.setFillColorRGB(r, g, b)
+        c.drawPath(path, fill=1, stroke=1)
+
+
+def _draw_rotation_summary(c, unique_blocks, palette_colors, n_colors):  # pylint: disable=too-many-locals
+    """Draw a page showing each unique block in all 4 rotations."""
+    bm = 0.35 * inch
+    c.setFont("Helvetica-Bold", 16)
+    c.drawCentredString(PAGE_W / 2, PAGE_H - bm - 20, "Block Rotations")
+
+    thumb_size = 1.2 * inch
+    spacing = 0.3 * inch
+    label_height = 16
+    row_height = thumb_size + label_height + 20
+
+    y = PAGE_H - bm - 50
+
+    for blk in unique_blocks:
+        design_num = blk["_design_num"]
+        name = blk["pattern_name"].replace("_", " ")
+        pat_idx = blk["pattern_idx"]
+        pat_fn = BLOCK_PATTERNS[pat_idx]
+        base_polygons = pat_fn(0, 0, 100, n_colors)
+
+        if y - row_height < bm:
+            c.showPage()
+            y = PAGE_H - bm - 30
+
+        # Block label
+        c.setFont("Helvetica-Bold", 11)
+        c.setFillColorRGB(0, 0, 0)
+        c.drawString(bm, y, f"Block #{design_num}: {name}")
+        y -= 5
+
+        # Draw all 4 rotations
+        for rot in range(4):
+            rotated = _rotate_polygons(base_polygons, rot, 100)
+            rx = bm + rot * (thumb_size + spacing)
+            ry = y - thumb_size
+            _draw_block_thumbnail(c, rotated, palette_colors, rx, ry,
+                                  thumb_size)
+            # rotation label
+            c.setFont("Helvetica", 8)
+            c.setFillColorRGB(0.3, 0.3, 0.3)
+            c.drawCentredString(rx + thumb_size / 2, ry - 12,
+                                f"{rot * 90}\u00b0")
+
+        y -= thumb_size + label_height + 15
+
+    c.showPage()
+
+
 def _draw_block_page(c, block, palette_colors, block_w_in, block_h_in,  # pylint: disable=too-many-locals,too-many-statements,too-many-branches,too-many-arguments,too-many-positional-arguments
                      seam_allowance):
     """Draw one block's pattern page with assembled view and individual pieces."""
@@ -1181,6 +1252,7 @@ def generate_pattern_pdf(params, output_path, quilt_w=96, quilt_h=None,  # pylin
     if params["symmetry"] != "bargello":
         _draw_assembly_page(c, grid, unique_blocks, params,
                             quilt_w, quilt_h, block_w_in, block_h_in)
+        _draw_rotation_summary(c, unique_blocks, palette_colors, n_colors)
 
     if params["symmetry"] == "bargello":
         _draw_bargello_pages(c, grid, palette_colors, params,
