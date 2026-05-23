@@ -156,31 +156,82 @@ def _reconstruct_layout(params):  # pylint: disable=too-many-locals
     return grid, allowed, palette_colors
 
 
+def _canonicalize_polygon(pts):
+    """Canonicalize a polygon's vertex list for comparison.
+
+    Translates to bounding-box origin, rounds coordinates, then rotates
+    the vertex list so the lexicographically smallest vertex comes first.
+    """
+    xs = [px for px, _py in pts]
+    ys = [_py for _px, _py in pts]
+    min_x, min_y = min(xs), min(ys)
+    normalized = [(round(px - min_x, 2), round(py - min_y, 2))
+                  for px, py in pts]
+    # rotate list to start at lexicographically smallest vertex
+    min_idx = normalized.index(min(normalized))
+    return tuple(normalized[min_idx:] + normalized[:min_idx])
+
+
+def _shape_signature(polygons):
+    """Create a hashable signature for a set of polygon shapes, ignoring colors.
+
+    Canonicalizes each polygon and sorts the set for order independence.
+    """
+    shapes = sorted(_canonicalize_polygon(poly) for poly, _color_idx in polygons)
+    return tuple(shapes)
+
+
 def _extract_unique_blocks(grid, n_colors):
-    """Find unique (pattern_index, rotation) combos in the grid.
+    """Find unique block designs in the grid, grouping by cut-piece geometry.
+
+    Blocks that are rotations of the same pattern but produce identical
+    cut pieces (e.g. rotationally symmetric patterns) are merged into
+    one entry.
 
     Returns list of dicts:
         {"pattern_idx": int, "rotation": int, "count": int,
-         "polygons": [(polygon, color_idx), ...]}
+         "polygons": [(polygon, color_idx), ...],
+         "variants": [(pattern_idx, rotation, count), ...]}
     """
-    seen = {}
+    # First pass: collect all (pattern, rotation) combos with counts
+    combos = {}
     for cell in grid.values():
         key = (cell["pattern"], cell["rotation"])
-        if key in seen:
-            seen[key]["count"] += 1
+        if key in combos:
+            combos[key]["count"] += 1
         else:
             pat_fn = BLOCK_PATTERNS[cell["pattern"]]
-            polygons = pat_fn(0, 0, 100, n_colors)  # generate at size=100
-            # apply rotation
+            polygons = pat_fn(0, 0, 100, n_colors)
             rotated = _rotate_polygons(polygons, cell["rotation"], 100)
-            seen[key] = {
+            combos[key] = {
                 "pattern_idx": cell["pattern"],
                 "pattern_name": pat_fn.__name__,
                 "rotation": cell["rotation"],
                 "count": 1,
                 "polygons": rotated,
             }
-    return sorted(seen.values(), key=lambda b: (-b["count"], b["pattern_idx"]))
+
+    # Second pass: group by shape signature (identical cut pieces)
+    groups = {}
+    for key, combo in combos.items():
+        sig = _shape_signature(combo["polygons"])
+        if sig in groups:
+            g = groups[sig]
+            g["count"] += combo["count"]
+            g["variants"].append((combo["pattern_idx"], combo["rotation"],
+                                  combo["count"]))
+        else:
+            groups[sig] = {
+                "pattern_idx": combo["pattern_idx"],
+                "pattern_name": combo["pattern_name"],
+                "rotation": combo["rotation"],
+                "count": combo["count"],
+                "polygons": combo["polygons"],
+                "variants": [(combo["pattern_idx"], combo["rotation"],
+                              combo["count"])],
+            }
+
+    return sorted(groups.values(), key=lambda b: (-b["count"], b["pattern_idx"]))
 
 
 def _rotate_polygons(polygons, rotation, size):
@@ -302,9 +353,11 @@ def _draw_assembly_page(c, grid, unique_blocks, params,  # pylint: disable=too-m
     c.drawCentredString(PAGE_W / 2, PAGE_H - MARGIN - 25, "Assembly Diagram")
 
     # build a label map: (pattern_idx, rotation) -> design number
+    # each group may contain multiple variants (rotations with same cut pieces)
     design_map = {}
     for i, blk in enumerate(unique_blocks):
-        design_map[(blk["pattern_idx"], blk["rotation"])] = i + 1
+        for pat_idx, rot, _cnt in blk["variants"]:
+            design_map[(pat_idx, rot)] = i + 1
 
     # fit grid into printable area
     max_cell = min(PRINTABLE_W / cols, (PRINTABLE_H - 50) / rows)
@@ -356,11 +409,14 @@ def _draw_assembly_page(c, grid, unique_blocks, params,  # pylint: disable=too-m
     for i, blk in enumerate(unique_blocks):
         design_num = i + 1
         name = blk["pattern_name"].replace("_", " ")
-        rot = blk["rotation"] * 90
         count = blk["count"]
+        rots = sorted(set(rot for _, rot, _ in blk["variants"]))
         line = f"#{design_num}: {name}"
-        if rot > 0:
-            line += f" (rotated {rot}\u00b0)"
+        if len(rots) > 1:
+            rot_strs = [f"{r * 90}\u00b0" for r in rots]
+            line += f" (rotations: {', '.join(rot_strs)})"
+        elif rots[0] > 0:
+            line += f" (rotated {rots[0] * 90}\u00b0)"
         line += f" \u2014 {count} block{'s' if count != 1 else ''}"
         c.drawString(MARGIN + 20, y, line)
         y -= 14
@@ -636,16 +692,14 @@ def _draw_block_page(c, block, palette_colors, block_w_in, block_h_in,  # pylint
     """Draw one block's pattern page with assembled view and individual pieces."""
     design_num = block["_design_num"]
     name = block["pattern_name"].replace("_", " ")
-    rot = block["rotation"] * 90
     polygons = block["polygons"]
+    variants = block.get("variants", [])
     pattern_size = 100  # polygons generated at size=100
     bm = 0.35 * inch  # tighter margins for block pages
 
     # --- Header row: assembled block (left) + info (right) ---
     c.setFont("Helvetica-Bold", 13)
     title = f"Block #{design_num}: {name}"
-    if rot > 0:
-        title += f" (rotated {rot}\u00b0)"
     c.drawString(bm, PAGE_H - bm - 16, title)
 
     # Assembled block — 1.8 inches, top-left
@@ -688,9 +742,16 @@ def _draw_block_page(c, block, palette_colors, block_w_in, block_h_in,  # pylint
                  f"Finished: {block_w_in:.2f}\" x {block_h_in:.2f}\"")
     c.drawString(info_x, info_y - 13,
                  f"Count: {block['count']} blocks")
-    c.drawString(info_x, info_y - 26,
+    info_offset = 26
+    if len(variants) > 1:
+        rots = sorted(set(rot for _, rot, _ in variants))
+        rot_strs = [f"{r * 90}\u00b0" for r in rots]
+        c.drawString(info_x, info_y - info_offset,
+                     f"Rotations: {', '.join(rot_strs)} (same pieces)")
+        info_offset += 13
+    c.drawString(info_x, info_y - info_offset,
                  "Solid = finished size")
-    c.drawString(info_x, info_y - 39,
+    c.drawString(info_x, info_y - info_offset - 13,
                  f"Dashed = cut line (+{seam_allowance:.2f}\")")
 
     # --- Individual pieces section ---
@@ -973,12 +1034,13 @@ def _draw_cutting_summary(c, unique_blocks, palette_colors, grid,  # pylint: dis
     for blk in unique_blocks:
         design_num = blk["_design_num"]
         name = blk["pattern_name"].replace("_", " ")
-        rot = blk["rotation"] * 90
         count = blk["count"]
-
+        variants = blk.get("variants", [])
         title = f"Block #{design_num}: {name}"
-        if rot > 0:
-            title += f" (rotated {rot}\u00b0)"
+        if len(variants) > 1:
+            rots = sorted(set(r for _, r, _ in variants))
+            rot_strs = [f"{r * 90}\u00b0" for r in rots]
+            title += f" (rotations: {', '.join(rot_strs)})"
         title += f" \u00d7 {count}"
 
         c.setFont("Helvetica-Bold", 9)
