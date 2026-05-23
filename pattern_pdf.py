@@ -3,6 +3,7 @@
 Takes quilt parameters (same dict as sampler/render) and produces a
 multi-page PDF with cover, assembly diagram, and per-block cutting patterns.
 """
+# pylint: disable=too-many-lines
 import math
 import random
 import tempfile
@@ -24,7 +25,7 @@ PRINTABLE_W = PAGE_W - 2 * MARGIN
 PRINTABLE_H = PAGE_H - 2 * MARGIN
 
 
-class _FooterCanvas(rl_canvas.Canvas):
+class _FooterCanvas(rl_canvas.Canvas):  # pylint: disable=abstract-method
     """Canvas subclass that adds a footer with quilt_id and page number."""
 
     def __init__(self, *args, quilt_id="", **kwargs):
@@ -156,31 +157,82 @@ def _reconstruct_layout(params):  # pylint: disable=too-many-locals
     return grid, allowed, palette_colors
 
 
+def _canonicalize_polygon(pts):
+    """Canonicalize a polygon's vertex list for comparison.
+
+    Translates to bounding-box origin, rounds coordinates, then rotates
+    the vertex list so the lexicographically smallest vertex comes first.
+    """
+    xs = [px for px, _py in pts]
+    ys = [_py for _px, _py in pts]
+    min_x, min_y = min(xs), min(ys)
+    normalized = [(round(px - min_x, 2), round(py - min_y, 2))
+                  for px, py in pts]
+    # rotate list to start at lexicographically smallest vertex
+    min_idx = normalized.index(min(normalized))
+    return tuple(normalized[min_idx:] + normalized[:min_idx])
+
+
+def _shape_signature(polygons):
+    """Create a hashable signature for a set of polygon shapes, ignoring colors.
+
+    Canonicalizes each polygon and sorts the set for order independence.
+    """
+    shapes = sorted(_canonicalize_polygon(poly) for poly, _color_idx in polygons)
+    return tuple(shapes)
+
+
 def _extract_unique_blocks(grid, n_colors):
-    """Find unique (pattern_index, rotation) combos in the grid.
+    """Find unique block designs in the grid, grouping by cut-piece geometry.
+
+    Blocks that are rotations of the same pattern but produce identical
+    cut pieces (e.g. rotationally symmetric patterns) are merged into
+    one entry.
 
     Returns list of dicts:
         {"pattern_idx": int, "rotation": int, "count": int,
-         "polygons": [(polygon, color_idx), ...]}
+         "polygons": [(polygon, color_idx), ...],
+         "variants": [(pattern_idx, rotation, count), ...]}
     """
-    seen = {}
+    # First pass: collect all (pattern, rotation) combos with counts
+    combos = {}
     for cell in grid.values():
         key = (cell["pattern"], cell["rotation"])
-        if key in seen:
-            seen[key]["count"] += 1
+        if key in combos:
+            combos[key]["count"] += 1
         else:
             pat_fn = BLOCK_PATTERNS[cell["pattern"]]
-            polygons = pat_fn(0, 0, 100, n_colors)  # generate at size=100
-            # apply rotation
+            polygons = pat_fn(0, 0, 100, n_colors)
             rotated = _rotate_polygons(polygons, cell["rotation"], 100)
-            seen[key] = {
+            combos[key] = {
                 "pattern_idx": cell["pattern"],
                 "pattern_name": pat_fn.__name__,
                 "rotation": cell["rotation"],
                 "count": 1,
                 "polygons": rotated,
             }
-    return sorted(seen.values(), key=lambda b: (-b["count"], b["pattern_idx"]))
+
+    # Second pass: group by shape signature (identical cut pieces)
+    groups = {}
+    for key, combo in combos.items():
+        sig = _shape_signature(combo["polygons"])
+        if sig in groups:
+            g = groups[sig]
+            g["count"] += combo["count"]
+            g["variants"].append((combo["pattern_idx"], combo["rotation"],
+                                  combo["count"]))
+        else:
+            groups[sig] = {
+                "pattern_idx": combo["pattern_idx"],
+                "pattern_name": combo["pattern_name"],
+                "rotation": combo["rotation"],
+                "count": combo["count"],
+                "polygons": combo["polygons"],
+                "variants": [(combo["pattern_idx"], combo["rotation"],
+                              combo["count"])],
+            }
+
+    return sorted(groups.values(), key=lambda b: (-b["count"], b["pattern_idx"]))
 
 
 def _rotate_polygons(polygons, rotation, size):
@@ -223,7 +275,7 @@ def _render_quilt_image(params):
 
 
 def _draw_cover_page(c, params, quilt_image_path, palette_colors,  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals
-                     quilt_size_in, block_size_in):
+                     quilt_w, quilt_h, block_w_in, block_h_in):
     """Draw cover page with quilt image, dimensions, and color legend."""
     rows = params["rows"]
     cols = params.get("cols", rows)
@@ -247,13 +299,16 @@ def _draw_cover_page(c, params, quilt_image_path, palette_colors,  # pylint: dis
     y = img_y - 25
     c.setFont("Helvetica", 11)
     border_style = params.get("border_style")
-    border_width_in = block_size_in * 0.75 if border_style else 0
+    border_width_in = min(block_w_in, block_h_in) * 0.75 if border_style else 0
+
+    size_str = (f"{quilt_w:.0f}\" x {quilt_h:.0f}\""
+                f"  ({quilt_w/12:.1f}' x {quilt_h/12:.1f}')")
+    block_str = f"{block_w_in:.2f}\" x {block_h_in:.2f}\""
 
     info_lines = [
-        f"Finished size: {quilt_size_in:.0f}\" x {quilt_size_in:.0f}\""
-        f"  ({quilt_size_in/12:.1f}' x {quilt_size_in/12:.1f}')",
+        f"Finished size: {size_str}",
         f"Grid: {rows} rows x {cols} columns",
-        f"Block size: {block_size_in:.2f}\" x {block_size_in:.2f}\"",
+        f"Block size: {block_str}",
         "Seam allowance: added to all pieces (shown dashed)",
     ]
     if border_style:
@@ -290,7 +345,7 @@ def _draw_cover_page(c, params, quilt_image_path, palette_colors,  # pylint: dis
 
 
 def _draw_assembly_page(c, grid, unique_blocks, params,  # pylint: disable=too-many-locals
-                        _quilt_size_in, _block_size_in):
+                        _quilt_w, _quilt_h, _block_w_in, _block_h_in):
     """Draw assembly diagram showing block placement in the grid."""
     rows = params["rows"]
     cols = params.get("cols", rows)
@@ -299,9 +354,11 @@ def _draw_assembly_page(c, grid, unique_blocks, params,  # pylint: disable=too-m
     c.drawCentredString(PAGE_W / 2, PAGE_H - MARGIN - 25, "Assembly Diagram")
 
     # build a label map: (pattern_idx, rotation) -> design number
+    # each group may contain multiple variants (rotations with same cut pieces)
     design_map = {}
     for i, blk in enumerate(unique_blocks):
-        design_map[(blk["pattern_idx"], blk["rotation"])] = i + 1
+        for pat_idx, rot, _cnt in blk["variants"]:
+            design_map[(pat_idx, rot)] = i + 1
 
     # fit grid into printable area
     max_cell = min(PRINTABLE_W / cols, (PRINTABLE_H - 50) / rows)
@@ -353,11 +410,14 @@ def _draw_assembly_page(c, grid, unique_blocks, params,  # pylint: disable=too-m
     for i, blk in enumerate(unique_blocks):
         design_num = i + 1
         name = blk["pattern_name"].replace("_", " ")
-        rot = blk["rotation"] * 90
         count = blk["count"]
+        rots = sorted(set(rot for _, rot, _ in blk["variants"]))
         line = f"#{design_num}: {name}"
-        if rot > 0:
-            line += f" (rotated {rot}\u00b0)"
+        if len(rots) > 1:
+            rot_strs = [f"{r * 90}\u00b0" for r in rots]
+            line += f" (rotations: {', '.join(rot_strs)})"
+        elif rots[0] > 0:
+            line += f" (rotated {rots[0] * 90}\u00b0)"
         line += f" \u2014 {count} block{'s' if count != 1 else ''}"
         c.drawString(MARGIN + 20, y, line)
         y -= 14
@@ -366,7 +426,8 @@ def _draw_assembly_page(c, grid, unique_blocks, params,  # pylint: disable=too-m
 
 
 def _draw_bargello_pages(c, grid, palette_colors, params,  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals,too-many-statements
-                         quilt_size_in, block_size_in, seam_allowance):
+                         _quilt_w, quilt_h, block_w_in, block_h_in,
+                         seam_allowance):
     """Draw bargello-specific pattern pages showing strip color arrangement.
 
     Bargello quilts are made from strips of fabric, not pieced blocks.
@@ -383,8 +444,8 @@ def _draw_bargello_pages(c, grid, palette_colors, params,  # pylint: disable=too
     c.setFont("Helvetica", 10)
     y = PAGE_H - bm - 40
     c.drawString(bm, y,
-                 f"Strip width: {block_size_in:.2f}\"  |  "
-                 f"Strip height: {quilt_size_in:.0f}\"  |  "
+                 f"Strip width: {block_w_in:.2f}\"  |  "
+                 f"Strip height: {quilt_h:.0f}\"  |  "
                  f"Seam allowance: {seam_allowance:.2f}\"")
     y -= 16
     c.drawString(bm, y,
@@ -452,8 +513,8 @@ def _draw_bargello_pages(c, grid, palette_colors, params,  # pylint: disable=too
     below_y -= 16
 
     c.setFont("Helvetica", 9)
-    cut_w = block_size_in + 2 * seam_allowance
-    cut_h = quilt_size_in / rows + 2 * seam_allowance
+    cut_w = block_w_in + 2 * seam_allowance
+    cut_h = block_h_in + 2 * seam_allowance
 
     # count strips per color
     color_counts = {}
@@ -478,8 +539,7 @@ def _draw_bargello_pages(c, grid, palette_colors, params,  # pylint: disable=too
     c.showPage()
 
     # --- Page 2: Real-size cutting template ---
-    _draw_bargello_template(c, block_size_in, quilt_size_in / rows,
-                            seam_allowance)
+    _draw_bargello_template(c, block_w_in, block_h_in, seam_allowance)
 
 
 def _draw_bargello_template(c, cell_w_in, cell_h_in, seam_allowance):  # pylint: disable=too-many-locals,too-many-statements
@@ -628,20 +688,19 @@ def _draw_grain_arrow(c, pts, cx, cy):  # pylint: disable=too-many-locals
            ay2 - best_dy * head - py * head * 0.5)
 
 
-def _draw_block_page(c, block, palette_colors, block_size_in, seam_allowance):  # pylint: disable=too-many-locals,too-many-statements,too-many-branches
+def _draw_block_page(c, block, palette_colors, block_w_in, block_h_in,  # pylint: disable=too-many-locals,too-many-statements,too-many-branches,too-many-arguments,too-many-positional-arguments
+                     seam_allowance):
     """Draw one block's pattern page with assembled view and individual pieces."""
     design_num = block["_design_num"]
     name = block["pattern_name"].replace("_", " ")
-    rot = block["rotation"] * 90
     polygons = block["polygons"]
+    variants = block.get("variants", [])
     pattern_size = 100  # polygons generated at size=100
     bm = 0.35 * inch  # tighter margins for block pages
 
     # --- Header row: assembled block (left) + info (right) ---
     c.setFont("Helvetica-Bold", 13)
     title = f"Block #{design_num}: {name}"
-    if rot > 0:
-        title += f" (rotated {rot}\u00b0)"
     c.drawString(bm, PAGE_H - bm - 16, title)
 
     # Assembled block — 1.8 inches, top-left
@@ -681,12 +740,19 @@ def _draw_block_page(c, block, palette_colors, block_size_in, seam_allowance):  
     c.setFillColorRGB(0, 0, 0)
     c.setFont("Helvetica", 9)
     c.drawString(info_x, info_y,
-                 f"Finished: {block_size_in:.2f}\" x {block_size_in:.2f}\"")
+                 f"Finished: {block_w_in:.2f}\" x {block_h_in:.2f}\"")
     c.drawString(info_x, info_y - 13,
                  f"Count: {block['count']} blocks")
-    c.drawString(info_x, info_y - 26,
+    info_offset = 26
+    if len(variants) > 1:
+        rots = sorted(set(rot for _, rot, _ in variants))
+        rot_strs = [f"{r * 90}\u00b0" for r in rots]
+        c.drawString(info_x, info_y - info_offset,
+                     f"Rotations: {', '.join(rot_strs)} (same pieces)")
+        info_offset += 13
+    c.drawString(info_x, info_y - info_offset,
                  "Solid = finished size")
-    c.drawString(info_x, info_y - 39,
+    c.drawString(info_x, info_y - info_offset - 13,
                  f"Dashed = cut line (+{seam_allowance:.2f}\")")
 
     # --- Individual pieces section ---
@@ -696,18 +762,20 @@ def _draw_block_page(c, block, palette_colors, block_size_in, seam_allowance):  
     pieces_top -= 12
 
     # Compute scale: fit pieces as large as possible
-    # First pass: find total area needed at 1:1
-    sa_pattern = seam_allowance * pattern_size / block_size_in
+    # Seam allowance in pattern units (may differ per axis for rectangular blocks)
+    sa_pat_x = seam_allowance * pattern_size / block_w_in
+    sa_pat_y = seam_allowance * pattern_size / block_h_in
+    sa_pattern = max(sa_pat_x, sa_pat_y)  # use larger for bbox calculations
     piece_bboxes = []
     for poly, color_idx in polygons:
         xs = [px for px, py in poly]
         ys = [py for px, py in poly]
         # bbox in pattern units, including seam allowance
-        pw = max(xs) - min(xs) + 2 * sa_pattern
-        ph = max(ys) - min(ys) + 2 * sa_pattern
+        pw = max(xs) - min(xs) + 2 * sa_pat_x
+        ph = max(ys) - min(ys) + 2 * sa_pat_y
         piece_bboxes.append((pw, ph, min(xs), min(ys)))
 
-    real_scale = block_size_in * inch / pattern_size
+    real_scale = max(block_w_in, block_h_in) * inch / pattern_size
     avail_w = PAGE_W - 2 * bm
     avail_h = pieces_top - bm
 
@@ -751,8 +819,8 @@ def _draw_block_page(c, block, palette_colors, block_size_in, seam_allowance):  
         c.setLineWidth(0.8)
         c.setDash([])
         path = c.beginPath()
-        pts = [(col_x + (px - ox + sa_pattern) * real_scale,
-                cur_y - (py - oy + sa_pattern) * real_scale)
+        pts = [(col_x + (px - ox + sa_pat_x) * real_scale,
+                cur_y - (py - oy + sa_pat_y) * real_scale)
                for px, py in poly]
         path.moveTo(*pts[0])
         for pt in pts[1:]:
@@ -766,8 +834,8 @@ def _draw_block_page(c, block, palette_colors, block_size_in, seam_allowance):  
         c.setLineWidth(0.5)
         c.setStrokeColorRGB(0.5, 0.5, 0.5)
         path_sa = c.beginPath()
-        sa_pts = [(col_x + (px - ox + sa_pattern) * real_scale,
-                   cur_y - (py - oy + sa_pattern) * real_scale)
+        sa_pts = [(col_x + (px - ox + sa_pat_x) * real_scale,
+                   cur_y - (py - oy + sa_pat_y) * real_scale)
                   for px, py in sa_poly]
         if sa_pts:
             path_sa.moveTo(*sa_pts[0])
@@ -788,8 +856,8 @@ def _draw_block_page(c, block, palette_colors, block_size_in, seam_allowance):  
         # dimension label
         xs_poly = [p[0] for p in poly]
         ys_poly = [p[1] for p in poly]
-        piece_w_in = (max(xs_poly) - min(xs_poly)) / pattern_size * block_size_in
-        piece_h_in = (max(ys_poly) - min(ys_poly)) / pattern_size * block_size_in
+        piece_w_in = (max(xs_poly) - min(xs_poly)) / pattern_size * block_w_in
+        piece_h_in = (max(ys_poly) - min(ys_poly)) / pattern_size * block_h_in
         c.setFont("Helvetica", 6)
         c.drawCentredString(cx, cy - 12,
                             f"{piece_w_in:.1f}\" x {piece_h_in:.1f}\"")
@@ -830,6 +898,17 @@ def _try_layout_pieces(bboxes, scale, avail_w, avail_h, gap):
     return True
 
 
+def _polygon_area_signed(polygon):
+    """Compute signed area of polygon (positive = CCW, negative = CW)."""
+    total = 0.0
+    n = len(polygon)
+    for i in range(n):
+        x1, y1 = polygon[i]
+        x2, y2 = polygon[(i + 1) % n]
+        total += x1 * y2 - x2 * y1
+    return total / 2.0
+
+
 def _offset_polygon(polygon, offset):  # pylint: disable=too-many-locals
     """Offset polygon edges outward by offset amount (simple approach).
 
@@ -839,6 +918,9 @@ def _offset_polygon(polygon, offset):  # pylint: disable=too-many-locals
     n = len(polygon)
     if n < 3:
         return polygon
+
+    # detect winding: flip normal direction for CCW polygons
+    sign = -1.0 if _polygon_area_signed(polygon) > 0 else 1.0
 
     # compute outward-shifted edges
     edges = []
@@ -850,8 +932,8 @@ def _offset_polygon(polygon, offset):  # pylint: disable=too-many-locals
         if length < 1e-10:
             edges.append((x1, y1, x2, y2, 0, 0))
             continue
-        # outward normal (assuming clockwise winding)
-        nx, ny = dy / length, -dx / length
+        # outward normal — direction depends on winding
+        nx, ny = sign * dy / length, sign * -dx / length
         edges.append((
             x1 + nx * offset, y1 + ny * offset,
             x2 + nx * offset, y2 + ny * offset,
@@ -882,8 +964,8 @@ def _line_intersection(x1, y1, x2, y2, x3, y3, x4, y4):  # pylint: disable=too-m
     return (x1 + t * (x2 - x1), y1 + t * (y2 - y1))
 
 
-def _draw_cutting_summary(c, unique_blocks, palette_colors, grid, block_size_in,  # pylint: disable=too-many-locals,too-many-arguments,too-many-positional-arguments
-                          seam_allowance, params=None):
+def _draw_cutting_summary(c, unique_blocks, palette_colors, _grid,  # pylint: disable=too-many-locals,too-many-arguments,too-many-positional-arguments
+                          block_w_in, block_h_in, seam_allowance, params=None):
     """Draw a cutting summary page tallying total pieces per color."""
     bm = 0.35 * inch
 
@@ -943,7 +1025,14 @@ def _draw_cutting_summary(c, unique_blocks, palette_colors, grid, block_size_in,
     c.drawString(col_color, y, "Total")
     c.drawString(col_pieces, y, str(grand_total))
 
-    # Per-block breakdown
+    y = _draw_block_breakdown(c, unique_blocks, bm, y)
+    y = _draw_border_info(c, params, block_w_in, block_h_in, seam_allowance,
+                          bm, y)
+    c.showPage()
+
+
+def _draw_block_breakdown(c, unique_blocks, bm, y):  # pylint: disable=too-many-locals
+    """Draw per-block piece breakdown within the cutting summary."""
     y -= 35
     c.setFont("Helvetica-Bold", 12)
     c.drawString(bm, y, "Per-Block Breakdown")
@@ -953,19 +1042,19 @@ def _draw_cutting_summary(c, unique_blocks, palette_colors, grid, block_size_in,
     for blk in unique_blocks:
         design_num = blk["_design_num"]
         name = blk["pattern_name"].replace("_", " ")
-        rot = blk["rotation"] * 90
         count = blk["count"]
-
+        variants = blk.get("variants", [])
         title = f"Block #{design_num}: {name}"
-        if rot > 0:
-            title += f" (rotated {rot}\u00b0)"
+        if len(variants) > 1:
+            rots = sorted(set(r for _, r, _ in variants))
+            rot_strs = [f"{r * 90}\u00b0" for r in rots]
+            title += f" (rotations: {', '.join(rot_strs)})"
         title += f" \u00d7 {count}"
 
         c.setFont("Helvetica-Bold", 9)
         c.drawString(bm + 5, y, title)
         y -= 14
 
-        # count pieces per color in this block
         block_colors = {}
         for _poly, color_idx in blk["polygons"]:
             if isinstance(color_idx, tuple):
@@ -983,55 +1072,64 @@ def _draw_cutting_summary(c, unique_blocks, palette_colors, grid, block_size_in,
         if y < bm + 30:
             c.showPage()
             y = PAGE_H - bm - 20
-
-    # Border strip info
-    if params:
-        border_style = params.get("border_style")
-        if border_style:
-            if y < bm + 80:
-                c.showPage()
-                y = PAGE_H - bm - 20
-            y -= 10
-            border_w = block_size_in * 0.75
-            rows = params["rows"]
-            cols = params.get("cols", rows)
-            quilt_side = block_size_in * max(rows, cols)
-            long_strip = quilt_side + 2 * border_w
-            c.setFont("Helvetica-Bold", 12)
-            c.drawString(bm, y, "Border Strips")
-            y -= 18
-            c.setFont("Helvetica", 9)
-            c.drawString(bm + 5, y,
-                         f"Style: {border_style}")
-            y -= 14
-            c.drawString(bm + 5, y,
-                         f"Strip width: {border_w:.2f}\" "
-                         f"(+ {seam_allowance:.2f}\" seam allowance each side "
-                         f"= cut {border_w + 2*seam_allowance:.2f}\" wide)")
-            y -= 14
-            c.drawString(bm + 5, y,
-                         f"2 strips: {quilt_side:.1f}\" long (top/bottom)")
-            y -= 14
-            c.drawString(bm + 5, y,
-                         f"2 strips: {long_strip:.1f}\" long (sides, "
-                         "including border corners)")
-
-    c.showPage()
+    return y
 
 
-def generate_pattern_pdf(params, output_path, quilt_size=96,  # pylint: disable=too-many-locals
+def _draw_border_info(c, params, block_w_in, block_h_in, seam_allowance,  # pylint: disable=too-many-arguments,too-many-positional-arguments
+                      bm, y):
+    """Draw border strip info within the cutting summary."""
+    if not params:
+        return y
+    border_style = params.get("border_style")
+    if not border_style:
+        return y
+
+    if y < bm + 80:
+        c.showPage()
+        y = PAGE_H - bm - 20
+    y -= 10
+    border_w = min(block_w_in, block_h_in) * 0.75
+    rows = params["rows"]
+    cols = params.get("cols", rows)
+    q_w = block_w_in * cols
+    q_h = block_h_in * rows
+    c.setFont("Helvetica-Bold", 12)
+    c.drawString(bm, y, "Border Strips")
+    y -= 18
+    c.setFont("Helvetica", 9)
+    c.drawString(bm + 5, y, f"Style: {border_style}")
+    y -= 14
+    c.drawString(bm + 5, y,
+                 f"Strip width: {border_w:.2f}\" "
+                 f"(+ {seam_allowance:.2f}\" seam allowance each side "
+                 f"= cut {border_w + 2*seam_allowance:.2f}\" wide)")
+    y -= 14
+    c.drawString(bm + 5, y,
+                 f"2 strips: {q_w:.1f}\" long (top/bottom)")
+    y -= 14
+    c.drawString(bm + 5, y,
+                 f"2 strips: {q_h + 2*border_w:.1f}\" long (sides, "
+                 "including border corners)")
+    return y
+
+
+def generate_pattern_pdf(params, output_path, quilt_w=96, quilt_h=None,  # pylint: disable=too-many-locals
                          seam_allowance=0.25):
     """Generate a printable PDF pattern from quilt parameters.
 
     Args:
         params: quilt parameter dict (same format as sampler output)
         output_path: path for the output PDF file
-        quilt_size: finished quilt size in inches (default 96 = 8 feet)
+        quilt_w: finished quilt width in inches (default 96)
+        quilt_h: finished quilt height in inches (default same as quilt_w)
         seam_allowance: seam allowance in inches (default 0.25)
     """
+    if quilt_h is None:
+        quilt_h = quilt_w
     rows = params["rows"]
     cols = params.get("cols", rows)
-    block_size_in = quilt_size / max(rows, cols)
+    block_w_in = quilt_w / cols
+    block_h_in = quilt_h / rows
 
     # reconstruct layout
     grid, _allowed, palette_colors = _reconstruct_layout(params)
@@ -1055,23 +1153,24 @@ def generate_pattern_pdf(params, output_path, quilt_size=96,  # pylint: disable=
     c = _FooterCanvas(output_path, pagesize=letter, quilt_id=qid)
 
     _draw_cover_page(c, params, quilt_image, palette_colors,
-                     quilt_size, block_size_in)
+                     quilt_w, quilt_h, block_w_in, block_h_in)
 
     if params["symmetry"] != "bargello":
         _draw_assembly_page(c, grid, unique_blocks, params,
-                            quilt_size, block_size_in)
+                            quilt_w, quilt_h, block_w_in, block_h_in)
 
     if params["symmetry"] == "bargello":
         _draw_bargello_pages(c, grid, palette_colors, params,
-                             quilt_size, block_size_in, seam_allowance)
+                             quilt_w, quilt_h, block_w_in, block_h_in,
+                             seam_allowance)
     else:
         for blk in unique_blocks:
-            _draw_block_page(c, blk, palette_colors, block_size_in,
-                             seam_allowance)
+            _draw_block_page(c, blk, palette_colors,
+                             block_w_in, block_h_in, seam_allowance)
 
     if params["symmetry"] != "bargello":
         _draw_cutting_summary(c, unique_blocks, palette_colors, grid,
-                              block_size_in, seam_allowance, params)
+                              block_w_in, block_h_in, seam_allowance, params)
 
     c.save()
     return output_path

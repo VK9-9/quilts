@@ -204,6 +204,7 @@
           <option value="3" {% if params.n_colors == 3 %}selected{% endif %}>3 colors</option>
           <option value="4" {% if params.n_colors == 4 %}selected{% endif %}>4 colors</option>
           <option value="5" {% if params.n_colors == 5 %}selected{% endif %}>5 colors</option>
+          <option value="6" {% if params.n_colors == 6 %}selected{% endif %}>6 colors</option>
         </select>
       </div>
     </div>
@@ -213,6 +214,14 @@
   <div>
     <div class="section-label">Structure</div>
     <div class="control-group">
+      <div class="control">
+        <label>Quilt size</label>
+        <select id="quilt_size">
+          {% for key, (w, h, label) in quilt_sizes.items() %}
+          <option value="{{ key }}" {% if key == "sq8" %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
       <div class="control chaos-control">
         <label>Chaos <span id="chaos-val">{{ params.chaos }}</span></label>
         <input type="range" id="chaos" min="0" max="0.80" step="0.05"
@@ -319,7 +328,7 @@
 <script>
   const CONTROLS = [
     "symmetry","palette","n_colors",
-    "chaos","rows","tile_size","tile_variation",
+    "quilt_size","chaos","rows","tile_size","tile_variation",
     "border_style","quilt_stitch","wonky","mega_frac","plain_frac","strippy",
     "seed",
   ];
