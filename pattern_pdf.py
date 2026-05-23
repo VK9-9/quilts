@@ -158,19 +158,42 @@ def _reconstruct_layout(params):  # pylint: disable=too-many-locals
 
 
 def _canonicalize_polygon(pts):
-    """Canonicalize a polygon's vertex list for comparison.
+    """Canonicalize a polygon's vertex list for rotation-invariant comparison.
 
-    Translates to bounding-box origin, rounds coordinates, then rotates
-    the vertex list so the lexicographically smallest vertex comes first.
+    Tries all 4 rotations (0/90/180/270) and both winding directions,
+    translates each to bounding-box origin, and returns the
+    lexicographically smallest result.
     """
+    def _normalize_and_order(verts):
+        xs = [px for px, _py in verts]
+        ys = [_py for _px, _py in verts]
+        min_x, min_y = min(xs), min(ys)
+        normed = [(round(px - min_x, 2), round(py - min_y, 2))
+                  for px, py in verts]
+        idx = normed.index(min(normed))
+        return tuple(normed[idx:] + normed[:idx])
+
+    # find bounding box center for rotation
     xs = [px for px, _py in pts]
     ys = [_py for _px, _py in pts]
-    min_x, min_y = min(xs), min(ys)
-    normalized = [(round(px - min_x, 2), round(py - min_y, 2))
-                  for px, py in pts]
-    # rotate list to start at lexicographically smallest vertex
-    min_idx = normalized.index(min(normalized))
-    return tuple(normalized[min_idx:] + normalized[:min_idx])
+    cx = (max(xs) + min(xs)) / 2
+    cy = (max(ys) + min(ys)) / 2
+
+    candidates = []
+    for rot in range(4):
+        if rot == 0:
+            rotated = list(pts)
+        else:
+            rotated = []
+            for px, py in pts:
+                dx, dy = px - cx, py - cy
+                for _ in range(rot):
+                    dx, dy = -dy, dx
+                rotated.append((cx + dx, cy + dy))
+        candidates.append(_normalize_and_order(rotated))
+        candidates.append(_normalize_and_order(list(reversed(rotated))))
+
+    return min(candidates)
 
 
 def _shape_signature(polygons):
