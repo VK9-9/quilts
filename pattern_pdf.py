@@ -1158,8 +1158,10 @@ def _draw_block_breakdown(c, unique_blocks, bm, y):  # pylint: disable=too-many-
         c.setFont("Helvetica", 9)
         for ci in sorted(block_colors.keys()):
             pc = block_colors[ci]
+            total = pc * count
             label = _color_label(ci)
-            c.drawString(bm + 15, y, f"{label}: {pc} piece{'s' if pc != 1 else ''}")
+            c.drawString(bm + 15, y,
+                         f"Color {label}: {pc} per block ({total} total)")
             y -= 12
 
         y -= 6
