@@ -1075,7 +1075,7 @@ def _draw_block_breakdown(c, unique_blocks, bm, y):  # pylint: disable=too-many-
     return y
 
 
-def _draw_border_info(c, params, block_w_in, block_h_in, seam_allowance,
+def _draw_border_info(c, params, block_w_in, block_h_in, seam_allowance,  # pylint: disable=too-many-arguments,too-many-positional-arguments
                       bm, y):
     """Draw border strip info within the cutting summary."""
     if not params:
