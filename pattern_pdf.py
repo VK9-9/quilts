@@ -3,6 +3,7 @@
 Takes quilt parameters (same dict as sampler/render) and produces a
 multi-page PDF with cover, assembly diagram, and per-block cutting patterns.
 """
+# pylint: disable=too-many-lines
 import math
 import random
 import tempfile
