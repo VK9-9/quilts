@@ -1003,6 +1003,27 @@ def _polygon_area_signed(polygon):
     return total / 2.0
 
 
+def _is_convex(polygon):
+    """Check if a polygon is convex by testing that all cross products
+    have the same sign."""
+    n = len(polygon)
+    if n < 3:
+        return True
+    sign = None
+    for i in range(n):
+        x1, y1 = polygon[i]
+        x2, y2 = polygon[(i + 1) % n]
+        x3, y3 = polygon[(i + 2) % n]
+        cross = (x2 - x1) * (y3 - y2) - (y2 - y1) * (x3 - x2)
+        if abs(cross) < 1e-10:
+            continue
+        if sign is None:
+            sign = cross > 0
+        elif (cross > 0) != sign:
+            return False
+    return True
+
+
 def _offset_polygon(polygon, offset):  # pylint: disable=too-many-locals
     """Offset polygon edges outward by offset amount (simple approach).
 
@@ -1034,29 +1055,26 @@ def _offset_polygon(polygon, offset):  # pylint: disable=too-many-locals
             nx, ny,
         ))
 
+    # for non-convex polygons, fall back to bounding box + offset
+    if not _is_convex(polygon):
+        xs = [p[0] for p in polygon]
+        ys = [p[1] for p in polygon]
+        return [(min(xs) - offset, min(ys) - offset),
+                (max(xs) + offset, min(ys) - offset),
+                (max(xs) + offset, max(ys) + offset),
+                (min(xs) - offset, max(ys) + offset)]
+
     # find intersection of adjacent shifted edges
-    # at concave vertices, use both edge endpoints instead of intersection
     result = []
     for i in range(n):
         e1 = edges[i]
         e2 = edges[(i + 1) % n]
-        # check if vertex is convex or concave using cross product
-        v_idx = (i + 1) % n
-        px, py = polygon[v_idx]
-        prev = polygon[i]
-        nxt = polygon[(v_idx + 1) % n]
-        cross = ((px - prev[0]) * (nxt[1] - py) -
-                 (py - prev[1]) * (nxt[0] - px))
-        is_convex = (cross * sign) >= 0
-
-        if is_convex:
-            pt = _line_intersection(e1[0], e1[1], e1[2], e1[3],
-                                    e2[0], e2[1], e2[2], e2[3])
-            result.append(pt if pt else (e1[2], e1[3]))
+        pt = _line_intersection(e1[0], e1[1], e1[2], e1[3],
+                                e2[0], e2[1], e2[2], e2[3])
+        if pt:
+            result.append(pt)
         else:
-            # concave: insert both offset endpoints to go around the vertex
             result.append((e1[2], e1[3]))
-            result.append((e2[0], e2[1]))
 
     return result
 
