@@ -922,21 +922,22 @@ def _draw_block_page(c, block, palette_colors, block_w_in, block_h_in,  # pylint
         path.close()
         c.drawPath(path, fill=0, stroke=1)
 
-        # draw seam allowance (dashed)
+        # draw seam allowance (dashed) — skip for non-convex pieces
         sa_poly = _offset_polygon(poly, sa_pattern)
-        c.setDash([3, 3])
-        c.setLineWidth(0.5)
-        c.setStrokeColorRGB(0.5, 0.5, 0.5)
-        path_sa = c.beginPath()
-        sa_pts = [(col_x + (px - ox + sa_pat_x) * real_scale,
-                   cur_y - (py - oy + sa_pat_y) * real_scale)
-                  for px, py in sa_poly]
-        if sa_pts:
-            path_sa.moveTo(*sa_pts[0])
-            for pt in sa_pts[1:]:
-                path_sa.lineTo(*pt)
-            path_sa.close()
-            c.drawPath(path_sa, fill=0, stroke=1)
+        if sa_poly is not None:
+            c.setDash([3, 3])
+            c.setLineWidth(0.5)
+            c.setStrokeColorRGB(0.5, 0.5, 0.5)
+            path_sa = c.beginPath()
+            sa_pts = [(col_x + (px - ox + sa_pat_x) * real_scale,
+                       cur_y - (py - oy + sa_pat_y) * real_scale)
+                      for px, py in sa_poly]
+            if sa_pts:
+                path_sa.moveTo(*sa_pts[0])
+                for pt in sa_pts[1:]:
+                    path_sa.lineTo(*pt)
+                path_sa.close()
+                c.drawPath(path_sa, fill=0, stroke=1)
 
         # color label
         c.setDash([])
@@ -1055,14 +1056,9 @@ def _offset_polygon(polygon, offset):  # pylint: disable=too-many-locals
             nx, ny,
         ))
 
-    # for non-convex polygons, fall back to bounding box + offset
+    # skip seam allowance for non-convex polygons
     if not _is_convex(polygon):
-        xs = [p[0] for p in polygon]
-        ys = [p[1] for p in polygon]
-        return [(min(xs) - offset, min(ys) - offset),
-                (max(xs) + offset, min(ys) - offset),
-                (max(xs) + offset, max(ys) + offset),
-                (min(xs) - offset, max(ys) + offset)]
+        return None
 
     # find intersection of adjacent shifted edges
     result = []
