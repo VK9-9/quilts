@@ -1024,7 +1024,14 @@ def _draw_cutting_summary(c, unique_blocks, palette_colors, _grid,  # pylint: di
     c.drawString(col_color, y, "Total")
     c.drawString(col_pieces, y, str(grand_total))
 
-    # Per-block breakdown
+    y = _draw_block_breakdown(c, unique_blocks, bm, y)
+    y = _draw_border_info(c, params, block_w_in, block_h_in, seam_allowance,
+                          bm, y)
+    c.showPage()
+
+
+def _draw_block_breakdown(c, unique_blocks, bm, y):
+    """Draw per-block piece breakdown within the cutting summary."""
     y -= 35
     c.setFont("Helvetica-Bold", 12)
     c.drawString(bm, y, "Per-Block Breakdown")
@@ -1047,7 +1054,6 @@ def _draw_cutting_summary(c, unique_blocks, palette_colors, _grid,  # pylint: di
         c.drawString(bm + 5, y, title)
         y -= 14
 
-        # count pieces per color in this block
         block_colors = {}
         for _poly, color_idx in blk["polygons"]:
             if isinstance(color_idx, tuple):
@@ -1065,40 +1071,45 @@ def _draw_cutting_summary(c, unique_blocks, palette_colors, _grid,  # pylint: di
         if y < bm + 30:
             c.showPage()
             y = PAGE_H - bm - 20
+    return y
 
-    # Border strip info
-    if params:
-        border_style = params.get("border_style")
-        if border_style:
-            if y < bm + 80:
-                c.showPage()
-                y = PAGE_H - bm - 20
-            y -= 10
-            border_w = min(block_w_in, block_h_in) * 0.75
-            rows = params["rows"]
-            cols = params.get("cols", rows)
-            q_w = block_w_in * cols
-            q_h = block_h_in * rows
-            c.setFont("Helvetica-Bold", 12)
-            c.drawString(bm, y, "Border Strips")
-            y -= 18
-            c.setFont("Helvetica", 9)
-            c.drawString(bm + 5, y,
-                         f"Style: {border_style}")
-            y -= 14
-            c.drawString(bm + 5, y,
-                         f"Strip width: {border_w:.2f}\" "
-                         f"(+ {seam_allowance:.2f}\" seam allowance each side "
-                         f"= cut {border_w + 2*seam_allowance:.2f}\" wide)")
-            y -= 14
-            c.drawString(bm + 5, y,
-                         f"2 strips: {q_w:.1f}\" long (top/bottom)")
-            y -= 14
-            c.drawString(bm + 5, y,
-                         f"2 strips: {q_h + 2*border_w:.1f}\" long (sides, "
-                         "including border corners)")
 
-    c.showPage()
+def _draw_border_info(c, params, block_w_in, block_h_in, seam_allowance,
+                      bm, y):
+    """Draw border strip info within the cutting summary."""
+    if not params:
+        return y
+    border_style = params.get("border_style")
+    if not border_style:
+        return y
+
+    if y < bm + 80:
+        c.showPage()
+        y = PAGE_H - bm - 20
+    y -= 10
+    border_w = min(block_w_in, block_h_in) * 0.75
+    rows = params["rows"]
+    cols = params.get("cols", rows)
+    q_w = block_w_in * cols
+    q_h = block_h_in * rows
+    c.setFont("Helvetica-Bold", 12)
+    c.drawString(bm, y, "Border Strips")
+    y -= 18
+    c.setFont("Helvetica", 9)
+    c.drawString(bm + 5, y, f"Style: {border_style}")
+    y -= 14
+    c.drawString(bm + 5, y,
+                 f"Strip width: {border_w:.2f}\" "
+                 f"(+ {seam_allowance:.2f}\" seam allowance each side "
+                 f"= cut {border_w + 2*seam_allowance:.2f}\" wide)")
+    y -= 14
+    c.drawString(bm + 5, y,
+                 f"2 strips: {q_w:.1f}\" long (top/bottom)")
+    y -= 14
+    c.drawString(bm + 5, y,
+                 f"2 strips: {q_h + 2*border_w:.1f}\" long (sides, "
+                 "including border corners)")
+    return y
 
 
 def generate_pattern_pdf(params, output_path, quilt_w=96, quilt_h=None,  # pylint: disable=too-many-locals
