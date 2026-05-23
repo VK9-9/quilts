@@ -676,6 +676,80 @@ def _draw_bargello_template(c, cell_w_in, cell_h_in, seam_allowance):  # pylint:
     c.showPage()
 
 
+def _draw_edge_dimensions(c, pts, poly, pattern_size,
+                          block_w_in, block_h_in,
+                          seam_allowance):  # pylint: disable=too-many-locals
+    """Draw dimension labels near edges of a piece polygon.
+
+    Labels unique edge lengths placed near the edge midpoint.
+    For shapes where the bounding-box height doesn't match any edge
+    (trapezoids, non-right triangles), adds a height label too.
+    """
+    n = len(pts)
+    if n < 3:
+        return
+
+    # Pattern-coord → real-inch scale factors
+    sx = block_w_in / pattern_size
+    sy = block_h_in / pattern_size
+
+    # Edge lengths in real inches
+    edge_lengths = []
+    for i in range(n):
+        x1, y1 = poly[i]
+        x2, y2 = poly[(i + 1) % n]
+        dx_in = (x2 - x1) * sx
+        dy_in = (y2 - y1) * sy
+        edge_lengths.append(math.sqrt(dx_in * dx_in + dy_in * dy_in))
+
+    # Bounding-box height in real inches
+    ys_poly = [py for _px, py in poly]
+    bbox_h = (max(ys_poly) - min(ys_poly)) * sy
+
+    # Polygon center in PDF coords (for outward offset direction)
+    center_x = sum(p[0] for p in pts) / n
+    center_y = sum(p[1] for p in pts) / n
+
+    c.setFont("Helvetica", 6)
+    c.setFillColorRGB(0.2, 0.2, 0.2)
+
+    # Label one instance of each unique edge length
+    labeled = set()
+    for i in range(n):
+        key = round(edge_lengths[i], 1)
+        if key in labeled or key < 0.1:
+            continue
+        labeled.add(key)
+
+        # Edge midpoint in PDF coords
+        mx = (pts[i][0] + pts[(i + 1) % n][0]) / 2
+        my = (pts[i][1] + pts[(i + 1) % n][1]) / 2
+
+        # Offset away from polygon center
+        odx = mx - center_x
+        ody = my - center_y
+        dist = math.sqrt(odx * odx + ody * ody)
+        if dist > 0.1:
+            odx /= dist
+            ody /= dist
+
+        lx = mx + odx * 9
+        ly = my + ody * 9 - 2
+
+        c.drawCentredString(lx, ly, f'{edge_lengths[i]:.1f}"')
+
+    # If bbox height differs from all labeled edges, show it
+    # (e.g. trapezoid height, triangle altitude)
+    bbox_h_key = round(bbox_h, 1)
+    if bbox_h_key not in labeled and bbox_h_key >= 0.1:
+        # Small height label on the left side of the piece
+        left_x = min(p[0] for p in pts) - 10
+        top_y = max(p[1] for p in pts)
+        bot_y = min(p[1] for p in pts)
+        mid_y = (top_y + bot_y) / 2
+        c.drawCentredString(left_x, mid_y - 2, f'h:{bbox_h:.1f}"')
+
+
 def _draw_grain_arrow(c, pts, cx, cy):  # pylint: disable=too-many-locals
     """Draw a grain line arrow inside the piece, parallel to longest edge."""
     # find longest edge direction
@@ -947,14 +1021,13 @@ def _draw_block_page(c, block, palette_colors, block_w_in, block_h_in,  # pylint
         c.setFont("Helvetica-Bold", 9)
         c.drawCentredString(cx, cy - 3, label)
 
-        # dimension label
-        xs_poly = [p[0] for p in poly]
-        ys_poly = [p[1] for p in poly]
-        piece_w_in = (max(xs_poly) - min(xs_poly)) / pattern_size * block_w_in
-        piece_h_in = (max(ys_poly) - min(ys_poly)) / pattern_size * block_h_in
-        c.setFont("Helvetica", 6)
-        c.drawCentredString(cx, cy - 12,
-                            f"{piece_w_in:.1f}\" x {piece_h_in:.1f}\"")
+        # edge dimensions on cut line
+        if sa_poly is not None:
+            _draw_edge_dimensions(c, sa_pts, sa_poly, pattern_size,
+                                  block_w_in, block_h_in, seam_allowance)
+        else:
+            _draw_edge_dimensions(c, pts, poly, pattern_size,
+                                  block_w_in, block_h_in, 0)
 
         # grain line arrow
         _draw_grain_arrow(c, pts, cx, cy)
