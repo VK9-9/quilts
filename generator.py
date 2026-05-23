@@ -172,12 +172,15 @@ def _params_from_request(defaults=None):
         stitch = None
 
     rows = _get("rows", int, 16)
+    size_key = a.get("quilt_size", base.get("quilt_size", "sq8"))
+    size_w, size_h, _ = QUILT_SIZES.get(size_key, QUILT_SIZES["sq8"])
+    cols = round(rows * size_w / size_h)
     return {
         "palette":        _get("palette",        str,   "lavender fields"),
         "symmetry":       _get("symmetry",        str,   "bargello"),
         "chaos":          _get("chaos",           float, 0.3),
         "rows":           rows,
-        "cols":           rows,
+        "cols":           cols,
         "n_patterns":     2,
         "n_colors":       _get("n_colors",        int,   4),
         "tile_size":      _get("tile_size",        int,   6),
