@@ -223,7 +223,7 @@ def _render_quilt_image(params):
 
 
 def _draw_cover_page(c, params, quilt_image_path, palette_colors,  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals
-                     quilt_size_in, block_size_in):
+                     quilt_w, quilt_h, block_w_in, block_h_in):
     """Draw cover page with quilt image, dimensions, and color legend."""
     rows = params["rows"]
     cols = params.get("cols", rows)
@@ -247,13 +247,16 @@ def _draw_cover_page(c, params, quilt_image_path, palette_colors,  # pylint: dis
     y = img_y - 25
     c.setFont("Helvetica", 11)
     border_style = params.get("border_style")
-    border_width_in = block_size_in * 0.75 if border_style else 0
+    border_width_in = min(block_w_in, block_h_in) * 0.75 if border_style else 0
+
+    size_str = (f"{quilt_w:.0f}\" x {quilt_h:.0f}\""
+                f"  ({quilt_w/12:.1f}' x {quilt_h/12:.1f}')")
+    block_str = f"{block_w_in:.2f}\" x {block_h_in:.2f}\""
 
     info_lines = [
-        f"Finished size: {quilt_size_in:.0f}\" x {quilt_size_in:.0f}\""
-        f"  ({quilt_size_in/12:.1f}' x {quilt_size_in/12:.1f}')",
+        f"Finished size: {size_str}",
         f"Grid: {rows} rows x {cols} columns",
-        f"Block size: {block_size_in:.2f}\" x {block_size_in:.2f}\"",
+        f"Block size: {block_str}",
         "Seam allowance: added to all pieces (shown dashed)",
     ]
     if border_style:
@@ -290,7 +293,7 @@ def _draw_cover_page(c, params, quilt_image_path, palette_colors,  # pylint: dis
 
 
 def _draw_assembly_page(c, grid, unique_blocks, params,  # pylint: disable=too-many-locals
-                        _quilt_size_in, _block_size_in):
+                        _quilt_w, _quilt_h, _block_w_in, _block_h_in):
     """Draw assembly diagram showing block placement in the grid."""
     rows = params["rows"]
     cols = params.get("cols", rows)
@@ -366,7 +369,8 @@ def _draw_assembly_page(c, grid, unique_blocks, params,  # pylint: disable=too-m
 
 
 def _draw_bargello_pages(c, grid, palette_colors, params,  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals,too-many-statements
-                         quilt_size_in, block_size_in, seam_allowance):
+                         quilt_w, quilt_h, block_w_in, block_h_in,
+                         seam_allowance):
     """Draw bargello-specific pattern pages showing strip color arrangement.
 
     Bargello quilts are made from strips of fabric, not pieced blocks.
@@ -383,8 +387,8 @@ def _draw_bargello_pages(c, grid, palette_colors, params,  # pylint: disable=too
     c.setFont("Helvetica", 10)
     y = PAGE_H - bm - 40
     c.drawString(bm, y,
-                 f"Strip width: {block_size_in:.2f}\"  |  "
-                 f"Strip height: {quilt_size_in:.0f}\"  |  "
+                 f"Strip width: {block_w_in:.2f}\"  |  "
+                 f"Strip height: {quilt_h:.0f}\"  |  "
                  f"Seam allowance: {seam_allowance:.2f}\"")
     y -= 16
     c.drawString(bm, y,
@@ -452,8 +456,8 @@ def _draw_bargello_pages(c, grid, palette_colors, params,  # pylint: disable=too
     below_y -= 16
 
     c.setFont("Helvetica", 9)
-    cut_w = block_size_in + 2 * seam_allowance
-    cut_h = quilt_size_in / rows + 2 * seam_allowance
+    cut_w = block_w_in + 2 * seam_allowance
+    cut_h = block_h_in + 2 * seam_allowance
 
     # count strips per color
     color_counts = {}
@@ -478,8 +482,7 @@ def _draw_bargello_pages(c, grid, palette_colors, params,  # pylint: disable=too
     c.showPage()
 
     # --- Page 2: Real-size cutting template ---
-    _draw_bargello_template(c, block_size_in, quilt_size_in / rows,
-                            seam_allowance)
+    _draw_bargello_template(c, block_w_in, block_h_in, seam_allowance)
 
 
 def _draw_bargello_template(c, cell_w_in, cell_h_in, seam_allowance):  # pylint: disable=too-many-locals,too-many-statements
@@ -628,7 +631,8 @@ def _draw_grain_arrow(c, pts, cx, cy):  # pylint: disable=too-many-locals
            ay2 - best_dy * head - py * head * 0.5)
 
 
-def _draw_block_page(c, block, palette_colors, block_size_in, seam_allowance):  # pylint: disable=too-many-locals,too-many-statements,too-many-branches
+def _draw_block_page(c, block, palette_colors, block_w_in, block_h_in,  # pylint: disable=too-many-locals,too-many-statements,too-many-branches,too-many-arguments,too-many-positional-arguments
+                     seam_allowance):
     """Draw one block's pattern page with assembled view and individual pieces."""
     design_num = block["_design_num"]
     name = block["pattern_name"].replace("_", " ")
@@ -681,7 +685,7 @@ def _draw_block_page(c, block, palette_colors, block_size_in, seam_allowance):  
     c.setFillColorRGB(0, 0, 0)
     c.setFont("Helvetica", 9)
     c.drawString(info_x, info_y,
-                 f"Finished: {block_size_in:.2f}\" x {block_size_in:.2f}\"")
+                 f"Finished: {block_w_in:.2f}\" x {block_h_in:.2f}\"")
     c.drawString(info_x, info_y - 13,
                  f"Count: {block['count']} blocks")
     c.drawString(info_x, info_y - 26,
@@ -696,18 +700,20 @@ def _draw_block_page(c, block, palette_colors, block_size_in, seam_allowance):  
     pieces_top -= 12
 
     # Compute scale: fit pieces as large as possible
-    # First pass: find total area needed at 1:1
-    sa_pattern = seam_allowance * pattern_size / block_size_in
+    # Seam allowance in pattern units (may differ per axis for rectangular blocks)
+    sa_pat_x = seam_allowance * pattern_size / block_w_in
+    sa_pat_y = seam_allowance * pattern_size / block_h_in
+    sa_pattern = max(sa_pat_x, sa_pat_y)  # use larger for bbox calculations
     piece_bboxes = []
     for poly, color_idx in polygons:
         xs = [px for px, py in poly]
         ys = [py for px, py in poly]
         # bbox in pattern units, including seam allowance
-        pw = max(xs) - min(xs) + 2 * sa_pattern
-        ph = max(ys) - min(ys) + 2 * sa_pattern
+        pw = max(xs) - min(xs) + 2 * sa_pat_x
+        ph = max(ys) - min(ys) + 2 * sa_pat_y
         piece_bboxes.append((pw, ph, min(xs), min(ys)))
 
-    real_scale = block_size_in * inch / pattern_size
+    real_scale = max(block_w_in, block_h_in) * inch / pattern_size
     avail_w = PAGE_W - 2 * bm
     avail_h = pieces_top - bm
 
@@ -751,8 +757,8 @@ def _draw_block_page(c, block, palette_colors, block_size_in, seam_allowance):  
         c.setLineWidth(0.8)
         c.setDash([])
         path = c.beginPath()
-        pts = [(col_x + (px - ox + sa_pattern) * real_scale,
-                cur_y - (py - oy + sa_pattern) * real_scale)
+        pts = [(col_x + (px - ox + sa_pat_x) * real_scale,
+                cur_y - (py - oy + sa_pat_y) * real_scale)
                for px, py in poly]
         path.moveTo(*pts[0])
         for pt in pts[1:]:
@@ -766,8 +772,8 @@ def _draw_block_page(c, block, palette_colors, block_size_in, seam_allowance):  
         c.setLineWidth(0.5)
         c.setStrokeColorRGB(0.5, 0.5, 0.5)
         path_sa = c.beginPath()
-        sa_pts = [(col_x + (px - ox + sa_pattern) * real_scale,
-                   cur_y - (py - oy + sa_pattern) * real_scale)
+        sa_pts = [(col_x + (px - ox + sa_pat_x) * real_scale,
+                   cur_y - (py - oy + sa_pat_y) * real_scale)
                   for px, py in sa_poly]
         if sa_pts:
             path_sa.moveTo(*sa_pts[0])
@@ -788,8 +794,8 @@ def _draw_block_page(c, block, palette_colors, block_size_in, seam_allowance):  
         # dimension label
         xs_poly = [p[0] for p in poly]
         ys_poly = [p[1] for p in poly]
-        piece_w_in = (max(xs_poly) - min(xs_poly)) / pattern_size * block_size_in
-        piece_h_in = (max(ys_poly) - min(ys_poly)) / pattern_size * block_size_in
+        piece_w_in = (max(xs_poly) - min(xs_poly)) / pattern_size * block_w_in
+        piece_h_in = (max(ys_poly) - min(ys_poly)) / pattern_size * block_h_in
         c.setFont("Helvetica", 6)
         c.drawCentredString(cx, cy - 12,
                             f"{piece_w_in:.1f}\" x {piece_h_in:.1f}\"")
@@ -896,8 +902,8 @@ def _line_intersection(x1, y1, x2, y2, x3, y3, x4, y4):  # pylint: disable=too-m
     return (x1 + t * (x2 - x1), y1 + t * (y2 - y1))
 
 
-def _draw_cutting_summary(c, unique_blocks, palette_colors, grid, block_size_in,  # pylint: disable=too-many-locals,too-many-arguments,too-many-positional-arguments
-                          seam_allowance, params=None):
+def _draw_cutting_summary(c, unique_blocks, palette_colors, grid,  # pylint: disable=too-many-locals,too-many-arguments,too-many-positional-arguments
+                          block_w_in, block_h_in, seam_allowance, params=None):
     """Draw a cutting summary page tallying total pieces per color."""
     bm = 0.35 * inch
 
@@ -1006,11 +1012,11 @@ def _draw_cutting_summary(c, unique_blocks, palette_colors, grid, block_size_in,
                 c.showPage()
                 y = PAGE_H - bm - 20
             y -= 10
-            border_w = block_size_in * 0.75
+            border_w = min(block_w_in, block_h_in) * 0.75
             rows = params["rows"]
             cols = params.get("cols", rows)
-            quilt_side = block_size_in * max(rows, cols)
-            long_strip = quilt_side + 2 * border_w
+            q_w = block_w_in * cols
+            q_h = block_h_in * rows
             c.setFont("Helvetica-Bold", 12)
             c.drawString(bm, y, "Border Strips")
             y -= 18
@@ -1024,28 +1030,32 @@ def _draw_cutting_summary(c, unique_blocks, palette_colors, grid, block_size_in,
                          f"= cut {border_w + 2*seam_allowance:.2f}\" wide)")
             y -= 14
             c.drawString(bm + 5, y,
-                         f"2 strips: {quilt_side:.1f}\" long (top/bottom)")
+                         f"2 strips: {q_w:.1f}\" long (top/bottom)")
             y -= 14
             c.drawString(bm + 5, y,
-                         f"2 strips: {long_strip:.1f}\" long (sides, "
+                         f"2 strips: {q_h + 2*border_w:.1f}\" long (sides, "
                          "including border corners)")
 
     c.showPage()
 
 
-def generate_pattern_pdf(params, output_path, quilt_size=96,  # pylint: disable=too-many-locals
+def generate_pattern_pdf(params, output_path, quilt_w=96, quilt_h=None,  # pylint: disable=too-many-locals
                          seam_allowance=0.25):
     """Generate a printable PDF pattern from quilt parameters.
 
     Args:
         params: quilt parameter dict (same format as sampler output)
         output_path: path for the output PDF file
-        quilt_size: finished quilt size in inches (default 96 = 8 feet)
+        quilt_w: finished quilt width in inches (default 96)
+        quilt_h: finished quilt height in inches (default same as quilt_w)
         seam_allowance: seam allowance in inches (default 0.25)
     """
+    if quilt_h is None:
+        quilt_h = quilt_w
     rows = params["rows"]
     cols = params.get("cols", rows)
-    block_size_in = quilt_size / max(rows, cols)
+    block_w_in = quilt_w / cols
+    block_h_in = quilt_h / rows
 
     # reconstruct layout
     grid, _allowed, palette_colors = _reconstruct_layout(params)
@@ -1069,23 +1079,24 @@ def generate_pattern_pdf(params, output_path, quilt_size=96,  # pylint: disable=
     c = _FooterCanvas(output_path, pagesize=letter, quilt_id=qid)
 
     _draw_cover_page(c, params, quilt_image, palette_colors,
-                     quilt_size, block_size_in)
+                     quilt_w, quilt_h, block_w_in, block_h_in)
 
     if params["symmetry"] != "bargello":
         _draw_assembly_page(c, grid, unique_blocks, params,
-                            quilt_size, block_size_in)
+                            quilt_w, quilt_h, block_w_in, block_h_in)
 
     if params["symmetry"] == "bargello":
         _draw_bargello_pages(c, grid, palette_colors, params,
-                             quilt_size, block_size_in, seam_allowance)
+                             quilt_w, quilt_h, block_w_in, block_h_in,
+                             seam_allowance)
     else:
         for blk in unique_blocks:
-            _draw_block_page(c, blk, palette_colors, block_size_in,
-                             seam_allowance)
+            _draw_block_page(c, blk, palette_colors,
+                             block_w_in, block_h_in, seam_allowance)
 
     if params["symmetry"] != "bargello":
         _draw_cutting_summary(c, unique_blocks, palette_colors, grid,
-                              block_size_in, seam_allowance, params)
+                              block_w_in, block_h_in, seam_allowance, params)
 
     c.save()
     return output_path
