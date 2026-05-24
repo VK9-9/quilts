@@ -1158,14 +1158,36 @@ def _offset_polygon(polygon, offset):  # pylint: disable=too-many-locals
         ))
 
     # find intersection of adjacent shifted edges
+    max_dist = offset * 2  # clamp wildly divergent intersections
     result = []
     for i in range(n):
         e1 = edges[i]
         e2 = edges[(i + 1) % n]
+        # original vertex at the junction of these two edges
+        orig = polygon[(i + 1) % n]
+
+        # check if this is a reflex angle (edges double back) via cross product
+        d1x, d1y = e1[2] - e1[0], e1[3] - e1[1]  # direction of edge 1
+        d2x, d2y = e2[2] - e2[0], e2[3] - e2[1]  # direction of edge 2
+        cross = d1x * d2y - d1y * d2x
+        is_reflex = (cross * sign) < 0  # reflex when cross opposes winding
+
+        if is_reflex:
+            # bevel join: include both offset edge endpoints
+            result.append((e1[2], e1[3]))
+            result.append((e2[0], e2[1]))
+            continue
+
         pt = _line_intersection(e1[0], e1[1], e1[2], e1[3],
                                 e2[0], e2[1], e2[2], e2[3])
         if pt:
-            result.append(pt)
+            dx, dy = pt[0] - orig[0], pt[1] - orig[1]
+            dist = math.sqrt(dx * dx + dy * dy)
+            if dist > max_dist:
+                result.append((e1[2], e1[3]))
+                result.append((e2[0], e2[1]))
+            else:
+                result.append(pt)
         else:
             result.append((e1[2], e1[3]))
 
