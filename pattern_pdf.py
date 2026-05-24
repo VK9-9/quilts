@@ -120,7 +120,9 @@ def _reconstruct_layout(params):  # pylint: disable=too-many-locals
 
     rng = random.Random(seed)
 
-    palette_colors = _pick_palette_colors(palette_name, max_colors, rng)
+    # Fork a color RNG to match render_quilt's sequence
+    color_rng = random.Random(rng.randint(0, 2**31))
+    palette_colors = _pick_palette_colors(palette_name, max_colors, color_rng)
     n_colors = len(palette_colors)
 
     n_all_patterns = len(BLOCK_PATTERNS)
