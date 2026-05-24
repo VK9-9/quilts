@@ -616,15 +616,16 @@ def drunkards_path(x, y, size, n_colors):
     import math  # pylint: disable=import-outside-toplevel
     n_seg = 12  # segments to approximate the quarter-circle
     # quarter-circle arc from (x, y+size) to (x+size, y), centered at (x, y)
-    arc = []
-    for i in range(n_seg + 1):
+    arc = [(x, y + size)]  # exact start point
+    for i in range(1, n_seg):
         a = math.pi / 2 * (1 - i / n_seg)  # from pi/2 down to 0
         arc.append((x + size * math.cos(a), y + size * math.sin(a)))
+    arc.append((x + size, y))  # exact end point
 
     # region inside the arc (between arc and corner at origin)
     inner = [(x, y)] + arc
     # region outside the arc (between arc and the other three corners)
-    outer = arc + [(x + size, y + size), (x, y + size)]
+    outer = arc + [(x + size, y + size)]
 
     return [
         (inner, 0),
