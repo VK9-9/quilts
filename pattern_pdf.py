@@ -684,9 +684,48 @@ def _draw_bargello_template(c, cell_w_in, cell_h_in, seam_allowance):  # pylint:
     c.showPage()
 
 
+def _edge_lengths_inches(poly, sx, sy):
+    """Return list of edge lengths in real inches for a pattern polygon."""
+    n = len(poly)
+    lengths = []
+    for i in range(n):
+        x1, y1 = poly[i]
+        x2, y2 = poly[(i + 1) % n]
+        dx_in = (x2 - x1) * sx
+        dy_in = (y2 - y1) * sy
+        lengths.append(math.sqrt(dx_in * dx_in + dy_in * dy_in))
+    return lengths
+
+
+def _label_edge_lengths(c, pts, edge_lengths, center_x, center_y):
+    """Label one instance of each unique edge length, offset outward."""
+    n = len(pts)
+    labeled = set()
+    for i in range(n):
+        key = round(edge_lengths[i], 1)
+        if key in labeled or key < 0.1:
+            continue
+        labeled.add(key)
+
+        mx = (pts[i][0] + pts[(i + 1) % n][0]) / 2
+        my = (pts[i][1] + pts[(i + 1) % n][1]) / 2
+
+        odx = mx - center_x
+        ody = my - center_y
+        dist = math.sqrt(odx * odx + ody * ody)
+        if dist > 0.1:
+            odx /= dist
+            ody /= dist
+
+        lx = mx + odx * 9
+        ly = my + ody * 9 - 2
+        c.drawCentredString(lx, ly, f'{edge_lengths[i]:.1f}"')
+    return labeled
+
+
 def _draw_edge_dimensions(c, pts, poly,
                           block_w_in, block_h_in, *,
-                          pattern_size=100):  # pylint: disable=too-many-locals
+                          pattern_size=100):
     """Draw dimension labels near edges of a piece polygon.
 
     Labels unique edge lengths placed near the edge midpoint.
@@ -697,64 +736,25 @@ def _draw_edge_dimensions(c, pts, poly,
     if n < 3:
         return
 
-    # Pattern-coord → real-inch scale factors
     sx = block_w_in / pattern_size
     sy = block_h_in / pattern_size
+    edge_lengths = _edge_lengths_inches(poly, sx, sy)
 
-    # Edge lengths in real inches
-    edge_lengths = []
-    for i in range(n):
-        x1, y1 = poly[i]
-        x2, y2 = poly[(i + 1) % n]
-        dx_in = (x2 - x1) * sx
-        dy_in = (y2 - y1) * sy
-        edge_lengths.append(math.sqrt(dx_in * dx_in + dy_in * dy_in))
+    bbox_h = (max(py for _, py in poly) - min(py for _, py in poly)) * sy
 
-    # Bounding-box height in real inches
-    ys_poly = [py for _px, py in poly]
-    bbox_h = (max(ys_poly) - min(ys_poly)) * sy
-
-    # Polygon center in PDF coords (for outward offset direction)
     center_x = sum(p[0] for p in pts) / n
     center_y = sum(p[1] for p in pts) / n
 
     c.setFont("Helvetica", 6)
     c.setFillColorRGB(0.2, 0.2, 0.2)
 
-    # Label one instance of each unique edge length
-    labeled = set()
-    for i in range(n):
-        key = round(edge_lengths[i], 1)
-        if key in labeled or key < 0.1:
-            continue
-        labeled.add(key)
-
-        # Edge midpoint in PDF coords
-        mx = (pts[i][0] + pts[(i + 1) % n][0]) / 2
-        my = (pts[i][1] + pts[(i + 1) % n][1]) / 2
-
-        # Offset away from polygon center
-        odx = mx - center_x
-        ody = my - center_y
-        dist = math.sqrt(odx * odx + ody * ody)
-        if dist > 0.1:
-            odx /= dist
-            ody /= dist
-
-        lx = mx + odx * 9
-        ly = my + ody * 9 - 2
-
-        c.drawCentredString(lx, ly, f'{edge_lengths[i]:.1f}"')
+    labeled = _label_edge_lengths(c, pts, edge_lengths, center_x, center_y)
 
     # If bbox height differs from all labeled edges, show it
-    # (e.g. trapezoid height, triangle altitude)
     bbox_h_key = round(bbox_h, 1)
     if bbox_h_key not in labeled and bbox_h_key >= 0.1:
-        # Small height label on the left side of the piece
         left_x = min(p[0] for p in pts) - 10
-        top_y = max(p[1] for p in pts)
-        bot_y = min(p[1] for p in pts)
-        mid_y = (top_y + bot_y) / 2
+        mid_y = (max(p[1] for p in pts) + min(p[1] for p in pts)) / 2
         c.drawCentredString(left_x, mid_y - 2, f'h:{bbox_h:.1f}"')
 
 
