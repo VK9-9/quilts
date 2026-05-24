@@ -793,9 +793,10 @@ def _draw_grain_arrow(c, pts, cx, cy):  # pylint: disable=too-many-locals
            ay2 - best_dy * head - py * head * 0.5)
 
 
-def _draw_block_thumbnail(c, polygons, palette_colors, x, y, display_size,
-                          pattern_size=100):
+def _draw_block_thumbnail(c, polygons, palette_colors, pos, display_size,
+                          *, pattern_size=100):
     """Draw a small colored block at the given position."""
+    x, y = pos
     scale = display_size / pattern_size
     c.setStrokeColorRGB(0.3, 0.3, 0.3)
     c.setLineWidth(0.4)
@@ -856,7 +857,7 @@ def _draw_rotation_summary(c, unique_blocks, palette_colors, n_colors):  # pylin
             rotated = _rotate_polygons(base_polygons, rot, 100)
             rx = bm + rot * (thumb_size + spacing)
             ry = y - thumb_size
-            _draw_block_thumbnail(c, rotated, palette_colors, rx, ry,
+            _draw_block_thumbnail(c, rotated, palette_colors, (rx, ry),
                                   thumb_size)
             # rotation label
             c.setFont("Helvetica", 8)
