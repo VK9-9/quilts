@@ -511,7 +511,7 @@ def path_tile(x, y, size, n_colors):
           (x + size, cy - w), (x + size, cy + w)], 0),
         # left-to-bottom band (trapezoid through lower-left area)
         ([(x, cy - w), (x, cy + w),
-          (cx + w, y + size), (cx - w, y + size)], 0),
+          (cx - w, y + size), (cx + w, y + size)], 0),
         # upper-left background triangle
         ([(x, y), (cx - w, y), (x, cy - w)], 1 % n_colors),
         # lower-right background triangle
