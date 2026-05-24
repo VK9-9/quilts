@@ -685,8 +685,7 @@ def _draw_bargello_template(c, cell_w_in, cell_h_in, seam_allowance):  # pylint:
 
 
 def _draw_edge_dimensions(c, pts, poly, pattern_size,
-                          block_w_in, block_h_in,
-                          seam_allowance):  # pylint: disable=too-many-locals
+                          block_w_in, block_h_in):  # pylint: disable=too-many-locals
     """Draw dimension labels near edges of a piece polygon.
 
     Labels unique edge lengths placed near the edge midpoint.
@@ -1037,10 +1036,10 @@ def _draw_block_page(c, block, palette_colors, block_w_in, block_h_in,  # pylint
         # edge dimensions on cut line
         if sa_poly is not None:
             _draw_edge_dimensions(c, sa_pts, sa_poly, pattern_size,
-                                  block_w_in, block_h_in, seam_allowance)
+                                  block_w_in, block_h_in)
         else:
             _draw_edge_dimensions(c, pts, poly, pattern_size,
-                                  block_w_in, block_h_in, 0)
+                                  block_w_in, block_h_in)
 
         # grain line arrow
         _draw_grain_arrow(c, pts, cx, cy)
