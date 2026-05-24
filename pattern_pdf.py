@@ -158,19 +158,42 @@ def _reconstruct_layout(params):  # pylint: disable=too-many-locals
 
 
 def _canonicalize_polygon(pts):
-    """Canonicalize a polygon's vertex list for comparison.
+    """Canonicalize a polygon's vertex list for rotation-invariant comparison.
 
-    Translates to bounding-box origin, rounds coordinates, then rotates
-    the vertex list so the lexicographically smallest vertex comes first.
+    Tries all 4 rotations (0/90/180/270) and both winding directions,
+    translates each to bounding-box origin, and returns the
+    lexicographically smallest result.
     """
+    def _normalize_and_order(verts):
+        xs = [px for px, _py in verts]
+        ys = [_py for _px, _py in verts]
+        min_x, min_y = min(xs), min(ys)
+        normed = [(round(px - min_x, 2), round(py - min_y, 2))
+                  for px, py in verts]
+        idx = normed.index(min(normed))
+        return tuple(normed[idx:] + normed[:idx])
+
+    # find bounding box center for rotation
     xs = [px for px, _py in pts]
     ys = [_py for _px, _py in pts]
-    min_x, min_y = min(xs), min(ys)
-    normalized = [(round(px - min_x, 2), round(py - min_y, 2))
-                  for px, py in pts]
-    # rotate list to start at lexicographically smallest vertex
-    min_idx = normalized.index(min(normalized))
-    return tuple(normalized[min_idx:] + normalized[:min_idx])
+    cx = (max(xs) + min(xs)) / 2
+    cy = (max(ys) + min(ys)) / 2
+
+    candidates = []
+    for rot in range(4):
+        if rot == 0:
+            rotated = list(pts)
+        else:
+            rotated = []
+            for px, py in pts:
+                dx, dy = px - cx, py - cy
+                for _ in range(rot):
+                    dx, dy = -dy, dx
+                rotated.append((cx + dx, cy + dy))
+        candidates.append(_normalize_and_order(rotated))
+        candidates.append(_normalize_and_order(list(reversed(rotated))))
+
+    return min(candidates)
 
 
 def _shape_signature(polygons):
@@ -204,12 +227,19 @@ def _extract_unique_blocks(grid, n_colors):
             pat_fn = BLOCK_PATTERNS[cell["pattern"]]
             polygons = pat_fn(0, 0, 100, n_colors)
             rotated = _rotate_polygons(polygons, cell["rotation"], 100)
+            # remap raw color indices through cell's color_map
+            color_map = cell.get("color_map")
+            if color_map:
+                rotated = [(poly, color_map[ci] if isinstance(ci, int)
+                            and ci < len(color_map) else ci)
+                           for poly, ci in rotated]
             combos[key] = {
                 "pattern_idx": cell["pattern"],
                 "pattern_name": pat_fn.__name__,
                 "rotation": cell["rotation"],
                 "count": 1,
                 "polygons": rotated,
+                "color_map": color_map,
             }
 
     # Second pass: group by shape signature (identical cut pieces)
@@ -228,6 +258,7 @@ def _extract_unique_blocks(grid, n_colors):
                 "rotation": combo["rotation"],
                 "count": combo["count"],
                 "polygons": combo["polygons"],
+                "color_map": combo["color_map"],
                 "variants": [(combo["pattern_idx"], combo["rotation"],
                               combo["count"])],
             }
@@ -309,7 +340,7 @@ def _draw_cover_page(c, params, quilt_image_path, palette_colors,  # pylint: dis
         f"Finished size: {size_str}",
         f"Grid: {rows} rows x {cols} columns",
         f"Block size: {block_str}",
-        "Seam allowance: added to all pieces (shown dashed)",
+        "Seam allowance: added to all pieces (solid = cut, dashed = stitch)",
     ]
     if border_style:
         info_lines.append(
@@ -578,8 +609,8 @@ def _draw_bargello_template(c, cell_w_in, cell_h_in, seam_allowance):  # pylint:
                      f"Scaled to {scale * 100:.0f}% to fit page")
         info_y -= 14
 
-    c.drawString(bm, info_y, "Solid line = finished size  |  "
-                 "Dashed line = cutting line (includes seam allowance)")
+    c.drawString(bm, info_y, "Solid line = cutting line  |  "
+                 "Dashed line = seam/stitch line (finished size)")
     info_y -= 25
 
     # Center the template
@@ -590,16 +621,16 @@ def _draw_bargello_template(c, cell_w_in, cell_h_in, seam_allowance):  # pylint:
 
     sa_pt = seam_allowance * inch * scale
 
-    # Cutting line (dashed)
-    c.setStrokeColorRGB(0.4, 0.4, 0.4)
-    c.setLineWidth(0.8)
-    c.setDash([4, 3])
-    c.rect(rx, ry, sw, sh, fill=0, stroke=1)
-
-    # Finished size line (solid)
+    # Cutting line (solid)
     c.setStrokeColorRGB(0, 0, 0)
     c.setLineWidth(1.2)
     c.setDash([])
+    c.rect(rx, ry, sw, sh, fill=0, stroke=1)
+
+    # Seam/stitch line (dashed)
+    c.setStrokeColorRGB(0.4, 0.4, 0.4)
+    c.setLineWidth(0.8)
+    c.setDash([4, 3])
     c.rect(rx + sa_pt, ry + sa_pt,
            finished_w * scale, finished_h * scale, fill=0, stroke=1)
 
@@ -653,6 +684,80 @@ def _draw_bargello_template(c, cell_w_in, cell_h_in, seam_allowance):  # pylint:
     c.showPage()
 
 
+def _draw_edge_dimensions(c, pts, poly, pattern_size,
+                          block_w_in, block_h_in,
+                          seam_allowance):  # pylint: disable=too-many-locals
+    """Draw dimension labels near edges of a piece polygon.
+
+    Labels unique edge lengths placed near the edge midpoint.
+    For shapes where the bounding-box height doesn't match any edge
+    (trapezoids, non-right triangles), adds a height label too.
+    """
+    n = len(pts)
+    if n < 3:
+        return
+
+    # Pattern-coord → real-inch scale factors
+    sx = block_w_in / pattern_size
+    sy = block_h_in / pattern_size
+
+    # Edge lengths in real inches
+    edge_lengths = []
+    for i in range(n):
+        x1, y1 = poly[i]
+        x2, y2 = poly[(i + 1) % n]
+        dx_in = (x2 - x1) * sx
+        dy_in = (y2 - y1) * sy
+        edge_lengths.append(math.sqrt(dx_in * dx_in + dy_in * dy_in))
+
+    # Bounding-box height in real inches
+    ys_poly = [py for _px, py in poly]
+    bbox_h = (max(ys_poly) - min(ys_poly)) * sy
+
+    # Polygon center in PDF coords (for outward offset direction)
+    center_x = sum(p[0] for p in pts) / n
+    center_y = sum(p[1] for p in pts) / n
+
+    c.setFont("Helvetica", 6)
+    c.setFillColorRGB(0.2, 0.2, 0.2)
+
+    # Label one instance of each unique edge length
+    labeled = set()
+    for i in range(n):
+        key = round(edge_lengths[i], 1)
+        if key in labeled or key < 0.1:
+            continue
+        labeled.add(key)
+
+        # Edge midpoint in PDF coords
+        mx = (pts[i][0] + pts[(i + 1) % n][0]) / 2
+        my = (pts[i][1] + pts[(i + 1) % n][1]) / 2
+
+        # Offset away from polygon center
+        odx = mx - center_x
+        ody = my - center_y
+        dist = math.sqrt(odx * odx + ody * ody)
+        if dist > 0.1:
+            odx /= dist
+            ody /= dist
+
+        lx = mx + odx * 9
+        ly = my + ody * 9 - 2
+
+        c.drawCentredString(lx, ly, f'{edge_lengths[i]:.1f}"')
+
+    # If bbox height differs from all labeled edges, show it
+    # (e.g. trapezoid height, triangle altitude)
+    bbox_h_key = round(bbox_h, 1)
+    if bbox_h_key not in labeled and bbox_h_key >= 0.1:
+        # Small height label on the left side of the piece
+        left_x = min(p[0] for p in pts) - 10
+        top_y = max(p[1] for p in pts)
+        bot_y = min(p[1] for p in pts)
+        mid_y = (top_y + bot_y) / 2
+        c.drawCentredString(left_x, mid_y - 2, f'h:{bbox_h:.1f}"')
+
+
 def _draw_grain_arrow(c, pts, cx, cy):  # pylint: disable=too-many-locals
     """Draw a grain line arrow inside the piece, parallel to longest edge."""
     # find longest edge direction
@@ -686,6 +791,82 @@ def _draw_grain_arrow(c, pts, cx, cy):  # pylint: disable=too-many-locals
            ay2 - best_dy * head + py * head * 0.5)
     c.line(ax2, ay2, ax2 - best_dx * head - px * head * 0.5,
            ay2 - best_dy * head - py * head * 0.5)
+
+
+def _draw_block_thumbnail(c, polygons, palette_colors, x, y, display_size,
+                          pattern_size=100):
+    """Draw a small colored block at the given position."""
+    scale = display_size / pattern_size
+    c.setStrokeColorRGB(0.3, 0.3, 0.3)
+    c.setLineWidth(0.4)
+    for poly, color_idx in polygons:
+        if isinstance(color_idx, tuple):
+            r, g, b = color_idx
+        else:
+            hex_color = palette_colors[color_idx % len(palette_colors)]
+            r, g, b = hex_to_rgb(hex_color)
+        path = c.beginPath()
+        pts = [(x + px * scale, y + display_size - py * scale)
+               for px, py in poly]
+        path.moveTo(*pts[0])
+        for pt in pts[1:]:
+            path.lineTo(*pt)
+        path.close()
+        c.setFillColorRGB(r, g, b)
+        c.drawPath(path, fill=1, stroke=1)
+
+
+def _draw_rotation_summary(c, unique_blocks, palette_colors, n_colors):  # pylint: disable=too-many-locals
+    """Draw a page showing each unique block in all 4 rotations."""
+    bm = 0.35 * inch
+    c.setFont("Helvetica-Bold", 16)
+    c.drawCentredString(PAGE_W / 2, PAGE_H - bm - 20, "Block Rotations")
+
+    thumb_size = 1.2 * inch
+    spacing = 0.3 * inch
+    label_height = 16
+    row_height = thumb_size + label_height + 20
+
+    y = PAGE_H - bm - 50
+
+    for blk in unique_blocks:
+        design_num = blk["_design_num"]
+        name = blk["pattern_name"].replace("_", " ")
+        pat_idx = blk["pattern_idx"]
+        pat_fn = BLOCK_PATTERNS[pat_idx]
+        base_polygons = pat_fn(0, 0, 100, n_colors)
+        color_map = blk.get("color_map")
+        if color_map:
+            base_polygons = [(poly, color_map[ci] if isinstance(ci, int)
+                              and ci < len(color_map) else ci)
+                             for poly, ci in base_polygons]
+
+        if y - row_height < bm:
+            c.showPage()
+            y = PAGE_H - bm - 30
+
+        # Block label
+        c.setFont("Helvetica-Bold", 11)
+        c.setFillColorRGB(0, 0, 0)
+        c.drawString(bm, y, f"Block #{design_num}: {name}")
+        y -= 5
+
+        # Draw all 4 rotations
+        for rot in range(4):
+            rotated = _rotate_polygons(base_polygons, rot, 100)
+            rx = bm + rot * (thumb_size + spacing)
+            ry = y - thumb_size
+            _draw_block_thumbnail(c, rotated, palette_colors, rx, ry,
+                                  thumb_size)
+            # rotation label
+            c.setFont("Helvetica", 8)
+            c.setFillColorRGB(0.3, 0.3, 0.3)
+            c.drawCentredString(rx + thumb_size / 2, ry - 12,
+                                f"{rot * 90}\u00b0")
+
+        y -= thumb_size + label_height + 15
+
+    c.showPage()
 
 
 def _draw_block_page(c, block, palette_colors, block_w_in, block_h_in,  # pylint: disable=too-many-locals,too-many-statements,too-many-branches,too-many-arguments,too-many-positional-arguments
@@ -751,9 +932,9 @@ def _draw_block_page(c, block, palette_colors, block_w_in, block_h_in,  # pylint
                      f"Rotations: {', '.join(rot_strs)} (same pieces)")
         info_offset += 13
     c.drawString(info_x, info_y - info_offset,
-                 "Solid = finished size")
+                 f"Solid = cut line (+{seam_allowance:.2f}\" seam allowance)")
     c.drawString(info_x, info_y - info_offset - 13,
-                 f"Dashed = cut line (+{seam_allowance:.2f}\")")
+                 "Dashed = seam/stitch line (finished size)")
 
     # --- Individual pieces section ---
     pieces_top = ay - 15
@@ -814,10 +995,26 @@ def _draw_block_page(c, block, palette_colors, block_w_in, block_h_in,  # pylint
             c.drawString(bm, PAGE_H - bm - 10,
                          f"Block #{design_num} (continued)")
 
-        # draw finished size (solid)
-        c.setStrokeColorRGB(0, 0, 0)
-        c.setLineWidth(0.8)
-        c.setDash([])
+        # draw cut line (solid) — seam allowance offset; skip for non-convex
+        sa_poly = _offset_polygon(poly, sa_pattern)
+        if sa_poly is not None:
+            c.setStrokeColorRGB(0, 0, 0)
+            c.setLineWidth(0.8)
+            c.setDash([])
+            path_sa = c.beginPath()
+            sa_pts = [(col_x + (px - ox + sa_pat_x) * real_scale,
+                       cur_y - (py - oy + sa_pat_y) * real_scale)
+                      for px, py in sa_poly]
+            path_sa.moveTo(*sa_pts[0])
+            for pt in sa_pts[1:]:
+                path_sa.lineTo(*pt)
+            path_sa.close()
+            c.drawPath(path_sa, fill=0, stroke=1)
+
+        # draw seam/stitch line (dashed) — finished size
+        c.setDash([3, 3])
+        c.setLineWidth(0.5)
+        c.setStrokeColorRGB(0.4, 0.4, 0.4)
         path = c.beginPath()
         pts = [(col_x + (px - ox + sa_pat_x) * real_scale,
                 cur_y - (py - oy + sa_pat_y) * real_scale)
@@ -828,22 +1025,6 @@ def _draw_block_page(c, block, palette_colors, block_w_in, block_h_in,  # pylint
         path.close()
         c.drawPath(path, fill=0, stroke=1)
 
-        # draw seam allowance (dashed)
-        sa_poly = _offset_polygon(poly, sa_pattern)
-        c.setDash([3, 3])
-        c.setLineWidth(0.5)
-        c.setStrokeColorRGB(0.5, 0.5, 0.5)
-        path_sa = c.beginPath()
-        sa_pts = [(col_x + (px - ox + sa_pat_x) * real_scale,
-                   cur_y - (py - oy + sa_pat_y) * real_scale)
-                  for px, py in sa_poly]
-        if sa_pts:
-            path_sa.moveTo(*sa_pts[0])
-            for pt in sa_pts[1:]:
-                path_sa.lineTo(*pt)
-            path_sa.close()
-            c.drawPath(path_sa, fill=0, stroke=1)
-
         # color label
         c.setDash([])
         label = _color_label(color_idx) if not isinstance(color_idx, tuple) else "?"
@@ -853,14 +1034,13 @@ def _draw_block_page(c, block, palette_colors, block_w_in, block_h_in,  # pylint
         c.setFont("Helvetica-Bold", 9)
         c.drawCentredString(cx, cy - 3, label)
 
-        # dimension label
-        xs_poly = [p[0] for p in poly]
-        ys_poly = [p[1] for p in poly]
-        piece_w_in = (max(xs_poly) - min(xs_poly)) / pattern_size * block_w_in
-        piece_h_in = (max(ys_poly) - min(ys_poly)) / pattern_size * block_h_in
-        c.setFont("Helvetica", 6)
-        c.drawCentredString(cx, cy - 12,
-                            f"{piece_w_in:.1f}\" x {piece_h_in:.1f}\"")
+        # edge dimensions on cut line
+        if sa_poly is not None:
+            _draw_edge_dimensions(c, sa_pts, sa_poly, pattern_size,
+                                  block_w_in, block_h_in, seam_allowance)
+        else:
+            _draw_edge_dimensions(c, pts, poly, pattern_size,
+                                  block_w_in, block_h_in, 0)
 
         # grain line arrow
         _draw_grain_arrow(c, pts, cx, cy)
@@ -909,6 +1089,27 @@ def _polygon_area_signed(polygon):
     return total / 2.0
 
 
+def _is_convex(polygon):
+    """Check if a polygon is convex by testing that all cross products
+    have the same sign."""
+    n = len(polygon)
+    if n < 3:
+        return True
+    sign = None
+    for i in range(n):
+        x1, y1 = polygon[i]
+        x2, y2 = polygon[(i + 1) % n]
+        x3, y3 = polygon[(i + 2) % n]
+        cross = (x2 - x1) * (y3 - y2) - (y2 - y1) * (x3 - x2)
+        if abs(cross) < 1e-10:
+            continue
+        if sign is None:
+            sign = cross > 0
+        elif (cross > 0) != sign:
+            return False
+    return True
+
+
 def _offset_polygon(polygon, offset):  # pylint: disable=too-many-locals
     """Offset polygon edges outward by offset amount (simple approach).
 
@@ -939,6 +1140,10 @@ def _offset_polygon(polygon, offset):  # pylint: disable=too-many-locals
             x2 + nx * offset, y2 + ny * offset,
             nx, ny,
         ))
+
+    # skip seam allowance for non-convex polygons
+    if not _is_convex(polygon):
+        return None
 
     # find intersection of adjacent shifted edges
     result = []
@@ -1064,8 +1269,10 @@ def _draw_block_breakdown(c, unique_blocks, bm, y):  # pylint: disable=too-many-
         c.setFont("Helvetica", 9)
         for ci in sorted(block_colors.keys()):
             pc = block_colors[ci]
+            total = pc * count
             label = _color_label(ci)
-            c.drawString(bm + 15, y, f"{label}: {pc} piece{'s' if pc != 1 else ''}")
+            c.drawString(bm + 15, y,
+                         f"Color {label}: {pc} per block ({total} total)")
             y -= 12
 
         y -= 6
@@ -1158,6 +1365,7 @@ def generate_pattern_pdf(params, output_path, quilt_w=96, quilt_h=None,  # pylin
     if params["symmetry"] != "bargello":
         _draw_assembly_page(c, grid, unique_blocks, params,
                             quilt_w, quilt_h, block_w_in, block_h_in)
+        _draw_rotation_summary(c, unique_blocks, palette_colors, n_colors)
 
     if params["symmetry"] == "bargello":
         _draw_bargello_pages(c, grid, palette_colors, params,
