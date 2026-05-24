@@ -1138,10 +1138,6 @@ def _offset_polygon(polygon, offset):  # pylint: disable=too-many-locals
             nx, ny,
         ))
 
-    # skip seam allowance for non-convex polygons
-    if not _is_convex(polygon):
-        return None
-
     # find intersection of adjacent shifted edges
     result = []
     for i in range(n):
