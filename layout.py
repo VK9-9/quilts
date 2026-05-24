@@ -50,7 +50,11 @@ def layout_mirror4(rows, cols, n_patterns, n_palettes, rng):
 
 
 def layout_rotational(rows, cols, n_patterns, n_palettes, rng):  # pylint: disable=too-many-locals
-    """4-fold rotational symmetry (90-degree rotations)."""
+    """4-fold rotational symmetry (90-degree rotations).
+
+    Requires a square grid (rows == cols) for true rotational symmetry.
+    Non-square grids are handled defensively by filling gaps randomly.
+    """
     grid = {}
     half_r = (rows + 1) // 2
     half_c = (cols + 1) // 2
@@ -73,6 +77,15 @@ def layout_rotational(rows, cols, n_patterns, n_palettes, rng):  # pylint: disab
                     rotated = dict(cell)
                     rotated["rotation"] = (cell["rotation"] + rot_offset) % 4
                     grid[(pr, pc)] = rotated
+    # fill any gaps from non-square grids
+    for r in range(rows):
+        for c in range(cols):
+            if (r, c) not in grid:
+                grid[(r, c)] = {
+                    "pattern": rng.randint(0, n_patterns - 1),
+                    "palette": rng.randint(0, n_palettes - 1),
+                    "rotation": rng.randint(0, 3),
+                }
     return grid
 
 
