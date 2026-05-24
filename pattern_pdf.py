@@ -717,9 +717,8 @@ def _label_edge_lengths(c, pts, edge_lengths, center_x, center_y):
             odx /= dist
             ody /= dist
 
-        lx = mx + odx * 9
-        ly = my + ody * 9 - 2
-        c.drawCentredString(lx, ly, f'{edge_lengths[i]:.1f}"')
+        c.drawCentredString(mx + odx * 9, my + ody * 9 - 2,
+                            f'{edge_lengths[i]:.1f}"')
     return labeled
 
 
@@ -751,11 +750,11 @@ def _draw_edge_dimensions(c, pts, poly,
     labeled = _label_edge_lengths(c, pts, edge_lengths, center_x, center_y)
 
     # If bbox height differs from all labeled edges, show it
-    bbox_h_key = round(bbox_h, 1)
-    if bbox_h_key not in labeled and bbox_h_key >= 0.1:
-        left_x = min(p[0] for p in pts) - 10
-        mid_y = (max(p[1] for p in pts) + min(p[1] for p in pts)) / 2
-        c.drawCentredString(left_x, mid_y - 2, f'h:{bbox_h:.1f}"')
+    if round(bbox_h, 1) not in labeled and round(bbox_h, 1) >= 0.1:
+        c.drawCentredString(
+            min(p[0] for p in pts) - 10,
+            (max(p[1] for p in pts) + min(p[1] for p in pts)) / 2 - 2,
+            f'h:{bbox_h:.1f}"')
 
 
 def _draw_grain_arrow(c, pts, cx, cy):  # pylint: disable=too-many-locals
@@ -793,6 +792,13 @@ def _draw_grain_arrow(c, pts, cx, cy):  # pylint: disable=too-many-locals
            ay2 - best_dy * head - py * head * 0.5)
 
 
+def _resolve_color(color_idx, palette_colors):
+    """Return (r, g, b) for a color index or RGB tuple."""
+    if isinstance(color_idx, tuple):
+        return color_idx
+    return hex_to_rgb(palette_colors[color_idx % len(palette_colors)])
+
+
 def _draw_block_thumbnail(c, polygons, palette_colors, pos, display_size,
                           *, pattern_size=100):
     """Draw a small colored block at the given position."""
@@ -801,11 +807,7 @@ def _draw_block_thumbnail(c, polygons, palette_colors, pos, display_size,
     c.setStrokeColorRGB(0.3, 0.3, 0.3)
     c.setLineWidth(0.4)
     for poly, color_idx in polygons:
-        if isinstance(color_idx, tuple):
-            r, g, b = color_idx
-        else:
-            hex_color = palette_colors[color_idx % len(palette_colors)]
-            r, g, b = hex_to_rgb(hex_color)
+        rgb = _resolve_color(color_idx, palette_colors)
         path = c.beginPath()
         pts = [(x + px * scale, y + display_size - py * scale)
                for px, py in poly]
@@ -813,7 +815,7 @@ def _draw_block_thumbnail(c, polygons, palette_colors, pos, display_size,
         for pt in pts[1:]:
             path.lineTo(*pt)
         path.close()
-        c.setFillColorRGB(r, g, b)
+        c.setFillColorRGB(*rgb)
         c.drawPath(path, fill=1, stroke=1)
 
 
