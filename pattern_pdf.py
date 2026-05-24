@@ -722,9 +722,7 @@ def _label_edge_lengths(c, pts, edge_lengths, center_x, center_y):
     return labeled
 
 
-def _draw_edge_dimensions(c, pts, poly,
-                          block_w_in, block_h_in, *,
-                          pattern_size=100):
+def _draw_edge_dimensions(c, pts, poly, block_w_in, block_h_in):
     """Draw dimension labels near edges of a piece polygon.
 
     Labels unique edge lengths placed near the edge midpoint.
@@ -735,8 +733,8 @@ def _draw_edge_dimensions(c, pts, poly,
     if n < 3:
         return
 
-    sx = block_w_in / pattern_size
-    sy = block_h_in / pattern_size
+    sx = block_w_in / 100
+    sy = block_h_in / 100
     edge_lengths = _edge_lengths_inches(poly, sx, sy)
 
     bbox_h = (max(py for _, py in poly) - min(py for _, py in poly)) * sy
@@ -799,11 +797,10 @@ def _resolve_color(color_idx, palette_colors):
     return hex_to_rgb(palette_colors[color_idx % len(palette_colors)])
 
 
-def _draw_block_thumbnail(c, polygons, palette_colors, pos, display_size,
-                          *, pattern_size=100):
+def _draw_block_thumbnail(c, polygons, palette_colors, pos, display_size):
     """Draw a small colored block at the given position."""
     x, y = pos
-    scale = display_size / pattern_size
+    scale = display_size / 100
     c.setStrokeColorRGB(0.3, 0.3, 0.3)
     c.setLineWidth(0.4)
     for poly, color_idx in polygons:
@@ -1040,12 +1037,10 @@ def _draw_block_page(c, block, palette_colors, block_w_in, block_h_in,  # pylint
         # edge dimensions on cut line
         if sa_poly is not None:
             _draw_edge_dimensions(c, sa_pts, sa_poly,
-                                  block_w_in, block_h_in,
-                                  pattern_size=pattern_size)
+                                  block_w_in, block_h_in)
         else:
             _draw_edge_dimensions(c, pts, poly,
-                                  block_w_in, block_h_in,
-                                  pattern_size=pattern_size)
+                                  block_w_in, block_h_in)
 
         # grain line arrow
         _draw_grain_arrow(c, pts, cx, cy)
