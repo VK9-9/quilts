@@ -698,14 +698,18 @@ def _edge_lengths_inches(poly, sx, sy):
 
 
 def _label_edge_lengths(c, pts, edge_lengths, center_x, center_y):
-    """Label one instance of each unique edge length, offset outward."""
+    """Label one instance of each unique edge length, offset outward.
+
+    Skips labels whose position would overlap with an already-placed label.
+    """
     n = len(pts)
     labeled = set()
+    placed = []  # (lx, ly) of placed labels for spatial deconfliction
+    min_dist = 12  # minimum distance between label centers in points
     for i in range(n):
         key = round(edge_lengths[i], 1)
         if key in labeled or key < 0.1:
             continue
-        labeled.add(key)
 
         mx = (pts[i][0] + pts[(i + 1) % n][0]) / 2
         my = (pts[i][1] + pts[(i + 1) % n][1]) / 2
@@ -717,8 +721,21 @@ def _label_edge_lengths(c, pts, edge_lengths, center_x, center_y):
             odx /= dist
             ody /= dist
 
-        c.drawCentredString(mx + odx * 9, my + ody * 9 - 2,
-                            f'{edge_lengths[i]:.1f}"')
+        lx = mx + odx * 9
+        ly = my + ody * 9 - 2
+
+        # skip if too close to an existing label
+        too_close = False
+        for px, py in placed:
+            if math.sqrt((lx - px) ** 2 + (ly - py) ** 2) < min_dist:
+                too_close = True
+                break
+        if too_close:
+            continue
+
+        labeled.add(key)
+        placed.append((lx, ly))
+        c.drawCentredString(lx, ly, f'{edge_lengths[i]:.1f}"')
     return labeled
 
 
