@@ -960,16 +960,13 @@ def _draw_block_page(c, block, palette_colors, block_w_in, block_h_in,  # pylint
     avail_w = PAGE_W - 2 * bm
     avail_h = pieces_top - bm
 
-    # try fitting at 1:1, then scale down if needed
-    for attempt_scale in [real_scale, real_scale * 0.75, real_scale * 0.5,
-                          real_scale * 0.35, real_scale * 0.25]:
-        fits = _try_layout_pieces(piece_bboxes, attempt_scale, avail_w, avail_h, 8)
-        if fits is not None:
-            real_scale = attempt_scale
-            break
+    # scale down until all pieces fit on one page
+    piece_gap = 8
+    while _try_layout_pieces(piece_bboxes, real_scale, avail_w, avail_h,
+                             piece_gap) is None and real_scale > 0.5:
+        real_scale *= 0.75
 
     # draw pieces
-    piece_gap = 8
     col_x = bm
     cur_y = pieces_top
     row_h = 0
