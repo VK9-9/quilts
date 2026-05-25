@@ -342,7 +342,7 @@ def _draw_cover_page(c, params, quilt_image_path, palette_colors,  # pylint: dis
         f"Finished size: {size_str}",
         f"Grid: {rows} rows x {cols} columns",
         f"Block size: {block_str}",
-        "Seam allowance: added to all pieces (solid = cut, dashed = stitch)",
+        "Seam allowance: added to all pieces (solid = stitch, dashed = cut)",
     ]
     if border_style:
         info_lines.append(
@@ -611,8 +611,8 @@ def _draw_bargello_template(c, cell_w_in, cell_h_in, seam_allowance):  # pylint:
                      f"Scaled to {scale * 100:.0f}% to fit page")
         info_y -= 14
 
-    c.drawString(bm, info_y, "Solid line = cutting line  |  "
-                 "Dashed line = seam/stitch line (finished size)")
+    c.drawString(bm, info_y, "Solid line = seam/stitch line (finished size)  |  "
+                 "Dashed line = cutting line (+seam allowance)")
     info_y -= 25
 
     # Center the template
@@ -623,18 +623,18 @@ def _draw_bargello_template(c, cell_w_in, cell_h_in, seam_allowance):  # pylint:
 
     sa_pt = seam_allowance * inch * scale
 
-    # Cutting line (solid)
+    # Seam/stitch line (solid) — finished size
     c.setStrokeColorRGB(0, 0, 0)
     c.setLineWidth(1.2)
     c.setDash([])
-    c.rect(rx, ry, sw, sh, fill=0, stroke=1)
+    c.rect(rx + sa_pt, ry + sa_pt,
+           finished_w * scale, finished_h * scale, fill=0, stroke=1)
 
-    # Seam/stitch line (dashed)
+    # Cutting line (dashed) — seam allowance
     c.setStrokeColorRGB(0.4, 0.4, 0.4)
     c.setLineWidth(0.8)
     c.setDash([4, 3])
-    c.rect(rx + sa_pt, ry + sa_pt,
-           finished_w * scale, finished_h * scale, fill=0, stroke=1)
+    c.rect(rx, ry, sw, sh, fill=0, stroke=1)
 
     # Dimension labels
     c.setFont("Helvetica", 8)
@@ -951,9 +951,9 @@ def _draw_block_page(c, block, palette_colors, block_w_in, block_h_in,  # pylint
                      f"Rotations: {', '.join(rot_strs)} (same pieces)")
         info_offset += 13
     c.drawString(info_x, info_y - info_offset,
-                 f"Solid = cut line (+{seam_allowance:.2f}\" seam allowance)")
+                 "Solid = seam/stitch line (finished size)")
     c.drawString(info_x, info_y - info_offset - 13,
-                 "Dashed = seam/stitch line (finished size)")
+                 f"Dashed = cut line (+{seam_allowance:.2f}\" seam allowance)")
 
     # --- Individual pieces section ---
     pieces_top = ay - 15
@@ -1011,26 +1011,10 @@ def _draw_block_page(c, block, palette_colors, block_w_in, block_h_in,  # pylint
             c.drawString(bm, PAGE_H - bm - 10,
                          f"Block #{design_num} (continued)")
 
-        # draw cut line (solid) — seam allowance offset; skip for non-convex
-        sa_poly = _offset_polygon(poly, -sa_pattern)
-        if sa_poly is not None:
-            c.setStrokeColorRGB(0, 0, 0)
-            c.setLineWidth(0.8)
-            c.setDash([])
-            path_sa = c.beginPath()
-            sa_pts = [(col_x + (px - ox + sa_pat_x) * real_scale,
-                       cur_y - (py - oy + sa_pat_y) * real_scale)
-                      for px, py in sa_poly]
-            path_sa.moveTo(*sa_pts[0])
-            for pt in sa_pts[1:]:
-                path_sa.lineTo(*pt)
-            path_sa.close()
-            c.drawPath(path_sa, fill=0, stroke=1)
-
-        # draw seam/stitch line (dashed) — finished size
-        c.setDash([3, 3])
-        c.setLineWidth(0.5)
-        c.setStrokeColorRGB(0.4, 0.4, 0.4)
+        # draw seam/stitch line (solid) — finished size
+        c.setStrokeColorRGB(0, 0, 0)
+        c.setLineWidth(0.8)
+        c.setDash([])
         path = c.beginPath()
         pts = [(col_x + (px - ox + sa_pat_x) * real_scale,
                 cur_y - (py - oy + sa_pat_y) * real_scale)
@@ -1040,6 +1024,22 @@ def _draw_block_page(c, block, palette_colors, block_w_in, block_h_in,  # pylint
             path.lineTo(*pt)
         path.close()
         c.drawPath(path, fill=0, stroke=1)
+
+        # draw cut line (dashed) — seam allowance offset; skip for non-convex
+        sa_poly = _offset_polygon(poly, -sa_pattern)
+        if sa_poly is not None:
+            c.setStrokeColorRGB(0.4, 0.4, 0.4)
+            c.setLineWidth(0.5)
+            c.setDash([3, 3])
+            path_sa = c.beginPath()
+            sa_pts = [(col_x + (px - ox + sa_pat_x) * real_scale,
+                       cur_y - (py - oy + sa_pat_y) * real_scale)
+                      for px, py in sa_poly]
+            path_sa.moveTo(*sa_pts[0])
+            for pt in sa_pts[1:]:
+                path_sa.lineTo(*pt)
+            path_sa.close()
+            c.drawPath(path_sa, fill=0, stroke=1)
 
         # color label
         c.setDash([])
