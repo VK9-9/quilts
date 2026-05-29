@@ -1685,3 +1685,424 @@ Standout quilts worth revisiting or using as seeds for future exploration.
 2. **ocean breeze / piano keys / partial** — border_style=piano_keys, chaos=0.74,
    cols=17, n_colors=4, n_patterns=1, palette=ocean breeze, rows=17,
    symmetry=partial, tile_size=0, tile_variation=0.07 (Round 3)
+
+---
+
+## Round 17 — ratings 4129-4434
+
+**Records:** 4129-4434 (307 ratings)
+**Overall:** 228/307 liked (74.3%)
+**New features:** CLIP two-stage pipeline (param model → top 30 → CLIP picks best),
+`_source` tracking (explore/exploit_param/exploit_clip), columns symmetry,
+sashiko stitch downweighted, solid border upweighted, strippy reduced (0.2–0.35 @ 15%)
+
+### Key findings
+
+- **Like rate dipped to 74.3%** — down from R16's 80%. Expected: first round
+  with CLIP pipeline, columns symmetry added, bargello capped as proven.
+- **CLIP exploitation clearly working** — exploit_clip 79% vs explore 61%.
+  +18pp gap shows the two-stage pipeline outperforms random exploration.
+- **Partial symmetry top** — 79% vs rotational 74%, bargello 72%, stripe 69%.
+- **Bargello capped successfully** — 39 shown (13%) vs R16's 70%. Proven
+  mechanism working. Like rate 72% (down from 96% — now in mixed explore pool).
+- **Strong palettes:** river stone 100% (4/4), winter frost 92% (12/13),
+  ocean breeze 83% (15/18), frosted berry 82% (9/11), honey oak 82% (9/11).
+- **Weak palettes:** cherry blossom 25% (1/4), handloom 33% (1/3),
+  sea glass 50% (5/10).
+- **Solid border best** — 84% vs piano_keys 83%, checkerboard 76%, none 71%.
+  Borders consistently add value.
+- **Sashiko_wave top stitch** — 81% vs asanoha 74%, diagonal 73%, grid 71%.
+- **Late-round crash** — opened 84-96% for first 150 ratings, then crashed
+  to 52-64% for the back half. Possible fatigue or model drift.
+
+### Palette detail (R17)
+
+| Palette | Shown | Liked | Rate |
+|---------|-------|-------|------|
+| river stone | 4 | 4 | 100% |
+| winter frost | 13 | 12 | 92% |
+| ocean breeze | 18 | 15 | 83% |
+| northern lights | 6 | 5 | 83% |
+| frosted berry | 11 | 9 | 82% |
+| honey oak | 11 | 9 | 82% |
+| tide pool | 26 | 21 | 81% |
+| bluebell | 10 | 8 | 80% |
+| wisteria | 69 | 53 | 77% |
+| twilight | 29 | 22 | 76% |
+| wildflower | 27 | 20 | 74% |
+| indigo dye | 12 | 8 | 67% |
+| lavender fields | 30 | 20 | 67% |
+| dove grey | 6 | 4 | 67% |
+| thistle | 18 | 11 | 61% |
+| sea glass | 10 | 5 | 50% |
+| handloom | 3 | 1 | 33% |
+| cherry blossom | 4 | 1 | 25% |
+
+### Symmetry detail (R17)
+
+| Mode | Shown | Liked | Rate |
+|------|-------|-------|------|
+| partial | 95 | 75 | 79% |
+| rotational | 98 | 73 | 74% |
+| bargello | 39 | 28 | 72% |
+| stripe | 75 | 52 | 69% |
+
+### Stitch detail (R17)
+
+| Style | Shown | Liked | Rate |
+|-------|-------|-------|------|
+| sashiko_wave | 79 | 64 | 81% |
+| sashiko_asanoha | 57 | 42 | 74% |
+| diagonal | 81 | 59 | 73% |
+| grid | 84 | 60 | 71% |
+| None | 6 | 3 | 50% |
+
+### Border style detail (R17)
+
+| Style | Shown | Liked | Rate |
+|-------|-------|-------|------|
+| solid | 38 | 32 | 84% |
+| piano_keys | 30 | 25 | 83% |
+| checkerboard | 37 | 28 | 76% |
+| none | 183 | 130 | 71% |
+| stripes | 19 | 13 | 68% |
+
+### Palette frequency (R17)
+
+| Palette | Frequency | Like Rate |
+|---------|-----------|-----------|
+| wisteria | 22.5% | 77% |
+| lavender fields | 9.8% | 67% |
+| twilight | 9.4% | 76% |
+| wildflower | 8.8% | 74% |
+| tide pool | 8.5% | 81% |
+| ocean breeze | 5.9% | 83% |
+| thistle | 5.9% | 61% |
+
+### Like rate trend (round 17 only)
+
+```
+4128-4152: 84%
+4153-4177: 88%
+4178-4202: 88%
+4203-4227: 88%
+4228-4252: 96%
+4253-4277: 92%
+4278-4302: 56%
+4303-4327: 52%
+4328-4352: 52%
+4353-4377: 64%
+4378-4402: 64%
+4403-4427: 72%
+4428-4434: 57%
+```
+
+### Changes after Round 17
+
+- Dropped stripes border (68%, consistently weakest)
+- Dropped sashiko_asanoha downweight (74%, acceptable)
+- Upweighted solid border (2x in weighted choice)
+- quilt_stitch probability: 92% → 98% (near-mandatory)
+- n_colors: shifted to 15% four / 50% five / 35% six (all palettes now 6 colors)
+- CLIP candidate pool stays at 30
+
+---
+
+## Round 18 — ratings 4435-4709
+
+**Records:** 4435-4709 (275 ratings)
+**Overall:** 242/275 liked (88.0%)
+**New features:** columns symmetry (added R17 but only 1 shown in R18),
+n_colors shifted to 4-5-6 weighted
+
+### Key findings
+
+- **Best round ever at 88.0%** — surpasses R14's 85.4%. CLIP pipeline fully
+  converged. Sustained high approval: 8 of 11 windows at 88%+.
+- **CLIP exploit dominant** — 89% (184/207) vs explore 85% (58/68). Gap
+  narrowed to +4pp (vs +18pp in R17) — explore is also very strong now,
+  suggesting the parameter space is well-tuned.
+- **Bargello still top symmetry** — 94% (29/31). Rotational 89%, partial 88%,
+  stripe 86%. All symmetries performing well.
+- **Palettes nearly all strong** — sea glass 100% (7/7), frosted berry 100%
+  (7/7), river stone 100% (6/6), cherry blossom 100% (4/4), tide pool 96%,
+  wildflower 95%, ocean breeze 94%. Only handloom at 0% (1 sample).
+- **Solid border best** — 95% (42/44) vs none 88%, checkerboard 85%,
+  piano_keys 83%. Solid consistently top since R17.
+- **Diagonal stitch best** — 93% vs sashiko_wave 92%, grid 86%, asanoha 80%.
+- **All rows/grid sizes strong** — 85-90% across 16-21. No differentiation.
+- **Wash, plain_frac, wonky all neutral** — no meaningful on/off differences.
+
+### Palette detail (R18)
+
+| Palette | Shown | Liked | Rate |
+|---------|-------|-------|------|
+| sea glass | 7 | 7 | 100% |
+| frosted berry | 7 | 7 | 100% |
+| river stone | 6 | 6 | 100% |
+| cherry blossom | 4 | 4 | 100% |
+| tide pool | 25 | 24 | 96% |
+| wildflower | 19 | 18 | 95% |
+| ocean breeze | 16 | 15 | 94% |
+| winter frost | 12 | 11 | 92% |
+| lavender fields | 34 | 31 | 91% |
+| wisteria | 45 | 39 | 87% |
+| thistle | 22 | 19 | 86% |
+| dove grey | 7 | 6 | 86% |
+| bluebell | 7 | 6 | 86% |
+| northern lights | 6 | 5 | 83% |
+| twilight | 32 | 25 | 78% |
+| honey oak | 13 | 10 | 77% |
+| indigo dye | 12 | 9 | 75% |
+
+### Symmetry detail (R18)
+
+| Mode | Shown | Liked | Rate |
+|------|-------|-------|------|
+| bargello | 31 | 29 | 94% |
+| rotational | 97 | 86 | 89% |
+| partial | 75 | 66 | 88% |
+| stripe | 71 | 61 | 86% |
+| columns | 1 | 0 | 0% |
+
+### Stitch detail (R18)
+
+| Style | Shown | Liked | Rate |
+|-------|-------|-------|------|
+| diagonal | 72 | 67 | 93% |
+| sashiko_wave | 61 | 56 | 92% |
+| grid | 81 | 70 | 86% |
+| sashiko_asanoha | 60 | 48 | 80% |
+
+### Border style detail (R18)
+
+| Style | Shown | Liked | Rate |
+|-------|-------|-------|------|
+| solid | 44 | 42 | 95% |
+| none | 162 | 142 | 88% |
+| checkerboard | 46 | 39 | 85% |
+| piano_keys | 23 | 19 | 83% |
+
+### Like rate trend (round 18 only)
+
+```
+4435-4459: 68%
+4460-4484: 88%
+4485-4509: 88%
+4510-4534: 88%
+4535-4559: 88%
+4560-4584: 96%
+4585-4609: 96%
+4610-4634: 88%
+4635-4659: 96%
+4660-4684: 96%
+4685-4709: 76%
+```
+
+### Palette frequency (R18)
+
+| Palette | Frequency | Like Rate |
+|---------|-----------|-----------|
+| wisteria | 16.4% | 87% |
+| lavender fields | 12.4% | 91% |
+| twilight | 11.6% | 78% |
+| tide pool | 9.1% | 96% |
+| thistle | 8.0% | 86% |
+| wildflower | 6.9% | 95% |
+| ocean breeze | 5.8% | 94% |
+| honey oak | 4.7% | 77% |
+
+### Changes after Round 18
+
+- No major sampler changes — system performing well at 88%
+- Columns symmetry needs more exposure (only 1 sample in R18)
+
+---
+
+## Round 19 — ratings 4710-4913
+
+**Records:** 4710-4913 (204 ratings)
+**Overall:** 181/204 liked (88.7%)
+**Params:** rows/cols 16-21, symmetry 5 modes (rotational/partial/stripe/bargello/columns),
+chaos 0-0.8, 18 palettes, n_patterns 2, n_colors weighted 15% four / 50% five / 35% six,
+10% palette diversity cap, quilt_stitch (~98%), tile_size 4-10, border ~35%
+(solid 2x weight), wash_alpha ~15%, wonky ~15%, strippy ~15%
+
+### Key findings
+
+- **New record at 88.7%** — beats R18's 88.0%. Three consecutive rounds of
+  85%+ approval. The system is in a mature, high-performing regime.
+- **CLIP exploit still dominant** — 90% (125/139) vs explore 86% (56/65).
+  Gap is only +4pp, same as R18. Both modes performing excellently.
+  Explore at 86% is remarkable — the parameter space itself is well-optimized.
+- **Columns symmetry getting traction** — 74% (35/47) with meaningful sample
+  size. Weakest of the five modes but viable. Bargello still top at 96% (27/28).
+  Rotational 94%, partial 93%, stripe 90%.
+- **n_colors signal emerging** — n_colors=4 at 95%, 5 at 88%, 6 at 68%.
+  Four colors may be the sweet spot; six colors dragging down. Current weights
+  give 50% to five, only 15% to four — consider rebalancing.
+- **Palette diversity good** — 18 palettes active, most performing well.
+  Top: twilight 100% (17/17), ocean breeze 100% (9/9), dove grey 100% (8/8),
+  honey oak 100% (6/6), northern lights 100% (5/5), river stone 100% (4/4).
+  Bottom: cherry blossom 50% (2/4 — small sample), wildflower 82% (9/11).
+  No palette below 50%.
+- **Wash_alpha strongly positive** — 96% (25/26) vs 88% without. Best signal
+  for wash in recent rounds. Consider increasing probability.
+- **Plain_frac slightly negative** — 81% on vs 93% off. Consistent weak
+  negative signal worth watching.
+- **Wonky slightly negative** — 76% on vs 91% off. Third round showing
+  wonky underperforming. Consider reducing or dropping.
+- **All stitch styles converged** — grid 90%, sashiko_wave 88%, asanoha 88%,
+  diagonal 88%. No differentiation.
+- **Borders all strong** — piano_keys 91%, none 90%, checkerboard 88%,
+  solid 86%. Solid dropped slightly from R18's 95% but all acceptable.
+- **Rows 21 best** — 97% (38/39). Rows 19 at 93%. Larger grids trending
+  stronger across recent rounds.
+- **Larger tiles preferred** — tile_size 9-10 at 90-93%, smaller sizes
+  slightly weaker (81-87%). Consistent with historical preference.
+
+### Palette detail (R19)
+
+| Palette | Shown | Liked | Rate |
+|---------|-------|-------|------|
+| twilight | 17 | 17 | 100% |
+| ocean breeze | 9 | 9 | 100% |
+| dove grey | 8 | 8 | 100% |
+| honey oak | 6 | 6 | 100% |
+| northern lights | 5 | 5 | 100% |
+| river stone | 4 | 4 | 100% |
+| handloom | 4 | 4 | 100% |
+| sea glass | 2 | 2 | 100% |
+| bluebell | 11 | 10 | 91% |
+| tide pool | 10 | 9 | 90% |
+| thistle | 20 | 18 | 90% |
+| indigo dye | 8 | 7 | 88% |
+| wisteria | 28 | 24 | 86% |
+| frosted berry | 14 | 12 | 86% |
+| lavender fields | 33 | 27 | 82% |
+| wildflower | 11 | 9 | 82% |
+| winter frost | 10 | 8 | 80% |
+| cherry blossom | 4 | 2 | 50% |
+
+### Symmetry detail (R19)
+
+| Mode | Shown | Liked | Rate |
+|------|-------|-------|------|
+| bargello | 28 | 27 | 96% |
+| rotational | 47 | 44 | 94% |
+| partial | 41 | 38 | 93% |
+| stripe | 41 | 37 | 90% |
+| columns | 47 | 35 | 74% |
+
+### n_colors detail (R19)
+
+| Colors | Shown | Liked | Rate |
+|--------|-------|-------|------|
+| 3 | 2 | 2 | 100% |
+| 4 | 95 | 90 | 95% |
+| 5 | 82 | 72 | 88% |
+| 6 | 25 | 17 | 68% |
+
+### Tile size detail (R19)
+
+| Size | Shown | Liked | Rate |
+|------|-------|-------|------|
+| 4 | 10 | 10 | 100% |
+| 5 | 13 | 13 | 100% |
+| 9 | 41 | 37 | 90% |
+| 10 | 45 | 42 | 93% |
+| 6 | 23 | 20 | 87% |
+| 8 | 35 | 29 | 83% |
+| 7 | 37 | 30 | 81% |
+
+### Stitch detail (R19)
+
+| Style | Shown | Liked | Rate |
+|-------|-------|-------|------|
+| grid | 69 | 62 | 90% |
+| sashiko_wave | 52 | 46 | 88% |
+| sashiko_asanoha | 25 | 22 | 88% |
+| diagonal | 58 | 51 | 88% |
+
+### Border style detail (R19)
+
+| Style | Shown | Liked | Rate |
+|-------|-------|-------|------|
+| piano_keys | 11 | 10 | 91% |
+| none | 127 | 114 | 90% |
+| checkerboard | 17 | 15 | 88% |
+| solid | 49 | 42 | 86% |
+
+### Feature params detail (R19)
+
+| Param | On | Off |
+|-------|----|-----|
+| wash_alpha | 25/26 (96%) | 156/178 (88%) |
+| palette_2 | 17/19 (89%) | 164/185 (89%) |
+| strippy | 12/14 (86%) | 169/190 (89%) |
+| plain_frac | 61/75 (81%) | 120/129 (93%) |
+| wonky | 19/25 (76%) | 162/179 (91%) |
+
+### Like rate trend (round 19 only)
+
+```
+4710-4734: 96%
+4735-4759: 100%
+4760-4784: 96%
+4785-4809: 100%
+4810-4834: 72%
+4835-4859: 84%
+4860-4884: 80%
+4885-4909: 80%
+4910-4913: 100%
+```
+
+### Palette frequency (R19)
+
+| Palette | Frequency | Like Rate |
+|---------|-----------|-----------|
+| lavender fields | 16.2% | 82% |
+| wisteria | 13.7% | 86% |
+| thistle | 9.8% | 90% |
+| twilight | 8.3% | 100% |
+| frosted berry | 6.9% | 86% |
+| wildflower | 5.4% | 82% |
+| bluebell | 5.4% | 91% |
+| tide pool | 4.9% | 90% |
+| winter frost | 4.9% | 80% |
+| ocean breeze | 4.4% | 100% |
+| indigo dye | 3.9% | 88% |
+| dove grey | 3.9% | 100% |
+| honey oak | 2.9% | 100% |
+| northern lights | 2.5% | 100% |
+| handloom | 2.0% | 100% |
+| cherry blossom | 2.0% | 50% |
+| river stone | 2.0% | 100% |
+| sea glass | 1.0% | 100% |
+
+### Feature importances (top 15)
+
+| Feature | Importance |
+|---------|----------:|
+| quilt_stitch | 0.6843 |
+| tile_variation | 0.0396 |
+| cornerstones | 0.0387 |
+| sym_bargello | 0.0336 |
+| tile_size | 0.0311 |
+| n_colors | 0.0224 |
+| pal_lavender fields | 0.0178 |
+| pal_ocean breeze | 0.0140 |
+| chaos | 0.0137 |
+| wonky | 0.0131 |
+| mega_frac | 0.0122 |
+| n_patterns | 0.0095 |
+| rows | 0.0091 |
+| accent_count | 0.0066 |
+| sym_rotational | 0.0063 |
+
+### Changes after Round 19
+
+- Rebalanced n_colors weights: 15/50/35 → 40/45/15 (four/five/six). Four at 95%, six at 68%.
+- Increased wash_alpha probability: 15% → 25%. Three-round positive signal (R19: 96% vs 88%).
+- Reduced wonky probability: 15% → 10%. Consistently underperforming (76% vs 91% in R19).
+- Reduced plain_frac probability: 30% → 15%. Slight negative signal (81% vs 93% in R19).
