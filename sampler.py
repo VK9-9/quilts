@@ -46,7 +46,7 @@ PARAM_SPACE = {
     "chaos": (0.0, 0.8),
     "palette": PALETTE_NAMES,
     "n_patterns": (2, 2),
-    "n_colors": (3, 5),
+    "n_colors": (4, 6),
     "tile_size": (4, 10),       # small tiles (1-3) disliked
     "tile_variation": (0.0, 0.3),
 }
