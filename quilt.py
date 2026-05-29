@@ -292,6 +292,55 @@ def _draw_quilt_stitching(ctx, qx, qy, qw, qh, style, spacing):  # pylint: disab
 GRADIENT_MODES = ["horizontal", "vertical", "diagonal", "radial"]
 
 
+def build_layout(seed, rows, cols, symmetry, chaos, palette_name,  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals
+                 max_patterns=None, max_colors=None):
+    """Reconstruct layout grid and palette from quilt params.
+
+    Returns (grid, allowed_patterns, palette_colors, rng) where rng is the
+    main RNG after layout construction (callers may need it for further steps).
+    """
+    rng = random.Random(seed)
+    color_rng = random.Random(rng.randint(0, 2**31))
+
+    palette_colors = pick_palettes(palette_name, 1, color_rng)
+    if max_colors is not None and max_colors < len(palette_colors):
+        palette_colors = color_rng.sample(palette_colors, max_colors)
+    n_colors = len(palette_colors)
+
+    n_all_patterns = len(BLOCK_PATTERNS)
+    if max_patterns is not None:
+        available = list(range(n_all_patterns))
+        rng.shuffle(available)
+        allowed = sorted(available[:max_patterns])
+        n_patterns = max_patterns
+    else:
+        allowed = None
+        n_patterns = n_all_patterns
+
+    layout_fn = SYMMETRY_MODES[symmetry]
+    kwargs = {}
+    if symmetry == "partial":
+        kwargs["chaos"] = chaos
+    grid = layout_fn(rows, cols, n_patterns, 1, rng, **kwargs)
+
+    if allowed is not None:
+        for cell in grid.values():
+            cell["pattern"] = allowed[cell["pattern"]]
+
+    for cell in grid.values():
+        cell_rng = random.Random(cell["pattern"] * 1000 + cell["palette"])
+        indices = list(range(n_colors))
+        cell_rng.shuffle(indices)
+        cell["color_map"] = indices
+
+    if symmetry == "bargello":
+        for cell in grid.values():
+            bi = cell.get("_bargello_color", 0) % n_colors
+            cell["color_map"] = [bi] * n_colors
+
+    return grid, allowed, palette_colors, rng
+
+
 def _build_strip_sizes(n, base_size, variation, rng):
     """Generate n strip sizes with seeded variation around base_size.
 
