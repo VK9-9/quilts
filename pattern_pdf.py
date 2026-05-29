@@ -660,6 +660,18 @@ def _edge_lengths_inches(poly, sx, sy):
     return lengths
 
 
+def _label_position(pts, i, n, center_x, center_y):
+    """Compute label (x, y) for edge i, offset 9pt outward from center."""
+    mx = (pts[i][0] + pts[(i + 1) % n][0]) / 2
+    my = (pts[i][1] + pts[(i + 1) % n][1]) / 2
+    odx, ody = mx - center_x, my - center_y
+    dist = math.sqrt(odx * odx + ody * ody)
+    if dist > 0.1:
+        odx /= dist
+        ody /= dist
+    return mx + odx * 9, my + ody * 9 - 2
+
+
 def _label_edge_lengths(c, pts, edge_lengths, center_x, center_y):
     """Label one instance of each unique edge length, offset outward.
 
@@ -674,26 +686,11 @@ def _label_edge_lengths(c, pts, edge_lengths, center_x, center_y):
         if key in labeled or key < 0.1:
             continue
 
-        mx = (pts[i][0] + pts[(i + 1) % n][0]) / 2
-        my = (pts[i][1] + pts[(i + 1) % n][1]) / 2
-
-        odx = mx - center_x
-        ody = my - center_y
-        dist = math.sqrt(odx * odx + ody * ody)
-        if dist > 0.1:
-            odx /= dist
-            ody /= dist
-
-        lx = mx + odx * 9
-        ly = my + ody * 9 - 2
+        lx, ly = _label_position(pts, i, n, center_x, center_y)
 
         # skip if too close to an existing label
-        too_close = False
-        for px, py in placed:
-            if math.sqrt((lx - px) ** 2 + (ly - py) ** 2) < min_dist:
-                too_close = True
-                break
-        if too_close:
+        if any(math.sqrt((lx - px) ** 2 + (ly - py) ** 2) < min_dist
+               for px, py in placed):
             continue
 
         labeled.add(key)
