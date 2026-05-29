@@ -192,6 +192,9 @@ def _params_from_request(defaults=None):
         "quilt_stitch":   stitch,
         "wonky":          _get("wonky",            float, 0.0),
         "strippy":        _get("strippy",          float, 0.0),
+        "wash_alpha":     _get("wash_alpha",       float, 0.0),
+        "palette_2":      a.get("palette_2", base.get("palette_2")) or None,
+        "palette_mix":    a.get("palette_mix", base.get("palette_mix")) or None,
         "seed":           _get("seed",             int,   42),
     }
 
