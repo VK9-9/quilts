@@ -200,7 +200,6 @@ def _params_from_request(defaults=None):
 
 
 
-
 def _render_png(params, block_size):
     """Render params to PNG bytes at the given block_size."""
     kwargs = params_to_render_kwargs(params, block_size=block_size)

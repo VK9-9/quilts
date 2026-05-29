@@ -164,7 +164,6 @@ def params_to_features(params):
 
 
 
-
 def _render_small(params, block_size):
     """Render params at the given block_size and return PNG bytes."""
     kwargs = params_to_render_kwargs(params, block_size=block_size)
