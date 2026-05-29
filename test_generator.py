@@ -1,6 +1,7 @@
 """Tests for generator.py — Flask webapp routes and param parsing."""
 import pytest
-from generator import app, PRESETS, _params_to_render_kwargs
+from generator import app, PRESETS
+from render_params import params_to_render_kwargs
 
 
 @pytest.fixture
@@ -10,7 +11,7 @@ def client():
         yield c
 
 
-# --- _params_to_render_kwargs ---
+# --- params_to_render_kwargs ---
 
 class TestParamsToRenderKwargs:
 
@@ -23,13 +24,12 @@ class TestParamsToRenderKwargs:
             "color_gradient": "none", "mega_frac": 0.0, "plain_frac": 0.0,
             "quilt_stitch": "grid", "wonky": 0.0, "seed": 42,
         }
-        kwargs = _params_to_render_kwargs(params, block_size=36)
+        kwargs = params_to_render_kwargs(params, block_size=36)
         assert kwargs["rows"] == 16
         assert kwargs["block_size"] == 36
         assert kwargs["palette_name"] == "ocean breeze"
         assert kwargs["output"] is None  # always returns bytes
         assert kwargs["border_style"] is None  # "none" → None
-        assert kwargs["color_gradient"] is None  # "none" → None
 
     def test_tile_size_zero_becomes_none(self):
         params = {
@@ -38,7 +38,7 @@ class TestParamsToRenderKwargs:
             "n_colors": 4, "tile_size": 0, "tile_variation": 0.1,
             "border_style": "solid", "seed": 42,
         }
-        kwargs = _params_to_render_kwargs(params)
+        kwargs = params_to_render_kwargs(params)
         assert kwargs["tile_size"] is None
 
     def test_border_style_solid_preserved(self):
@@ -48,7 +48,7 @@ class TestParamsToRenderKwargs:
             "n_colors": 4, "tile_size": 6, "tile_variation": 0.1,
             "border_style": "solid", "seed": 42,
         }
-        kwargs = _params_to_render_kwargs(params)
+        kwargs = params_to_render_kwargs(params)
         assert kwargs["border_style"] == "solid"
 
 

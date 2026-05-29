@@ -23,6 +23,7 @@ from sklearn.linear_model import LogisticRegression
 from palettes import PALETTES
 from layout import SYMMETRY_MODES
 from quilt import BORDER_STYLES, QUILT_STITCH_STYLES, render_quilt
+from render_params import params_to_render_kwargs
 
 _DROP_PALETTES = {"storm", "midnight moss", "terracotta", "slate and rust", "coral reef",
                    "autumn harvest", "aurora", "deep sea", "amber glow", "sage garden",
@@ -167,48 +168,6 @@ def params_to_features(params):
     return np.array(features, dtype=np.float64)
 
 
-def params_to_render_kwargs(params, block_size=40):
-    """Convert sampled params to kwargs for render_quilt."""
-    kwargs = {
-        "rows": params["rows"],
-        "cols": params["cols"],
-        "block_size": block_size,
-        "symmetry": params["symmetry"],
-        "chaos": params["chaos"],
-        "palette_name": params["palette"],
-        "seed": params["seed"],
-        "output": None,  # return bytes
-        "border": 15,
-        "max_patterns": params["n_patterns"],
-        "max_colors": params["n_colors"],
-        "tile_size": params["tile_size"] if params["tile_size"] > 0 else None,
-        "tile_variation": params["tile_variation"],
-        "border_style": params.get("border_style", "none"),
-        "sash_width": params.get("sash_width", 0),
-        "color_gradient": params.get("color_gradient", "none"),
-        "mega_frac": params.get("mega_frac", 0.0),
-        "plain_frac": params.get("plain_frac", 0.0),
-        "cornerstones": params.get("cornerstones", False),
-        "quilt_stitch": params.get("quilt_stitch"),
-        "wash_alpha": params.get("wash_alpha", 0.0),
-        "palette_name_2": params.get("palette_2"),
-        "palette_mix": params.get("palette_mix"),
-        "accent_count": params.get("accent_count", 0),
-        "color_wash": params.get("color_wash"),
-        "wonky": params.get("wonky", 0.0),
-        "strippy": params.get("strippy", 0.0),
-    }
-    # Drop palette_2/palette_mix if they reference a retired palette
-    _active = set(PALETTE_NAMES)
-    if kwargs["palette_name_2"] and kwargs["palette_name_2"] not in _active:
-        kwargs["palette_name_2"] = None
-    if kwargs.get("palette_mix") and kwargs["palette_mix"] not in _active:
-        kwargs["palette_mix"] = None
-    if kwargs["border_style"] == "none":
-        kwargs["border_style"] = None
-    if kwargs["color_gradient"] == "none":
-        kwargs["color_gradient"] = None
-    return kwargs
 
 
 def _render_small(params, block_size):

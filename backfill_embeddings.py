@@ -16,7 +16,8 @@ import sys
 import numpy as np
 
 from clip_embed import embed_image
-from sampler import params_to_render_kwargs, _CLIP_EMBED_BLOCK_SIZE
+from render_params import params_to_render_kwargs
+from sampler import _CLIP_EMBED_BLOCK_SIZE
 from quilt import render_quilt
 
 
