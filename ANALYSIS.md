@@ -2106,3 +2106,190 @@ chaos 0-0.8, 18 palettes, n_patterns 2, n_colors weighted 15% four / 50% five / 
 - Increased wash_alpha probability: 15% → 25%. Three-round positive signal (R19: 96% vs 88%).
 - Reduced wonky probability: 15% → 10%. Consistently underperforming (76% vs 91% in R19).
 - Reduced plain_frac probability: 30% → 15%. Slight negative signal (81% vs 93% in R19).
+
+---
+
+## Round 20 — ratings 4914-5122
+
+**Records:** 4914-5122 (209 ratings)
+**Overall:** 180/209 liked (86.1%)
+**Params:** rows/cols 16-21, symmetry 5 modes (rotational/partial/stripe/bargello/columns),
+chaos 0-0.8, 18 palettes, n_patterns 2, n_colors weighted 40% four / 45% five / 15% six,
+10% palette diversity cap, quilt_stitch (~98%), tile_size 4-10, border ~35%
+(solid 2x weight), wash_alpha ~25%, wonky ~10%, plain_frac ~15%, strippy ~15%
+
+### Key findings
+
+- **Like rate 86.1%** — slight dip from R19's 88.7% but fourth consecutive
+  round above 85%. System remains in a high-performing regime.
+- **CLIP exploit solid** — 88% (132/150) vs explore 81% (48/59). Gap widened
+  to +7pp (vs +4pp in R18-R19). Explore dipped from 86% to 81% — possibly
+  noise or the n_colors rebalancing needs time to settle.
+- **Bargello perfect** — 100% (25/25). Rotational surging at 96% (53/55).
+  Stripe 88%, partial 85%. All four main modes strong.
+- **Columns still weakest** — 59% (20/34). Down from 74% in R19. Consistent
+  underperformer — may need to be dropped or reduced.
+- **n_colors flattened** — 4 at 85%, 5 at 86%, 6 at 91%. The R19 signal
+  (4=95%, 6=68%) did not repeat. Rebalancing may have helped by reducing
+  six-color frequency, or it was noise. No action needed.
+- **River stone crashed** — 43% (3/7). Was 100% in R17-R19 (14/14 cumulative)
+  but small samples. First real negative signal.
+- **palette_2 negative** — 70% on vs 88% off. Strongest negative signal for
+  palette_2 in recent rounds. Worth watching.
+- **wash_alpha reversed** — 83% on vs 87% off. R19 showed 96% on vs 88% off.
+  Signal not stable — wash may be neutral rather than positive.
+- **plain_frac still slightly negative** — 82% on vs 88% off. Consistent with
+  R19 (81% vs 93%). Reduction to 15% was correct.
+- **Sashiko_wave top stitch** — 90% vs grid 88%, diagonal 83%, asanoha 83%.
+- **Tile size 8 best** — 92%. Size 4 weakest at 73%. Consistent preference
+  for mid-to-large tiles.
+- **Wisteria top palette** — 96% (26/27). Consistent performer across rounds.
+- **Stable trend** — no late-round crash. All windows 76-100%.
+
+### Palette detail (R20)
+
+| Palette | Shown | Liked | Rate |
+|---------|-------|-------|------|
+| wildflower | 3 | 3 | 100% |
+| winter frost | 4 | 4 | 100% |
+| dove grey | 7 | 7 | 100% |
+| bluebell | 6 | 6 | 100% |
+| honey oak | 8 | 8 | 100% |
+| cherry blossom | 2 | 2 | 100% |
+| northern lights | 3 | 3 | 100% |
+| wisteria | 27 | 26 | 96% |
+| sea glass | 13 | 12 | 92% |
+| tide pool | 11 | 10 | 91% |
+| frosted berry | 10 | 9 | 90% |
+| thistle | 31 | 26 | 84% |
+| lavender fields | 30 | 25 | 83% |
+| indigo dye | 10 | 8 | 80% |
+| twilight | 23 | 18 | 78% |
+| ocean breeze | 11 | 8 | 73% |
+| handloom | 3 | 2 | 67% |
+| river stone | 7 | 3 | 43% |
+
+### Symmetry detail (R20)
+
+| Mode | Shown | Liked | Rate |
+|------|-------|-------|------|
+| bargello | 25 | 25 | 100% |
+| rotational | 55 | 53 | 96% |
+| stripe | 48 | 42 | 88% |
+| partial | 47 | 40 | 85% |
+| columns | 34 | 20 | 59% |
+
+### n_colors detail (R20)
+
+| Colors | Shown | Liked | Rate |
+|--------|-------|-------|------|
+| 4 | 87 | 74 | 85% |
+| 5 | 99 | 85 | 86% |
+| 6 | 23 | 21 | 91% |
+
+### Tile size detail (R20)
+
+| Size | Shown | Liked | Rate |
+|------|-------|-------|------|
+| 4 | 11 | 8 | 73% |
+| 5 | 10 | 9 | 90% |
+| 6 | 23 | 20 | 87% |
+| 7 | 36 | 31 | 86% |
+| 8 | 48 | 44 | 92% |
+| 9 | 43 | 36 | 84% |
+| 10 | 38 | 32 | 84% |
+
+### Stitch detail (R20)
+
+| Style | Shown | Liked | Rate |
+|-------|-------|-------|------|
+| sashiko_wave | 51 | 46 | 90% |
+| grid | 66 | 58 | 88% |
+| diagonal | 69 | 57 | 83% |
+| sashiko_asanoha | 23 | 19 | 83% |
+
+### Border style detail (R20)
+
+| Style | Shown | Liked | Rate |
+|-------|-------|-------|------|
+| piano_keys | 13 | 12 | 92% |
+| solid | 43 | 38 | 88% |
+| none | 122 | 105 | 86% |
+| checkerboard | 31 | 25 | 81% |
+
+### Feature params detail (R20)
+
+| Param | On | Off |
+|-------|----|-----|
+| strippy | 24/27 (89%) | 156/182 (86%) |
+| wonky | 15/18 (83%) | 165/191 (86%) |
+| wash_alpha | 50/60 (83%) | 130/149 (87%) |
+| plain_frac | 40/49 (82%) | 140/160 (88%) |
+| palette_2 | 19/27 (70%) | 161/182 (88%) |
+
+### Like rate trend (round 20 only)
+
+```
+4914-4938: 80%
+4939-4963: 84%
+4964-4988: 100%
+4989-5013: 76%
+5014-5038: 88%
+5039-5063: 84%
+5064-5088: 80%
+5089-5113: 92%
+5114-5122: 100%
+```
+
+### Palette frequency (R20)
+
+| Palette | Frequency | Like Rate |
+|---------|-----------|-----------|
+| thistle | 14.8% | 84% |
+| lavender fields | 14.4% | 83% |
+| wisteria | 12.9% | 96% |
+| twilight | 11.0% | 78% |
+| sea glass | 6.2% | 92% |
+| tide pool | 5.3% | 91% |
+| ocean breeze | 5.3% | 73% |
+| indigo dye | 4.8% | 80% |
+| frosted berry | 4.8% | 90% |
+| honey oak | 3.8% | 100% |
+| dove grey | 3.3% | 100% |
+| river stone | 3.3% | 43% |
+| bluebell | 2.9% | 100% |
+| winter frost | 1.9% | 100% |
+| wildflower | 1.4% | 100% |
+| northern lights | 1.4% | 100% |
+| handloom | 1.4% | 67% |
+| cherry blossom | 1.0% | 100% |
+
+### Feature importances (top 15)
+
+| Feature | Importance |
+|---------|----------:|
+| quilt_stitch | 0.6893 |
+| tile_variation | 0.0404 |
+| cornerstones | 0.0369 |
+| sym_bargello | 0.0336 |
+| tile_size | 0.0315 |
+| n_colors | 0.0258 |
+| pal_lavender fields | 0.0154 |
+| chaos | 0.0146 |
+| wonky | 0.0127 |
+| pal_ocean breeze | 0.0116 |
+| mega_frac | 0.0104 |
+| rows | 0.0102 |
+| n_patterns | 0.0091 |
+| sym_rotational | 0.0071 |
+| accent_count | 0.0070 |
+
+### Changes after Round 20
+
+- **Columns symmetry reworked**: all strips now share one block pattern, differing
+  only by rotation. Previously each strip got a random pattern, creating jarring
+  contrasts between adjacent columns. User feedback: subtle differences are good,
+  radical differences are bad.
+- Reduced palette_2 probability: 10% → 5%. Negative signal (70% vs 88% off).
+- Reverted wash_alpha probability: 25% → 15%. R19 positive signal didn't hold
+  (R20: 83% vs 87% off).
