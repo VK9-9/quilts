@@ -20,8 +20,7 @@ class TestParamsToRenderKwargs:
             "palette": "ocean breeze", "symmetry": "bargello",
             "chaos": 0.3, "rows": 16, "cols": 16, "n_patterns": 2,
             "n_colors": 4, "tile_size": 6, "tile_variation": 0.1,
-            "border_style": "none", "sash_width": 0, "cornerstones": False,
-            "color_gradient": "none", "mega_frac": 0.0, "plain_frac": 0.0,
+            "border_style": "none", "mega_frac": 0.0, "plain_frac": 0.0,
             "quilt_stitch": "grid", "wonky": 0.0, "seed": 42,
         }
         kwargs = params_to_render_kwargs(params, block_size=36)

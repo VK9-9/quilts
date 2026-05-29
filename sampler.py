@@ -116,9 +116,6 @@ def sample_random_params(rng=None, explore_only=False):
                              weights=[2.0 if b == "solid" else 1.0
                                       for b in BORDER_STYLES if b != "stripes"],
                          )[0] if rng.random() < 0.35 else "none"),
-        "sash_width": 0,
-        "cornerstones": False,
-        "color_gradient": "none",
         "color_wash": None,
         "mega_frac": round(rng.uniform(0.1, 0.25), 2) if rng.random() < 0.05 else 0.0,
         "plain_frac": round(rng.uniform(0.1, 0.4), 2) if rng.random() < 0.15 else 0.0,
@@ -143,10 +140,8 @@ def params_to_features(params):
     features.append(params["n_colors"])
     features.append(params["tile_size"])
     features.append(params["tile_variation"])
-    features.append(params.get("sash_width", 0))
     features.append(params.get("mega_frac", 0.0))
     features.append(params.get("plain_frac", 0.0))
-    features.append(1.0 if params.get("cornerstones", False) else 0.0)
     features.append(params.get("wash_alpha", 0.0))
     features.append(1.0 if params.get("quilt_stitch") else 0.0)
     features.append(1.0 if params.get("palette_2") else 0.0)
@@ -356,8 +351,8 @@ class QuiltExplorer:  # pylint: disable=too-many-instance-attributes
         border_names = ["none"] + BORDER_STYLES
         names = (
             ["rows", "chaos", "n_patterns", "n_colors",
-             "tile_size", "tile_variation", "sash_width", "mega_frac", "plain_frac",
-             "cornerstones", "wash_alpha", "quilt_stitch", "palette_2",
+             "tile_size", "tile_variation", "mega_frac", "plain_frac",
+             "wash_alpha", "quilt_stitch", "palette_2",
              "palette_mix", "accent_count", "color_wash", "wonky", "strippy"]
             + [f"brd_{b}" for b in border_names]
             + [f"sym_{s}" for s in SYMMETRY_NAMES]
