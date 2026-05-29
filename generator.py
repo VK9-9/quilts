@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 # pylint: disable=wrong-import-position
 from flask import Flask, render_template, request, Response
-from quilt import render_quilt
+from quilt import render_quilt, BORDER_STYLES as _QUILT_BORDER_STYLES
 from quilt_id import encode, decode, _V2_PALETTES, _V2_SYMMETRY, _V2_STITCH
 from pattern_pdf import generate_pattern_pdf
 from render_params import params_to_render_kwargs
@@ -44,7 +44,7 @@ def _inject_build_info():
 
 PALETTE_NAMES = _V2_PALETTES
 SYMMETRY_NAMES = _V2_SYMMETRY
-BORDER_STYLES = ["none", "solid", "checkerboard", "piano_keys"]
+BORDER_STYLES = ["none"] + _QUILT_BORDER_STYLES
 STITCH_STYLES = ["none"] + _V2_STITCH
 
 # ---------------------------------------------------------------------------
