@@ -148,6 +148,40 @@ class TestDownloadRoute:
         assert ".png" in cd
 
 
+class TestPatternRoute:
+
+    def test_pattern_returns_pdf(self, client):
+        resp = client.get(
+            "/pattern?seed=42&symmetry=rotational&palette=ocean+breeze&rows=4"
+        )
+        assert resp.status_code == 200
+        assert resp.content_type == "application/pdf"
+        assert resp.data[:5] == b'%PDF-'
+
+    def test_pattern_has_filename(self, client):
+        resp = client.get(
+            "/pattern?seed=42&symmetry=rotational&palette=ocean+breeze&rows=4"
+        )
+        cd = resp.headers.get("Content-Disposition", "")
+        assert "attachment" in cd
+        assert "pattern-" in cd
+        assert ".pdf" in cd
+
+    def test_pattern_bargello(self, client):
+        resp = client.get(
+            "/pattern?seed=42&symmetry=bargello&palette=ocean+breeze&rows=4"
+        )
+        assert resp.status_code == 200
+        assert resp.data[:5] == b'%PDF-'
+
+    def test_pattern_with_quilt_size(self, client):
+        resp = client.get(
+            "/pattern?seed=42&symmetry=rotational&palette=ocean+breeze"
+            "&rows=4&quilt_size=throw"
+        )
+        assert resp.status_code == 200
+
+
 class TestParamParsing:
 
     def test_invalid_int_falls_back(self, client):
@@ -158,6 +192,13 @@ class TestParamParsing:
         resp = client.get(
             "/render?seed=42&symmetry=bargello&palette=ocean+breeze"
             "&rows=4&quilt_stitch=none"
+        )
+        assert resp.status_code == 200
+
+    def test_advanced_params_parsed(self, client):
+        resp = client.get(
+            "/render?seed=42&symmetry=bargello&palette=ocean+breeze"
+            "&rows=4&wash_alpha=0.1&palette_2=wildflower&palette_mix=wisteria"
         )
         assert resp.status_code == 200
 
