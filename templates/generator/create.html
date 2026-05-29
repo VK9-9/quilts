@@ -286,6 +286,29 @@
         <input type="range" id="strippy" min="0" max="0.60" step="0.05"
                value="{{ params.strippy }}">
       </div>
+      <div class="control">
+        <label>Color wash <span id="wash_alpha-val">{{ params.wash_alpha }}</span></label>
+        <input type="range" id="wash_alpha" min="0" max="0.20" step="0.02"
+               value="{{ params.wash_alpha }}">
+      </div>
+      <div class="control">
+        <label>Second palette</label>
+        <select id="palette_2">
+          <option value="" {% if not params.palette_2 %}selected{% endif %}>none</option>
+          {% for p in palette_names %}
+          <option value="{{ p }}" {% if params.palette_2 == p %}selected{% endif %}>{{ p }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="control">
+        <label>Mix palette</label>
+        <select id="palette_mix">
+          <option value="" {% if not params.palette_mix %}selected{% endif %}>none</option>
+          {% for p in palette_names %}
+          <option value="{{ p }}" {% if params.palette_mix == p %}selected{% endif %}>{{ p }}</option>
+          {% endfor %}
+        </select>
+      </div>
     </div>
   </div>
 
@@ -330,9 +353,10 @@
     "symmetry","palette","n_colors",
     "quilt_size","chaos","rows","tile_size","tile_variation",
     "border_style","quilt_stitch","wonky","mega_frac","plain_frac","strippy",
+    "wash_alpha","palette_2","palette_mix",
     "seed",
   ];
-  const RANGE_DISPLAYS = ["chaos","rows","tile_size","tile_variation","wonky","mega_frac","plain_frac","strippy"];
+  const RANGE_DISPLAYS = ["chaos","rows","tile_size","tile_variation","wonky","mega_frac","plain_frac","strippy","wash_alpha"];
 
   function getParams() {
     const p = {};

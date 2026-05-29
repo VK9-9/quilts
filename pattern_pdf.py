@@ -5,7 +5,6 @@ multi-page PDF with cover, assembly diagram, and per-block cutting patterns.
 """
 # pylint: disable=too-many-lines
 import math
-import random
 import tempfile
 
 from reportlab.lib.pagesizes import letter
@@ -13,9 +12,8 @@ from reportlab.lib.units import inch
 from reportlab.pdfgen import canvas as rl_canvas
 
 from blocks import BLOCK_PATTERNS
-from layout import SYMMETRY_MODES
 from palettes import PALETTES, hex_to_rgb
-from quilt import render_quilt
+from quilt import render_quilt, build_layout
 from quilt_id import encode
 
 # Page layout constants
@@ -103,59 +101,29 @@ def _pick_palette_colors(palette_name, max_colors, rng):
     return ["#000000", "#FFFFFF", "#FF0000", "#0000FF"]
 
 
-def _reconstruct_layout(params):  # pylint: disable=too-many-locals
+def _reconstruct_layout(params):
     """Rebuild the layout grid and block info from quilt params.
 
-    Returns (grid, allowed_patterns, palette_colors, n_colors)
-    where grid is {(r,c): cell_dict} matching what render_quilt builds.
+    Returns (grid, allowed_patterns, palette_hex_colors)
+    where grid is {(r,c): cell_dict} matching what render_quilt builds
+    and palette colors are hex strings (for PDF drawing).
     """
-    seed = params["seed"]
-    rows = params["rows"]
-    cols = params.get("cols", rows)
-    symmetry = params["symmetry"]
-    chaos = params.get("chaos", 0.3)
-    max_patterns = params.get("n_patterns", 2)
-    max_colors = params.get("n_colors", 4)
-    palette_name = params["palette"]
-
-    rng = random.Random(seed)
-
-    # Fork a color RNG to match render_quilt's sequence
+    import random  # pylint: disable=import-outside-toplevel
+    grid, allowed, _rgb_palette, _rng = build_layout(
+        seed=params["seed"],
+        rows=params["rows"],
+        cols=params.get("cols", params["rows"]),
+        symmetry=params["symmetry"],
+        chaos=params.get("chaos", 0.3),
+        palette_name=params["palette"],
+        max_patterns=params.get("n_patterns", 2),
+        max_colors=params.get("n_colors", 4),
+    )
+    # Re-derive hex palette (build_layout returns RGB tuples, PDF needs hex)
+    rng = random.Random(params["seed"])
     color_rng = random.Random(rng.randint(0, 2**31))
-    palette_colors = _pick_palette_colors(palette_name, max_colors, color_rng)
-    n_colors = len(palette_colors)
-
-    n_all_patterns = len(BLOCK_PATTERNS)
-    available = list(range(n_all_patterns))
-    rng.shuffle(available)
-    allowed = sorted(available[:max_patterns])
-    n_patterns = max_patterns
-
-    # symmetry modes bypass tiling
-    n_palettes = 1
-    layout_fn = SYMMETRY_MODES[symmetry]
-    kwargs = {}
-    if symmetry == "partial":
-        kwargs["chaos"] = chaos
-    grid = layout_fn(rows, cols, n_patterns, n_palettes, rng, **kwargs)
-
-    # remap pattern indices to allowed block functions
-    for cell in grid.values():
-        cell["pattern"] = allowed[cell["pattern"]]
-
-    # build color_map per cell (same logic as render_quilt)
-    for cell in grid.values():
-        cell_rng = random.Random(cell["pattern"] * 1000 + cell["palette"])
-        indices = list(range(n_colors))
-        cell_rng.shuffle(indices)
-        cell["color_map"] = indices
-
-    # bargello override
-    if symmetry == "bargello":
-        for cell in grid.values():
-            bi = cell.get("_bargello_color", 0) % n_colors
-            cell["color_map"] = [bi] * n_colors
-
+    palette_colors = _pick_palette_colors(
+        params["palette"], params.get("n_colors", 4), color_rng)
     return grid, allowed, palette_colors
 
 
@@ -699,6 +667,18 @@ def _edge_lengths_inches(poly, sx, sy):
     return lengths
 
 
+def _label_position(pts, i, n, center_x, center_y):
+    """Compute label (x, y) for edge i, offset 9pt outward from center."""
+    mx = (pts[i][0] + pts[(i + 1) % n][0]) / 2
+    my = (pts[i][1] + pts[(i + 1) % n][1]) / 2
+    odx, ody = mx - center_x, my - center_y
+    dist = math.sqrt(odx * odx + ody * ody)
+    if dist > 0.1:
+        odx /= dist
+        ody /= dist
+    return mx + odx * 9, my + ody * 9 - 2
+
+
 def _label_edge_lengths(c, pts, edge_lengths, center_x, center_y):
     """Label one instance of each unique edge length, offset outward.
 
@@ -713,26 +693,11 @@ def _label_edge_lengths(c, pts, edge_lengths, center_x, center_y):
         if key in labeled or key < 0.1:
             continue
 
-        mx = (pts[i][0] + pts[(i + 1) % n][0]) / 2
-        my = (pts[i][1] + pts[(i + 1) % n][1]) / 2
-
-        odx = mx - center_x
-        ody = my - center_y
-        dist = math.sqrt(odx * odx + ody * ody)
-        if dist > 0.1:
-            odx /= dist
-            ody /= dist
-
-        lx = mx + odx * 9
-        ly = my + ody * 9 - 2
+        lx, ly = _label_position(pts, i, n, center_x, center_y)
 
         # skip if too close to an existing label
-        too_close = False
-        for px, py in placed:
-            if math.sqrt((lx - px) ** 2 + (ly - py) ** 2) < min_dist:
-                too_close = True
-                break
-        if too_close:
+        if any(math.sqrt((lx - px) ** 2 + (ly - py) ** 2) < min_dist
+               for px, py in placed):
             continue
 
         labeled.add(key)

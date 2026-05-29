@@ -23,6 +23,7 @@ from sklearn.linear_model import LogisticRegression
 from palettes import PALETTES
 from layout import SYMMETRY_MODES
 from quilt import BORDER_STYLES, QUILT_STITCH_STYLES, render_quilt
+from render_params import params_to_render_kwargs
 
 _DROP_PALETTES = {"storm", "midnight moss", "terracotta", "slate and rust", "coral reef",
                    "autumn harvest", "aurora", "deep sea", "amber glow", "sage garden",
@@ -45,7 +46,7 @@ PARAM_SPACE = {
     "chaos": (0.0, 0.8),
     "palette": PALETTE_NAMES,
     "n_patterns": (2, 2),
-    "n_colors": (3, 5),
+    "n_colors": (4, 6),
     "tile_size": (4, 10),       # small tiles (1-3) disliked
     "tile_variation": (0.0, 0.3),
 }
@@ -115,9 +116,6 @@ def sample_random_params(rng=None, explore_only=False):
                              weights=[2.0 if b == "solid" else 1.0
                                       for b in BORDER_STYLES if b != "stripes"],
                          )[0] if rng.random() < 0.35 else "none"),
-        "sash_width": 0,
-        "cornerstones": False,
-        "color_gradient": "none",
         "color_wash": None,
         "mega_frac": round(rng.uniform(0.1, 0.25), 2) if rng.random() < 0.05 else 0.0,
         "plain_frac": round(rng.uniform(0.1, 0.4), 2) if rng.random() < 0.15 else 0.0,
@@ -142,10 +140,8 @@ def params_to_features(params):
     features.append(params["n_colors"])
     features.append(params["tile_size"])
     features.append(params["tile_variation"])
-    features.append(params.get("sash_width", 0))
     features.append(params.get("mega_frac", 0.0))
     features.append(params.get("plain_frac", 0.0))
-    features.append(1.0 if params.get("cornerstones", False) else 0.0)
     features.append(params.get("wash_alpha", 0.0))
     features.append(1.0 if params.get("quilt_stitch") else 0.0)
     features.append(1.0 if params.get("palette_2") else 0.0)
@@ -166,49 +162,6 @@ def params_to_features(params):
         features.append(1.0 if params["palette"] == p else 0.0)
     return np.array(features, dtype=np.float64)
 
-
-def params_to_render_kwargs(params, block_size=40):
-    """Convert sampled params to kwargs for render_quilt."""
-    kwargs = {
-        "rows": params["rows"],
-        "cols": params["cols"],
-        "block_size": block_size,
-        "symmetry": params["symmetry"],
-        "chaos": params["chaos"],
-        "palette_name": params["palette"],
-        "seed": params["seed"],
-        "output": None,  # return bytes
-        "border": 15,
-        "max_patterns": params["n_patterns"],
-        "max_colors": params["n_colors"],
-        "tile_size": params["tile_size"] if params["tile_size"] > 0 else None,
-        "tile_variation": params["tile_variation"],
-        "border_style": params.get("border_style", "none"),
-        "sash_width": params.get("sash_width", 0),
-        "color_gradient": params.get("color_gradient", "none"),
-        "mega_frac": params.get("mega_frac", 0.0),
-        "plain_frac": params.get("plain_frac", 0.0),
-        "cornerstones": params.get("cornerstones", False),
-        "quilt_stitch": params.get("quilt_stitch"),
-        "wash_alpha": params.get("wash_alpha", 0.0),
-        "palette_name_2": params.get("palette_2"),
-        "palette_mix": params.get("palette_mix"),
-        "accent_count": params.get("accent_count", 0),
-        "color_wash": params.get("color_wash"),
-        "wonky": params.get("wonky", 0.0),
-        "strippy": params.get("strippy", 0.0),
-    }
-    # Drop palette_2/palette_mix if they reference a retired palette
-    _active = set(PALETTE_NAMES)
-    if kwargs["palette_name_2"] and kwargs["palette_name_2"] not in _active:
-        kwargs["palette_name_2"] = None
-    if kwargs.get("palette_mix") and kwargs["palette_mix"] not in _active:
-        kwargs["palette_mix"] = None
-    if kwargs["border_style"] == "none":
-        kwargs["border_style"] = None
-    if kwargs["color_gradient"] == "none":
-        kwargs["color_gradient"] = None
-    return kwargs
 
 
 def _render_small(params, block_size):
@@ -397,8 +350,8 @@ class QuiltExplorer:  # pylint: disable=too-many-instance-attributes
         border_names = ["none"] + BORDER_STYLES
         names = (
             ["rows", "chaos", "n_patterns", "n_colors",
-             "tile_size", "tile_variation", "sash_width", "mega_frac", "plain_frac",
-             "cornerstones", "wash_alpha", "quilt_stitch", "palette_2",
+             "tile_size", "tile_variation", "mega_frac", "plain_frac",
+             "wash_alpha", "quilt_stitch", "palette_2",
              "palette_mix", "accent_count", "color_wash", "wonky", "strippy"]
             + [f"brd_{b}" for b in border_names]
             + [f"sym_{s}" for s in SYMMETRY_NAMES]

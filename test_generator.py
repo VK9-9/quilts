@@ -1,6 +1,7 @@
 """Tests for generator.py — Flask webapp routes and param parsing."""
 import pytest
-from generator import app, PRESETS, _params_to_render_kwargs
+from generator import app, PRESETS
+from render_params import params_to_render_kwargs
 
 
 @pytest.fixture
@@ -10,7 +11,7 @@ def client():
         yield c
 
 
-# --- _params_to_render_kwargs ---
+# --- params_to_render_kwargs ---
 
 class TestParamsToRenderKwargs:
 
@@ -19,17 +20,15 @@ class TestParamsToRenderKwargs:
             "palette": "ocean breeze", "symmetry": "bargello",
             "chaos": 0.3, "rows": 16, "cols": 16, "n_patterns": 2,
             "n_colors": 4, "tile_size": 6, "tile_variation": 0.1,
-            "border_style": "none", "sash_width": 0, "cornerstones": False,
-            "color_gradient": "none", "mega_frac": 0.0, "plain_frac": 0.0,
+            "border_style": "none", "mega_frac": 0.0, "plain_frac": 0.0,
             "quilt_stitch": "grid", "wonky": 0.0, "seed": 42,
         }
-        kwargs = _params_to_render_kwargs(params, block_size=36)
+        kwargs = params_to_render_kwargs(params, block_size=36)
         assert kwargs["rows"] == 16
         assert kwargs["block_size"] == 36
         assert kwargs["palette_name"] == "ocean breeze"
         assert kwargs["output"] is None  # always returns bytes
         assert kwargs["border_style"] is None  # "none" → None
-        assert kwargs["color_gradient"] is None  # "none" → None
 
     def test_tile_size_zero_becomes_none(self):
         params = {
@@ -38,7 +37,7 @@ class TestParamsToRenderKwargs:
             "n_colors": 4, "tile_size": 0, "tile_variation": 0.1,
             "border_style": "solid", "seed": 42,
         }
-        kwargs = _params_to_render_kwargs(params)
+        kwargs = params_to_render_kwargs(params)
         assert kwargs["tile_size"] is None
 
     def test_border_style_solid_preserved(self):
@@ -48,7 +47,7 @@ class TestParamsToRenderKwargs:
             "n_colors": 4, "tile_size": 6, "tile_variation": 0.1,
             "border_style": "solid", "seed": 42,
         }
-        kwargs = _params_to_render_kwargs(params)
+        kwargs = params_to_render_kwargs(params)
         assert kwargs["border_style"] == "solid"
 
 
@@ -149,6 +148,40 @@ class TestDownloadRoute:
         assert ".png" in cd
 
 
+class TestPatternRoute:
+
+    def test_pattern_returns_pdf(self, client):
+        resp = client.get(
+            "/pattern?seed=42&symmetry=rotational&palette=ocean+breeze&rows=4"
+        )
+        assert resp.status_code == 200
+        assert resp.content_type == "application/pdf"
+        assert resp.data[:5] == b'%PDF-'
+
+    def test_pattern_has_filename(self, client):
+        resp = client.get(
+            "/pattern?seed=42&symmetry=rotational&palette=ocean+breeze&rows=4"
+        )
+        cd = resp.headers.get("Content-Disposition", "")
+        assert "attachment" in cd
+        assert "pattern-" in cd
+        assert ".pdf" in cd
+
+    def test_pattern_bargello(self, client):
+        resp = client.get(
+            "/pattern?seed=42&symmetry=bargello&palette=ocean+breeze&rows=4"
+        )
+        assert resp.status_code == 200
+        assert resp.data[:5] == b'%PDF-'
+
+    def test_pattern_with_quilt_size(self, client):
+        resp = client.get(
+            "/pattern?seed=42&symmetry=rotational&palette=ocean+breeze"
+            "&rows=4&quilt_size=throw"
+        )
+        assert resp.status_code == 200
+
+
 class TestParamParsing:
 
     def test_invalid_int_falls_back(self, client):
@@ -159,6 +192,13 @@ class TestParamParsing:
         resp = client.get(
             "/render?seed=42&symmetry=bargello&palette=ocean+breeze"
             "&rows=4&quilt_stitch=none"
+        )
+        assert resp.status_code == 200
+
+    def test_advanced_params_parsed(self, client):
+        resp = client.get(
+            "/render?seed=42&symmetry=bargello&palette=ocean+breeze"
+            "&rows=4&wash_alpha=0.1&palette_2=wildflower&palette_mix=wisteria"
         )
         assert resp.status_code == 200
 

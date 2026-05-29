@@ -3,7 +3,8 @@ import os
 import tempfile
 
 import pytest
-from quilt import render_quilt, pick_palettes, rotate_patches, BORDER_STYLES, QUILT_STITCH_STYLES
+from quilt import (render_quilt, pick_palettes, rotate_patches,
+                   build_layout, BORDER_STYLES, QUILT_STITCH_STYLES)
 from layout import SYMMETRY_MODES
 
 
@@ -78,6 +79,60 @@ class TestRotatePatches:
         ]
         result = rotate_patches(patches, 5, 5, 1)
         assert result[0][1] == 7
+
+
+# --- build_layout ---
+
+class TestBuildLayout:
+
+    def test_returns_grid_and_palette(self):
+        grid, allowed, palette, rng = build_layout(
+            seed=42, rows=4, cols=4, symmetry="none", chaos=0.3,
+            palette_name="ocean breeze", max_patterns=2, max_colors=4,
+        )
+        assert len(grid) == 16  # 4x4
+        assert len(palette) == 4
+        assert allowed is not None
+        assert len(allowed) == 2
+
+    def test_no_max_patterns(self):
+        grid, allowed, palette, rng = build_layout(
+            seed=42, rows=4, cols=4, symmetry="none", chaos=0.3,
+            palette_name="ocean breeze",
+        )
+        assert allowed is None
+        assert len(grid) == 16
+
+    def test_bargello_forces_color_maps(self):
+        grid, _, palette, _ = build_layout(
+            seed=42, rows=4, cols=4, symmetry="bargello", chaos=0.3,
+            palette_name="ocean breeze", max_colors=4,
+        )
+        for cell in grid.values():
+            cm = cell["color_map"]
+            assert len(set(cm)) == 1  # all same color
+
+    def test_partial_symmetry_uses_chaos(self):
+        grid, _, _, _ = build_layout(
+            seed=42, rows=4, cols=4, symmetry="partial", chaos=0.5,
+            palette_name="ocean breeze", max_patterns=2, max_colors=4,
+        )
+        assert len(grid) == 16
+
+    def test_seed_reproducibility(self):
+        r1 = build_layout(seed=99, rows=4, cols=4, symmetry="mirror",
+                          chaos=0.3, palette_name="ocean breeze", max_colors=4)
+        r2 = build_layout(seed=99, rows=4, cols=4, symmetry="mirror",
+                          chaos=0.3, palette_name="ocean breeze", max_colors=4)
+        assert r1[0] == r2[0]  # same grid
+        assert r1[2] == r2[2]  # same palette
+
+    def test_max_colors_trims_palette(self):
+        _, _, palette, _ = build_layout(
+            seed=42, rows=4, cols=4, symmetry="none", chaos=0.3,
+            palette_name="ocean breeze", max_colors=3,
+        )
+        assert len(palette) == 3
 
 
 # --- render_quilt ---
@@ -307,6 +362,14 @@ class TestRenderFeatures:
             rows=6, cols=6, block_size=20, symmetry="none", chaos=0.3,
             palette_name="ocean breeze", seed=42, output=None, border=5,
             mega_frac=0.5, wonky=0.04, tile_size=6,
+        )
+        assert result[:8] == b'\x89PNG\r\n\x1a\n'
+
+    def test_strippy(self):
+        result = render_quilt(
+            rows=4, cols=4, block_size=20, symmetry="none", chaos=0.3,
+            palette_name="ocean breeze", seed=42, output=None, border=5,
+            strippy=0.3,
         )
         assert result[:8] == b'\x89PNG\r\n\x1a\n'
 

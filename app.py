@@ -8,7 +8,8 @@ sys.path.insert(0, os.path.dirname(__file__))
 # pylint: disable=wrong-import-position
 from flask import Flask, render_template, request, jsonify, Response
 from quilt import render_quilt
-from sampler import QuiltExplorer, params_to_render_kwargs
+from sampler import QuiltExplorer
+from render_params import params_to_render_kwargs
 # pylint: enable=wrong-import-position
 
 app = Flask(__name__)

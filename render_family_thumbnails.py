@@ -5,7 +5,7 @@ Run locally and commit the output:
 """
 from pathlib import Path
 from generator import PRESETS
-from sampler import params_to_render_kwargs
+from render_params import params_to_render_kwargs
 from quilt import render_quilt
 
 _OUT = Path("static/generator/families")

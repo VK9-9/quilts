@@ -16,7 +16,8 @@ from pathlib import Path
 import numpy as np
 from jinja2 import Environment, BaseLoader
 
-from sampler import sample_random_params, params_to_render_kwargs, SYMMETRY_NAMES
+from sampler import sample_random_params, SYMMETRY_NAMES
+from render_params import params_to_render_kwargs
 from quilt import render_quilt
 from quilt_id import encode, _V2_PALETTES, _V2_SYMMETRY
 
@@ -82,10 +83,8 @@ def params_to_cluster_features(params):
         params["n_colors"] / 4.0,
         params.get("tile_size", 0) / 10.0,
         params.get("tile_variation", 0.0),
-        params.get("sash_width", 0) / 5.0,
         params.get("mega_frac", 0.0),
         params.get("plain_frac", 0.0),
-        1.0 if params.get("cornerstones", False) else 0.0,
     ]
     for s in SYMMETRY_NAMES:
         features.append(1.0 if params["symmetry"] == s else 0.0)
@@ -174,9 +173,6 @@ _SYM_NOUN = {
 }
 
 _SECONDARY = [
-    ("sash",
-     lambda m: sum(1 for p in m if p.get("sash_width", 0) > 0) / len(m) > 0.4,
-     "Lattice"),
     ("mega",    lambda m: sum(p.get("mega_frac", 0) for p in m) / len(m) > 0.08,          "Bold"),
     ("plain",   lambda m: sum(p.get("plain_frac", 0) for p in m) / len(m) > 0.08,         "Spare"),
     ("large",   lambda m: sum(p["rows"] for p in m) / len(m) >= 17.5,                     "Grand"),
@@ -490,9 +486,6 @@ def params_summary(params):
     ]
     if params.get("border_style") and params["border_style"] != "none":
         lines.append(f"border:     {params['border_style']}")
-    if params.get("sash_width", 0) > 0:
-        cs = " + cornerstones" if params.get("cornerstones") else ""
-        lines.append(f"sash:       {params['sash_width']}px{cs}")
     if params.get("mega_frac", 0.0) > 0:
         lines.append(f"mega_frac:  {params['mega_frac']:.2f}")
     if params.get("plain_frac", 0.0) > 0:
