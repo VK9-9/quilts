@@ -317,20 +317,25 @@ def layout_bargello(rows, cols, _n_patterns, _n_palettes, rng):
 
 
 def layout_columns(rows, cols, n_patterns, _n_palettes, rng):
-    """Vertical strip sampler — 4-6 columns, each with its own block pattern."""
+    """Vertical strip sampler — 4-6 columns, all sharing the same block pattern.
+
+    Columns differ by rotation only, keeping a cohesive look while still
+    having visible vertical structure.
+    """
     grid = {}
     n_strips = rng.randint(4, 6)
     strip_width = cols // n_strips
-    # assign a distinct pattern to each strip (with repeats if n_patterns < n_strips)
-    patterns = [rng.randint(0, n_patterns - 1) for _ in range(n_strips)]
+    # all strips share one pattern; vary by rotation per strip
+    shared_pattern = rng.randint(0, n_patterns - 1)
+    rotations = [rng.randint(0, 3) for _ in range(n_strips)]
 
     for r in range(rows):
         for c in range(cols):
             strip = min(c // max(strip_width, 1), n_strips - 1)
             grid[(r, c)] = {
-                "pattern": patterns[strip],
+                "pattern": shared_pattern,
                 "palette": 0,
-                "rotation": rng.randint(0, 3),
+                "rotation": rotations[strip],
             }
     return grid
 
