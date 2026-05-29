@@ -104,10 +104,12 @@ def _pick_palette_colors(palette_name, max_colors, rng):
 def _reconstruct_layout(params):
     """Rebuild the layout grid and block info from quilt params.
 
-    Returns (grid, allowed_patterns, palette_colors)
-    where grid is {(r,c): cell_dict} matching what render_quilt builds.
+    Returns (grid, allowed_patterns, palette_hex_colors)
+    where grid is {(r,c): cell_dict} matching what render_quilt builds
+    and palette colors are hex strings (for PDF drawing).
     """
-    grid, allowed, palette_colors, _rng = build_layout(
+    import random  # pylint: disable=import-outside-toplevel
+    grid, allowed, _rgb_palette, _rng = build_layout(
         seed=params["seed"],
         rows=params["rows"],
         cols=params.get("cols", params["rows"]),
@@ -117,6 +119,11 @@ def _reconstruct_layout(params):
         max_patterns=params.get("n_patterns", 2),
         max_colors=params.get("n_colors", 4),
     )
+    # Re-derive hex palette (build_layout returns RGB tuples, PDF needs hex)
+    rng = random.Random(params["seed"])
+    color_rng = random.Random(rng.randint(0, 2**31))
+    palette_colors = _pick_palette_colors(
+        params["palette"], params.get("n_colors", 4), color_rng)
     return grid, allowed, palette_colors
 
 
