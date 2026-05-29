@@ -441,6 +441,9 @@ _QUILT_HTML = """\
     .back:hover { color: #2c2c2c; }
     img { max-width: min(100%, 640px); border-radius: 4px; box-shadow: 0 4px 20px rgba(0,0,0,0.12); }
     .id-wrap { margin-top: 1.2rem; position: relative; display: inline-block; }
+    .explore-link { display: inline-block; margin-top: 0.8rem; font-size: 0.85rem;
+                    color: #5a7; text-decoration: none; }
+    .explore-link:hover { color: #3a5; text-decoration: underline; }
     .qid { font-family: monospace; font-size: 1.05rem; color: #777; cursor: default;
            border-bottom: 1px dashed #bbb; padding-bottom: 1px; }
     .tooltip { visibility: hidden; opacity: 0; transition: opacity 0.15s;
@@ -459,6 +462,8 @@ _QUILT_HTML = """\
     <span class="qid">{{ qid }}</span>
     <div class="tooltip">{{ params_summary }}</div>
   </div>
+  <br>
+  <a class="explore-link" href="https://quilty.up.railway.app/create?id={{ qid }}" target="_blank" rel="noopener">Open in explorer &#8599;</a>
 <script>
 document.addEventListener('keydown', function(e) {
   if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
