@@ -292,21 +292,17 @@ def _draw_quilt_stitching(ctx, qx, qy, qw, qh, style, spacing):  # pylint: disab
 GRADIENT_MODES = ["horizontal", "vertical", "diagonal", "radial"]
 
 
-def build_layout(seed, rows, cols, symmetry, chaos, palette_name,  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals
-                 max_patterns=None, max_colors=None):
-    """Reconstruct layout grid and palette from quilt params.
+def _build_grid(rng, rows, cols, symmetry, chaos, max_patterns,  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals,too-many-branches
+                n_colors, n_palettes, tile_size, tile_variation):
+    """Build the cell grid (pattern/palette/rotation/color_map) for a quilt.
 
-    Returns (grid, allowed_patterns, palette_colors, rng) where rng is the
-    main RNG after layout construction (callers may need it for further steps).
+    This is the single source of truth for the layout. It consumes only the
+    main RNG (the caller must already have forked off any color RNG so that
+    this sequence is stable), so both render_quilt and the PDF reconstruction
+    produce identical grids for the same params.
+
+    Returns (grid, allowed_patterns).
     """
-    rng = random.Random(seed)
-    color_rng = random.Random(rng.randint(0, 2**31))
-
-    palette_colors = pick_palettes(palette_name, 1, color_rng)
-    if max_colors is not None and max_colors < len(palette_colors):
-        palette_colors = color_rng.sample(palette_colors, max_colors)
-    n_colors = len(palette_colors)
-
     n_all_patterns = len(BLOCK_PATTERNS)
     if max_patterns is not None:
         available = list(range(n_all_patterns))
@@ -317,27 +313,63 @@ def build_layout(seed, rows, cols, symmetry, chaos, palette_name,  # pylint: dis
         allowed = None
         n_patterns = n_all_patterns
 
-    layout_fn = SYMMETRY_MODES[symmetry]
-    kwargs = {}
-    if symmetry == "partial":
-        kwargs["chaos"] = chaos
-    grid = layout_fn(rows, cols, n_patterns, 1, rng, **kwargs)
+    # Non-trivial symmetries bypass tiling — they use SYMMETRY_MODES layouts.
+    if symmetry != "none":
+        tile_size = None
 
-    if allowed is not None:
+    if tile_size is not None:
+        grid = _build_tiled_grid(rows, cols, tile_size, tile_variation,
+                                 n_patterns, n_colors, rng)
+        if allowed is not None:
+            for cell in grid.values():
+                cell["pattern"] = allowed[cell["pattern"]]
+    else:
+        layout_fn = SYMMETRY_MODES[symmetry]
+        kwargs = {}
+        if symmetry == "partial":
+            kwargs["chaos"] = chaos
+        grid = layout_fn(rows, cols, n_patterns, n_palettes, rng, **kwargs)
+
+        if allowed is not None:
+            for cell in grid.values():
+                cell["pattern"] = allowed[cell["pattern"]]
+
         for cell in grid.values():
-            cell["pattern"] = allowed[cell["pattern"]]
-
-    for cell in grid.values():
-        cell_rng = random.Random(cell["pattern"] * 1000 + cell["palette"])
-        indices = list(range(n_colors))
-        cell_rng.shuffle(indices)
-        cell["color_map"] = indices
+            cell_rng = random.Random(cell["pattern"] * 1000 + cell["palette"])
+            indices = list(range(n_colors))
+            cell_rng.shuffle(indices)
+            cell["color_map"] = indices
 
     if symmetry == "bargello":
         for cell in grid.values():
             bi = cell.get("_bargello_color", 0) % n_colors
             cell["color_map"] = [bi] * n_colors
 
+    return grid, allowed
+
+
+def build_layout(seed, rows, cols, symmetry, chaos, palette_name,  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals
+                 max_patterns=None, max_colors=None, n_palettes=1,
+                 tile_size=None, tile_variation=0.05):
+    """Reconstruct layout grid and palette from quilt params.
+
+    Returns (grid, allowed_patterns, palette_colors, rng) where rng is the
+    main RNG after layout construction (callers may need it for further steps).
+
+    n_palettes and tile_size/tile_variation must match what render_quilt was
+    given (n_palettes=2 for two-palette quilts, tile_size for "none" symmetry),
+    otherwise the reconstructed grid will not match the rendered image.
+    """
+    rng = random.Random(seed)
+    color_rng = random.Random(rng.randint(0, 2**31))
+
+    palette_colors = pick_palettes(palette_name, 1, color_rng)
+    if max_colors is not None and max_colors < len(palette_colors):
+        palette_colors = color_rng.sample(palette_colors, max_colors)
+    n_colors = len(palette_colors)
+
+    grid, allowed = _build_grid(rng, rows, cols, symmetry, chaos, max_patterns,
+                                n_colors, n_palettes, tile_size, tile_variation)
     return grid, allowed, palette_colors, rng
 
 
@@ -415,43 +447,13 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylin
         all_palettes = [palette_colors]
         n_palettes = 1
 
-    n_all_patterns = len(BLOCK_PATTERNS)
-    if max_patterns is not None:
-        available = list(range(n_all_patterns))
-        rng.shuffle(available)
-        allowed = sorted(available[:max_patterns])
-        n_patterns = max_patterns
-    else:
-        allowed = None
-        n_patterns = n_all_patterns
-
-    # Non-trivial symmetries bypass tiling — they use SYMMETRY_MODES layouts
+    # Non-trivial symmetries bypass tiling — they use SYMMETRY_MODES layouts.
+    # (kept here too because tile_size drives the tile-boundary lines below.)
     if symmetry != "none":
         tile_size = None
 
-    if tile_size is not None:
-        grid = _build_tiled_grid(rows, cols, tile_size, tile_variation,
-                                 n_patterns, n_colors, rng)
-        # remap pattern indices to allowed subset
-        if allowed is not None:
-            for cell in grid.values():
-                cell["pattern"] = allowed[cell["pattern"]]
-    else:
-        layout_fn = SYMMETRY_MODES[symmetry]
-        kwargs = {}
-        if symmetry == "partial":
-            kwargs["chaos"] = chaos
-        grid = layout_fn(rows, cols, n_patterns, n_palettes, rng, **kwargs)
-
-        if allowed is not None:
-            for cell in grid.values():
-                cell["pattern"] = allowed[cell["pattern"]]
-
-        for _, cell in grid.items():
-            cell_rng = random.Random(cell["pattern"] * 1000 + cell["palette"])
-            indices = list(range(n_colors))
-            cell_rng.shuffle(indices)
-            cell["color_map"] = indices
+    grid, _allowed = _build_grid(rng, rows, cols, symmetry, chaos, max_patterns,
+                                 n_colors, n_palettes, tile_size, tile_variation)
 
     # color gradient — rotate each cell's color_map by a position-based offset
     # shift=0 → original colors; shift=1 → next palette color becomes primary
@@ -491,12 +493,6 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylin
             cm = cell["color_map"]
             cell["color_map"] = [cm[(i + shift) % n_colors]
                                   for i in range(n_colors)]
-
-    # bargello: force all cells to solid color based on wave pattern
-    if symmetry == "bargello":
-        for cell in grid.values():
-            bi = cell.get("_bargello_color", 0) % n_colors
-            cell["color_map"] = [bi] * n_colors
 
     # plain blocks: random cells rendered as solid color (no pattern)
     plain_cells = set()
