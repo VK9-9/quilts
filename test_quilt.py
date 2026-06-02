@@ -243,22 +243,6 @@ class TestRenderFeatures:
         )
         assert result[:8] == b'\x89PNG\r\n\x1a\n'
 
-    def test_sashing(self):
-        result = render_quilt(
-            rows=4, cols=4, block_size=20, symmetry="mirror", chaos=0.3,
-            palette_name="ocean breeze", seed=42, output=None, border=5,
-            sash_width=5,
-        )
-        assert result[:8] == b'\x89PNG\r\n\x1a\n'
-
-    def test_sashing_with_cornerstones(self):
-        result = render_quilt(
-            rows=4, cols=4, block_size=20, symmetry="mirror", chaos=0.3,
-            palette_name="ocean breeze", seed=42, output=None, border=5,
-            sash_width=5, cornerstones=True, max_colors=4,
-        )
-        assert result[:8] == b'\x89PNG\r\n\x1a\n'
-
     def test_mega_blocks(self):
         result = render_quilt(
             rows=6, cols=6, block_size=20, symmetry="mirror", chaos=0.3,
@@ -280,14 +264,6 @@ class TestRenderFeatures:
             rows=4, cols=4, block_size=20, symmetry="none", chaos=0.3,
             palette_name="ocean breeze", seed=42, output=None, border=5,
             wonky=0.05, tile_size=4,
-        )
-        assert result[:8] == b'\x89PNG\r\n\x1a\n'
-
-    def test_color_gradient_diagonal(self):
-        result = render_quilt(
-            rows=4, cols=4, block_size=20, symmetry="mirror", chaos=0.3,
-            palette_name="ocean breeze", seed=42, output=None, border=5,
-            color_gradient="diagonal", max_colors=4,
         )
         assert result[:8] == b'\x89PNG\r\n\x1a\n'
 
@@ -324,36 +300,11 @@ class TestRenderFeatures:
         )
         assert result[:8] == b'\x89PNG\r\n\x1a\n'
 
-    def test_accent_count(self):
-        result = render_quilt(
-            rows=4, cols=4, block_size=20, symmetry="mirror", chaos=0.3,
-            palette_name="ocean breeze", seed=42, output=None, border=5,
-            accent_count=3,
-        )
-        assert result[:8] == b'\x89PNG\r\n\x1a\n'
-
-    def test_color_wash(self):
-        result = render_quilt(
-            rows=4, cols=4, block_size=20, symmetry="mirror", chaos=0.3,
-            palette_name="ocean breeze", seed=42, output=None, border=5,
-            color_wash=(0.707, 0.707), max_colors=4,
-        )
-        assert result[:8] == b'\x89PNG\r\n\x1a\n'
-
     def test_bargello_renders(self):
         result = render_quilt(
             rows=8, cols=8, block_size=15, symmetry="bargello", chaos=0.3,
             palette_name="lavender fields", seed=42, output=None, border=5,
             max_colors=4,
-        )
-        assert result[:8] == b'\x89PNG\r\n\x1a\n'
-
-    @pytest.mark.parametrize("grad", ["horizontal", "vertical", "radial"])
-    def test_other_gradient_modes(self, grad):
-        result = render_quilt(
-            rows=4, cols=4, block_size=20, symmetry="mirror", chaos=0.3,
-            palette_name="ocean breeze", seed=42, output=None, border=5,
-            color_gradient=grad, max_colors=4,
         )
         assert result[:8] == b'\x89PNG\r\n\x1a\n'
 

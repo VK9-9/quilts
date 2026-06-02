@@ -371,10 +371,6 @@ def _decode_cmd(args):
         ]
         if params.get("border_style") and params["border_style"] != "none":
             parts.append(f"--border-style {params['border_style']}")
-        if params.get("sash_width", 0) > 0:
-            parts.append(f"--sash-width {params['sash_width']}")
-        if params.get("cornerstones"):
-            parts.append("--cornerstones")
         if params.get("mega_frac", 0.0) > 0.0:
             parts.append(f"--mega-frac {params['mega_frac']}")
         if params.get("plain_frac", 0.0) > 0.0:

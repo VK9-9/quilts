@@ -116,7 +116,6 @@ def sample_random_params(rng=None, explore_only=False):
                              weights=[2.0 if b == "solid" else 1.0
                                       for b in BORDER_STYLES if b != "stripes"],
                          )[0] if rng.random() < 0.35 else "none"),
-        "color_wash": None,
         "mega_frac": round(rng.uniform(0.1, 0.25), 2) if rng.random() < 0.05 else 0.0,
         "plain_frac": round(rng.uniform(0.1, 0.4), 2) if rng.random() < 0.15 else 0.0,
         "quilt_stitch": _weighted_stitch(rng) if rng.random() < 0.98 else None,
@@ -125,7 +124,6 @@ def sample_random_params(rng=None, explore_only=False):
         "palette_mix": rng.choice(PALETTE_NAMES) if rng.random() < 0.05 else None,
         "wonky": round(rng.uniform(0.02, 0.06), 3) if rng.random() < 0.10 else 0.0,
         "strippy": round(rng.uniform(0.2, 0.35), 2) if rng.random() < 0.15 else 0.0,
-        "accent_count": 0,
         "seed": rng.randint(0, 2**31),
     }
 
@@ -146,8 +144,6 @@ def params_to_features(params):
     features.append(1.0 if params.get("quilt_stitch") else 0.0)
     features.append(1.0 if params.get("palette_2") else 0.0)
     features.append(1.0 if params.get("palette_mix") else 0.0)
-    features.append(params.get("accent_count", 0))
-    features.append(1.0 if params.get("color_wash") else 0.0)
     features.append(params.get("wonky", 0.0))
     features.append(params.get("strippy", 0.0))
     # one-hot border style (includes "none")
@@ -352,7 +348,7 @@ class QuiltExplorer:  # pylint: disable=too-many-instance-attributes
             ["rows", "chaos", "n_patterns", "n_colors",
              "tile_size", "tile_variation", "mega_frac", "plain_frac",
              "wash_alpha", "quilt_stitch", "palette_2",
-             "palette_mix", "accent_count", "color_wash", "wonky", "strippy"]
+             "palette_mix", "wonky", "strippy"]
             + [f"brd_{b}" for b in border_names]
             + [f"sym_{s}" for s in SYMMETRY_NAMES]
             + [f"pal_{p}" for p in PALETTE_NAMES]

@@ -109,6 +109,12 @@ def _reconstruct_layout(params):
     and palette colors are hex strings (for PDF drawing).
     """
     import random  # pylint: disable=import-outside-toplevel
+    # Match render_quilt's grid inputs: two valid palettes split the layout,
+    # and "none" symmetry tiles a template. Passing these wrong silently
+    # desyncs the cutting diagrams from the rendered image.
+    palette_2 = params.get("palette_2")
+    known_palettes = {p[0] for p in PALETTES}
+    n_palettes = 2 if palette_2 in known_palettes else 1
     grid, allowed, _rgb_palette, _rng = build_layout(
         seed=params["seed"],
         rows=params["rows"],
@@ -118,6 +124,9 @@ def _reconstruct_layout(params):
         palette_name=params["palette"],
         max_patterns=params.get("n_patterns", 2),
         max_colors=params.get("n_colors", 4),
+        n_palettes=n_palettes,
+        tile_size=params.get("tile_size") or None,
+        tile_variation=params.get("tile_variation", 0.05),
     )
     # Re-derive hex palette (build_layout returns RGB tuples, PDF needs hex)
     rng = random.Random(params["seed"])

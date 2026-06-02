@@ -32,8 +32,6 @@ def params_to_render_kwargs(params, block_size=40):
         "wash_alpha": params.get("wash_alpha", 0.0),
         "palette_name_2": params.get("palette_2"),
         "palette_mix": params.get("palette_mix"),
-        "accent_count": params.get("accent_count", 0),
-        "color_wash": params.get("color_wash"),
         "wonky": params.get("wonky", 0.0),
         "strippy": params.get("strippy", 0.0),
     }
