@@ -392,8 +392,7 @@ def _build_strip_sizes(n, base_size, variation, rng):
 def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals,too-many-branches,too-many-statements
                  seed, output, border, max_patterns=None, max_colors=None,
                  tile_size=None, tile_variation=0.05, border_style=None,
-                 sash_width=0, mega_frac=0.0,
-                 cornerstones=False, plain_frac=0.0, quilt_stitch=None,
+                 mega_frac=0.0, plain_frac=0.0, quilt_stitch=None,
                  wash_alpha=0.0, palette_name_2=None, palette_mix=None,
                  wonky=0.0, strippy=0.0):
     """Generate and render a quilt to an image file."""
@@ -479,14 +478,13 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylin
         border = max(border, int(block_size * 0.75))
 
     # strippy grid: varying row heights and column widths
-    sash = sash_width
     strip_rng = random.Random(seed + 7777)
     col_sizes, col_pos = _build_strip_sizes(cols, block_size, strippy, strip_rng)
     row_sizes, row_pos = _build_strip_sizes(rows, block_size, strippy, strip_rng)
 
-    # image dimensions (sashing adds gaps between blocks)
-    quilt_w = col_pos[-1] + max(0, cols - 1) * sash
-    quilt_h = row_pos[-1] + max(0, rows - 1) * sash
+    # image dimensions
+    quilt_w = col_pos[-1]
+    quilt_h = row_pos[-1]
     width = quilt_w + 2 * border
     height = quilt_h + 2 * border
     quilt_x, quilt_y = border, border
@@ -499,15 +497,6 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylin
     ctx.set_source_rgb(0.95, 0.93, 0.90)  # off-white linen background
     ctx.rectangle(0, 0, width, height)
     ctx.fill()
-
-    # sash background — fill quilt area with sash color; blocks draw on top
-    sash_color_idx = None
-    if sash > 0:
-        sash_color_idx = rng.randint(0, n_colors - 1)
-        sash_color = palette_colors[sash_color_idx]
-        ctx.set_source_rgb(*sash_color)
-        ctx.rectangle(quilt_x, quilt_y, quilt_w, quilt_h)
-        ctx.fill()
 
     # decorative border
     if border_style is not None:
@@ -525,8 +514,8 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylin
                 continue
             cell = grid[(r, c)]
             cw, ch = col_sizes[c], row_sizes[r]
-            bx = border + col_pos[c] + c * sash
-            by = border + row_pos[r] + r * sash
+            bx = border + col_pos[c]
+            by = border + row_pos[r]
 
             if (r, c) in plain_cells:
                 ci = cell["color_map"][0]
@@ -570,39 +559,26 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylin
                 ctx.close_path()
                 ctx.fill()
 
-    # cornerstones — contrasting squares at sash intersections
-    if sash > 0 and cornerstones and n_colors > 1:
-        other = [i for i in range(n_colors) if i != sash_color_idx]
-        cs_color = palette_colors[rng.choice(other)]
-        ctx.set_source_rgb(*cs_color)
-        for cr in range(rows - 1):
-            for cc in range(cols - 1):
-                cx = border + col_pos[cc + 1] + cc * sash
-                cy = border + row_pos[cr + 1] + cr * sash
-                ctx.rectangle(cx, cy, sash, sash)
-                ctx.fill()
-
-    # grid lines (seam lines between blocks) — skipped when sashing is active
-    # interior seam lines of mega-blocks are also skipped
+    # grid lines (seam lines between blocks)
+    # interior seam lines of mega-blocks are skipped
     mega_skip_rows = {r + 1 for r, _ in mega_tl}
     mega_skip_cols = {c + 1 for _, c in mega_tl}
-    if sash == 0:
-        ctx.set_source_rgba(0, 0, 0, 0.15)
-        ctx.set_line_width(1.0)
-        for r in range(rows + 1):
-            if r in mega_skip_rows:
-                continue
-            y = border + row_pos[min(r, rows)]
-            ctx.move_to(border, y)
-            ctx.line_to(border + quilt_w, y)
-            ctx.stroke()
-        for c in range(cols + 1):
-            if c in mega_skip_cols:
-                continue
-            x = border + col_pos[min(c, cols)]
-            ctx.move_to(x, border)
-            ctx.line_to(x, border + quilt_h)
-            ctx.stroke()
+    ctx.set_source_rgba(0, 0, 0, 0.15)
+    ctx.set_line_width(1.0)
+    for r in range(rows + 1):
+        if r in mega_skip_rows:
+            continue
+        y = border + row_pos[min(r, rows)]
+        ctx.move_to(border, y)
+        ctx.line_to(border + quilt_w, y)
+        ctx.stroke()
+    for c in range(cols + 1):
+        if c in mega_skip_cols:
+            continue
+        x = border + col_pos[min(c, cols)]
+        ctx.move_to(x, border)
+        ctx.line_to(x, border + quilt_h)
+        ctx.stroke()
 
     # tile boundary lines (heavier seams between tiles)
     if tile_size is not None:
@@ -610,13 +586,13 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylin
         ctx.set_line_width(2.5)
         for tr in range(math.ceil(rows / tile_size) + 1):
             ri = min(tr * tile_size, rows)
-            y = border + row_pos[ri] + ri * sash
+            y = border + row_pos[ri]
             ctx.move_to(border, y)
             ctx.line_to(border + quilt_w, y)
             ctx.stroke()
         for tc in range(math.ceil(cols / tile_size) + 1):
             ci = min(tc * tile_size, cols)
-            x = border + col_pos[ci] + ci * sash
+            x = border + col_pos[ci]
             ctx.move_to(x, border)
             ctx.line_to(x, border + quilt_h)
             ctx.stroke()
@@ -624,11 +600,11 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylin
     # render mega-blocks (after grid lines so they paint over interior seams)
     for (mr, mc) in mega_tl:
         cell = grid[(mr, mc)]
-        bx = border + col_pos[mc] + mc * sash
-        by = border + row_pos[mr] + mr * sash
-        mw = col_sizes[mc] + col_sizes[mc + 1] + sash
-        mh = row_sizes[mr] + row_sizes[mr + 1] + sash
-        mega_sq = 2 * block_size + sash  # square coord size for pattern
+        bx = border + col_pos[mc]
+        by = border + row_pos[mr]
+        mw = col_sizes[mc] + col_sizes[mc + 1]
+        mh = row_sizes[mr] + row_sizes[mr + 1]
+        mega_sq = 2 * block_size  # square coord size for pattern
 
         pattern_fn = BLOCK_PATTERNS[cell["pattern"]]
         patches = pattern_fn(0, 0, mega_sq, n_colors)
@@ -670,8 +646,8 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylin
                 continue
             cell = grid[(r, c)]
             cw, ch = col_sizes[c], row_sizes[r]
-            bx = border + col_pos[c] + c * sash
-            by = border + row_pos[r] + r * sash
+            bx = border + col_pos[c]
+            by = border + row_pos[r]
             sx, sy = cw / block_size, ch / block_size
 
             pattern_fn = BLOCK_PATTERNS[cell["pattern"]]
@@ -688,11 +664,11 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylin
 
     for (mr, mc) in mega_tl:
         cell = grid[(mr, mc)]
-        bx = border + col_pos[mc] + mc * sash
-        by = border + row_pos[mr] + mr * sash
-        mw = col_sizes[mc] + col_sizes[mc + 1] + sash
-        mh = row_sizes[mr] + row_sizes[mr + 1] + sash
-        mega_sq = 2 * block_size + sash
+        bx = border + col_pos[mc]
+        by = border + row_pos[mr]
+        mw = col_sizes[mc] + col_sizes[mc + 1]
+        mh = row_sizes[mr] + row_sizes[mr + 1]
+        mega_sq = 2 * block_size
         sx, sy = mw / mega_sq, mh / mega_sq
 
         pattern_fn = BLOCK_PATTERNS[cell["pattern"]]
@@ -755,10 +731,6 @@ def main():
     parser.add_argument("--border-style", default=None,
                         choices=BORDER_STYLES,
                         help="Decorative border style (default: none)")
-    parser.add_argument("--sash-width", type=int, default=0,
-                        help="Sash width in px between blocks (default: 0)")
-    parser.add_argument("--cornerstones", action="store_true",
-                        help="Draw cornerstone squares at sash intersections")
     parser.add_argument("--mega-frac", type=float, default=0.0,
                         help="Fraction of 2x2 mega-blocks (default: 0.0)")
     parser.add_argument("--plain-frac", type=float, default=0.0,
@@ -780,8 +752,6 @@ def main():
         tile_size=args.tile_size,
         tile_variation=args.tile_variation,
         border_style=args.border_style,
-        sash_width=args.sash_width,
-        cornerstones=args.cornerstones,
         mega_frac=args.mega_frac,
         plain_frac=args.plain_frac,
     )

@@ -243,22 +243,6 @@ class TestRenderFeatures:
         )
         assert result[:8] == b'\x89PNG\r\n\x1a\n'
 
-    def test_sashing(self):
-        result = render_quilt(
-            rows=4, cols=4, block_size=20, symmetry="mirror", chaos=0.3,
-            palette_name="ocean breeze", seed=42, output=None, border=5,
-            sash_width=5,
-        )
-        assert result[:8] == b'\x89PNG\r\n\x1a\n'
-
-    def test_sashing_with_cornerstones(self):
-        result = render_quilt(
-            rows=4, cols=4, block_size=20, symmetry="mirror", chaos=0.3,
-            palette_name="ocean breeze", seed=42, output=None, border=5,
-            sash_width=5, cornerstones=True, max_colors=4,
-        )
-        assert result[:8] == b'\x89PNG\r\n\x1a\n'
-
     def test_mega_blocks(self):
         result = render_quilt(
             rows=6, cols=6, block_size=20, symmetry="mirror", chaos=0.3,
