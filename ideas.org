@@ -35,7 +35,6 @@
    measurable visual properties — and whether those properties are learnable
    without CLIP.
 * Infra
-* Bugs
 * Test Quality — Future Work
 ** Add "params differ → output differs" tests
    Most test_quilt.py feature tests only check PNG header bytes.
@@ -63,3 +62,5 @@
 ** Expand doctest coverage
    test.sh only runs doctests for quilt_id.py and clip_embed.py.
    Could add doctests to blocks.py, layout.py, quilt.py.
+* Bugs
+** You displayed an interesting pattern where you created a single test that tested if the refactor had completely busted things (Golden-render hash test).  Then this test got run over and over again as work progressed...which is super quick and doesn't waste time and tokens.  Then as the featured matured, along the way breaking the test and then quickly fixing it, eventually more tests were written and more testing done per commit.  But this saves enormous amount of wall time and also tokens.  We should always appraoch a refactoring like this, no?
