@@ -436,6 +436,42 @@ def _build_strip_sizes(n, base_size, variation, rng):
     return sizes, positions
 
 
+def _resolve_palettes(palette_name, palette_mix, palette_name_2, max_colors, color_rng):  # pylint: disable=too-many-arguments,too-many-positional-arguments
+    """Resolve palette name(s) into color-lists plus the block split count.
+
+    Consumes color_rng in a fixed order (base → mix → second palette) so the
+    RNG sequence stays stable. Returns (all_palettes, n_palettes) where
+    all_palettes[0] is the primary palette.
+    """
+    known = {p[0] for p in PALETTES}
+
+    def pick(name):
+        colors = pick_palettes(name, 1, color_rng)
+        if max_colors is not None and max_colors < len(colors):
+            colors = color_rng.sample(colors, max_colors)
+        return colors
+
+    palette_colors = pick(palette_name)
+
+    # palette mixing: interleave a second palette's colors into one hybrid
+    if palette_mix in known:
+        mix_colors = pick(palette_mix)
+        hybrid = []
+        for i in range(max(len(palette_colors), len(mix_colors))):
+            if i < len(palette_colors):
+                hybrid.append(palette_colors[i])
+            if i < len(mix_colors):
+                hybrid.append(mix_colors[i])
+        if max_colors is not None:
+            hybrid = hybrid[:max_colors]
+        palette_colors = hybrid
+
+    # two-palette split: a valid second palette assigns n_palettes=2
+    if palette_name_2 in known:
+        return [palette_colors, pick(palette_name_2)], 2
+    return [palette_colors], 1
+
+
 def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals,too-many-branches,too-many-statements
                  seed, output, border, max_patterns=None, max_colors=None,
                  tile_size=None, tile_variation=0.05, border_style=None,
@@ -451,44 +487,10 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylin
     # doesn't shift the main RNG sequence (patterns/layout stay stable).
     color_rng = random.Random(rng.randint(0, 2**31))
 
-    palette_colors = pick_palettes(palette_name, 1, color_rng)
-    if max_colors is not None and max_colors < len(palette_colors):
-        palette_colors = color_rng.sample(palette_colors, max_colors)
-
-    # palette mixing: blend colors from two palettes into a single hybrid palette
-    if palette_mix is not None:
-        mix_known = {p[0] for p in PALETTES}
-        if palette_mix in mix_known:
-            mix_colors = pick_palettes(palette_mix, 1, color_rng)
-            if max_colors is not None and max_colors < len(mix_colors):
-                mix_colors = color_rng.sample(mix_colors, max_colors)
-            # interleave: take alternating colors from each palette
-            hybrid = []
-            for i in range(max(len(palette_colors), len(mix_colors))):
-                if i < len(palette_colors):
-                    hybrid.append(palette_colors[i])
-                if i < len(mix_colors):
-                    hybrid.append(mix_colors[i])
-            # trim back to max_colors (keeps a balanced mix)
-            if max_colors is not None:
-                hybrid = hybrid[:max_colors]
-            palette_colors = hybrid
-
+    all_palettes, n_palettes = _resolve_palettes(
+        palette_name, palette_mix, palette_name_2, max_colors, color_rng)
+    palette_colors = all_palettes[0]
     n_colors = len(palette_colors)
-
-    # two-palette mixing: build a second palette; n_palettes=2 splits blocks
-    _known = {p[0] for p in PALETTES}
-    if palette_name_2 is not None and palette_name_2 not in _known:
-        palette_name_2 = None  # retired palette — silently drop
-    if palette_name_2 is not None:
-        palette_colors_2 = pick_palettes(palette_name_2, 1, color_rng)
-        if max_colors is not None and max_colors < len(palette_colors_2):
-            palette_colors_2 = color_rng.sample(palette_colors_2, max_colors)
-        all_palettes = [palette_colors, palette_colors_2]
-        n_palettes = 2
-    else:
-        all_palettes = [palette_colors]
-        n_palettes = 1
 
     # Non-trivial symmetries bypass tiling — they use SYMMETRY_MODES layouts.
     # (kept here too because tile_size drives the tile-boundary lines below.)
