@@ -289,9 +289,6 @@ def _draw_quilt_stitching(ctx, qx, qy, qw, qh, style, spacing):  # pylint: disab
     ctx.restore()
 
 
-GRADIENT_MODES = ["horizontal", "vertical", "diagonal", "radial"]
-
-
 def _build_grid(rng, rows, cols, symmetry, chaos, max_patterns,  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals,too-many-branches
                 n_colors, n_palettes, tile_size, tile_variation):
     """Build the cell grid (pattern/palette/rotation/color_map) for a quilt.
@@ -395,10 +392,10 @@ def _build_strip_sizes(n, base_size, variation, rng):
 def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals,too-many-branches,too-many-statements
                  seed, output, border, max_patterns=None, max_colors=None,
                  tile_size=None, tile_variation=0.05, border_style=None,
-                 sash_width=0, color_gradient=None, mega_frac=0.0,
+                 sash_width=0, mega_frac=0.0,
                  cornerstones=False, plain_frac=0.0, quilt_stitch=None,
                  wash_alpha=0.0, palette_name_2=None, palette_mix=None,
-                 accent_count=0, color_wash=None, wonky=0.0, strippy=0.0):
+                 wonky=0.0, strippy=0.0):
     """Generate and render a quilt to an image file."""
     if seed is None:
         seed = random.randint(0, 2**31)
@@ -455,45 +452,6 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylin
     grid, _allowed = _build_grid(rng, rows, cols, symmetry, chaos, max_patterns,
                                  n_colors, n_palettes, tile_size, tile_variation)
 
-    # color gradient — rotate each cell's color_map by a position-based offset
-    # shift=0 → original colors; shift=1 → next palette color becomes primary
-    if color_gradient is not None and n_colors > 1:
-        mid_r, mid_c = (rows - 1) / 2, (cols - 1) / 2
-        for (r, c), cell in grid.items():
-            t = 0.0
-            if color_gradient == "horizontal":
-                t = c / max(cols - 1, 1)
-            elif color_gradient == "vertical":
-                t = r / max(rows - 1, 1)
-            elif color_gradient == "diagonal":
-                t = (r + c) / max(rows + cols - 2, 1)
-            elif color_gradient == "radial":
-                dr = (r - mid_r) / max(mid_r, 1)
-                dc = (c - mid_c) / max(mid_c, 1)
-                t = min(1.0, math.sqrt(dr * dr + dc * dc))
-            shift = round(t * (n_colors - 1))
-            cm = cell["color_map"]
-            cell["color_map"] = [cm[(i + shift) % n_colors]
-                                  for i in range(n_colors)]
-
-    # color wash — bias palette color selection based on block position
-    # direction is a unit vector; cells further along it use later palette colors
-    if color_wash is not None and n_colors > 1:
-        dx, dy = color_wash  # direction vector (already normalized)
-        # project each cell position onto the direction
-        projections = {}
-        for (r, c) in grid:
-            projections[(r, c)] = dx * c / max(cols - 1, 1) + dy * r / max(rows - 1, 1)
-        pmin = min(projections.values())
-        pmax = max(projections.values())
-        prange = pmax - pmin if pmax > pmin else 1.0
-        for (r, c), cell in grid.items():
-            t = (projections[(r, c)] - pmin) / prange  # 0..1
-            shift = round(t * (n_colors - 1))
-            cm = cell["color_map"]
-            cell["color_map"] = [cm[(i + shift) % n_colors]
-                                  for i in range(n_colors)]
-
     # plain blocks: random cells rendered as solid color (no pattern)
     plain_cells = set()
     if symmetry == "bargello":
@@ -503,14 +461,6 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylin
             for c in range(cols):
                 if rng.random() < plain_frac:
                     plain_cells.add((r, c))
-
-    # accent squares: a few cells rendered as solid color from the current palette
-    accent_cells = {}  # (r, c) → (r, g, b)
-    if accent_count and accent_count > 0:
-        all_positions = [(r, c) for r in range(rows) for c in range(cols)]
-        rng.shuffle(all_positions)
-        for pos in all_positions[:accent_count]:
-            accent_cells[pos] = rng.choice(palette_colors)
 
     # mega-blocks: greedily select non-overlapping 2x2 regions
     mega_tl = set()       # top-left corners of mega-blocks
@@ -577,12 +527,6 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylin
             cw, ch = col_sizes[c], row_sizes[r]
             bx = border + col_pos[c] + c * sash
             by = border + row_pos[r] + r * sash
-
-            if (r, c) in accent_cells:
-                ctx.set_source_rgb(*accent_cells[(r, c)])
-                ctx.rectangle(bx, by, cw, ch)
-                ctx.fill()
-                continue
 
             if (r, c) in plain_cells:
                 ci = cell["color_map"][0]
@@ -722,7 +666,7 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylin
     ctx.set_line_width(0.5)
     for r in range(rows):
         for c in range(cols):
-            if (r, c) in mega_covered or (r, c) in plain_cells or (r, c) in accent_cells:
+            if (r, c) in mega_covered or (r, c) in plain_cells:
                 continue
             cell = grid[(r, c)]
             cw, ch = col_sizes[c], row_sizes[r]
