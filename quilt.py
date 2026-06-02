@@ -64,6 +64,53 @@ def rotate_patches(patches, cx, cy, rotation):
     return rotated
 
 
+def _block_patches(cell, size, n_colors, wonky=0.0, wonky_seed=0):
+    """Build a cell's patches in [0, size] coords: pattern → rotate → wonky jitter.
+
+    wonky defaults to 0 (no jitter) so the seam-line passes, which trace the
+    un-jittered block outlines, can share this builder with the fill passes.
+    """
+    patches = BLOCK_PATTERNS[cell["pattern"]](0, 0, size, n_colors)
+    patches = rotate_patches(patches, size / 2, size / 2, cell["rotation"])
+    if wonky > 0:
+        wonky_rng = random.Random(wonky_seed)
+        jitter = wonky * size
+        patches = [
+            ([(px + wonky_rng.uniform(-jitter, jitter),
+               py + wonky_rng.uniform(-jitter, jitter))
+              for px, py in poly], ci)
+            for poly, ci in patches
+        ]
+    return patches
+
+
+def _trace_polygon(ctx, poly, bx, by, sx, sy):  # pylint: disable=too-many-arguments,too-many-positional-arguments
+    """Trace a closed polygon path, translated by (bx, by) and scaled by (sx, sy)."""
+    ctx.move_to(bx + poly[0][0] * sx, by + poly[0][1] * sy)
+    for pt in poly[1:]:
+        ctx.line_to(bx + pt[0] * sx, by + pt[1] * sy)
+    ctx.close_path()
+
+
+def _fill_patches(ctx, patches, bx, by, sx, sy, color_map, active_pal, n_colors):  # pylint: disable=too-many-arguments,too-many-positional-arguments
+    """Fill each patch with its mapped palette color (or a literal RGB tuple)."""
+    for poly, color_idx in patches:
+        if isinstance(color_idx, tuple):
+            rgb = color_idx
+        else:
+            rgb = active_pal[color_map[color_idx % n_colors]]
+        ctx.set_source_rgb(*rgb)
+        _trace_polygon(ctx, poly, bx, by, sx, sy)
+        ctx.fill()
+
+
+def _stroke_patches(ctx, patches, bx, by, sx, sy):  # pylint: disable=too-many-arguments,too-many-positional-arguments
+    """Stroke each patch outline using the context's current source and line width."""
+    for poly, _ in patches:
+        _trace_polygon(ctx, poly, bx, by, sx, sy)
+        ctx.stroke()
+
+
 def _build_tiled_grid(rows, cols, tile_size, tile_variation, n_patterns,  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals,too-many-nested-blocks
                       n_colors, rng):
     """Build grid by stamping a template tile with tiny per-copy variations.
@@ -525,39 +572,14 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylin
                 ctx.fill()
                 continue
 
-            # Generate pattern in square coordinates, then scale to cell
-            pattern_fn = BLOCK_PATTERNS[cell["pattern"]]
-            patches = pattern_fn(0, 0, block_size, n_colors)
-            cx_sq = block_size / 2
-            cy_sq = block_size / 2
-            patches = rotate_patches(patches, cx_sq, cy_sq, cell["rotation"])
-
-            if wonky > 0:
-                wonky_rng = random.Random(seed * 10000 + r * 1000 + c)
-                jitter = wonky * block_size
-                patches = [
-                    ([(px + wonky_rng.uniform(-jitter, jitter),
-                       py + wonky_rng.uniform(-jitter, jitter))
-                      for px, py in poly], ci)
-                    for poly, ci in patches
-                ]
-
-            # Scale pattern from square (block_size) to cell (cw × ch)
+            # Generate pattern in square coords (block_size), scale to cell (cw × ch)
+            patches = _block_patches(cell, block_size, n_colors, wonky,
+                                     seed * 10000 + r * 1000 + c)
             sx, sy = cw / block_size, ch / block_size
             color_map = cell["color_map"]
             active_pal = all_palettes[cell.get("palette", 0) % len(all_palettes)]
-            for poly, color_idx in patches:
-                if isinstance(color_idx, tuple):
-                    r_c, g_c, b_c = color_idx
-                else:
-                    ci = color_map[color_idx % n_colors]
-                    r_c, g_c, b_c = active_pal[ci]
-                ctx.set_source_rgb(r_c, g_c, b_c)
-                ctx.move_to(bx + poly[0][0] * sx, by + poly[0][1] * sy)
-                for pt in poly[1:]:
-                    ctx.line_to(bx + pt[0] * sx, by + pt[1] * sy)
-                ctx.close_path()
-                ctx.fill()
+            _fill_patches(ctx, patches, bx, by, sx, sy,
+                          color_map, active_pal, n_colors)
 
     # grid lines (seam lines between blocks)
     # interior seam lines of mega-blocks are skipped
@@ -606,36 +628,13 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylin
         mh = row_sizes[mr] + row_sizes[mr + 1]
         mega_sq = 2 * block_size  # square coord size for pattern
 
-        pattern_fn = BLOCK_PATTERNS[cell["pattern"]]
-        patches = pattern_fn(0, 0, mega_sq, n_colors)
-        patches = rotate_patches(patches, mega_sq / 2, mega_sq / 2,
-                                 cell["rotation"])
-
-        if wonky > 0:
-            wonky_rng = random.Random(seed * 10000 + mr * 1000 + mc + 500)
-            jitter = wonky * mega_sq
-            patches = [
-                ([(px + wonky_rng.uniform(-jitter, jitter),
-                   py + wonky_rng.uniform(-jitter, jitter))
-                  for px, py in poly], ci)
-                for poly, ci in patches
-            ]
-
+        patches = _block_patches(cell, mega_sq, n_colors, wonky,
+                                 seed * 10000 + mr * 1000 + mc + 500)
         sx, sy = mw / mega_sq, mh / mega_sq
         color_map = cell["color_map"]
         active_pal = all_palettes[cell.get("palette", 0) % len(all_palettes)]
-        for poly, color_idx in patches:
-            if isinstance(color_idx, tuple):
-                r_c, g_c, b_c = color_idx
-            else:
-                ci = color_map[color_idx % n_colors]
-                r_c, g_c, b_c = active_pal[ci]
-            ctx.set_source_rgb(r_c, g_c, b_c)
-            ctx.move_to(bx + poly[0][0] * sx, by + poly[0][1] * sy)
-            for pt in poly[1:]:
-                ctx.line_to(bx + pt[0] * sx, by + pt[1] * sy)
-            ctx.close_path()
-            ctx.fill()
+        _fill_patches(ctx, patches, bx, by, sx, sy,
+                      color_map, active_pal, n_colors)
 
     # patch seam lines (within blocks) — skip mega-covered, draw mega seams after
     ctx.set_source_rgba(0, 0, 0, 0.08)
@@ -650,17 +649,9 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylin
             by = border + row_pos[r]
             sx, sy = cw / block_size, ch / block_size
 
-            pattern_fn = BLOCK_PATTERNS[cell["pattern"]]
-            patches = pattern_fn(0, 0, block_size, n_colors)
-            patches = rotate_patches(patches, block_size / 2, block_size / 2,
-                                     cell["rotation"])
-
-            for poly, _ in patches:
-                ctx.move_to(bx + poly[0][0] * sx, by + poly[0][1] * sy)
-                for pt in poly[1:]:
-                    ctx.line_to(bx + pt[0] * sx, by + pt[1] * sy)
-                ctx.close_path()
-                ctx.stroke()
+            # seams trace the un-jittered block outline (no wonky)
+            patches = _block_patches(cell, block_size, n_colors)
+            _stroke_patches(ctx, patches, bx, by, sx, sy)
 
     for (mr, mc) in mega_tl:
         cell = grid[(mr, mc)]
@@ -671,17 +662,8 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylin
         mega_sq = 2 * block_size
         sx, sy = mw / mega_sq, mh / mega_sq
 
-        pattern_fn = BLOCK_PATTERNS[cell["pattern"]]
-        patches = pattern_fn(0, 0, mega_sq, n_colors)
-        patches = rotate_patches(patches, mega_sq / 2, mega_sq / 2,
-                                 cell["rotation"])
-
-        for poly, _ in patches:
-            ctx.move_to(bx + poly[0][0] * sx, by + poly[0][1] * sy)
-            for pt in poly[1:]:
-                ctx.line_to(bx + pt[0] * sx, by + pt[1] * sy)
-            ctx.close_path()
-            ctx.stroke()
+        patches = _block_patches(cell, mega_sq, n_colors)
+        _stroke_patches(ctx, patches, bx, by, sx, sy)
 
     # color wash — semi-transparent tint over entire quilt area
     if wash_alpha and wash_alpha > 0:
