@@ -11,10 +11,16 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
+## Tasks
+
+Common tasks are run with [`just`](https://github.com/casey/just)
+(`brew install just`). Run `just` or `just --list` to see everything; the
+recipes used below are noted inline.
+
 ## Generator webapp
 
 ```bash
-python generator.py
+just generator
 ```
 
 Opens at `http://localhost:5001`. Pick a preset family or tweak params
@@ -24,16 +30,16 @@ high-res PNGs.
 Deploy to Railway:
 
 ```bash
-./deploy-railway.sh
+just deploy
 ```
 
 ## Rating webapp (private)
 
 ```bash
-python app.py
+just score
 ```
 
-Opens at `http://localhost:5000`. Rate quilts like/dislike;
+Opens at `http://localhost:5555`. Rate quilts like/dislike;
 the model learns your preferences and biases future suggestions.
 
 ## Quilt ID tool
@@ -62,16 +68,18 @@ the design.
 renders variation images, writes HTML to `docs/`:
 
 ```bash
-python build_site.py --ratings data/ratings.json --out docs/ --families 18 --variations 18
+just build-site
 ```
 
-Add `--clip` to use CLIP embeddings for picking better family representatives
-(slower, requires embeddings to be backfilled).
+This runs `build_site.py --ratings data/ratings.json --out docs/ --families 18
+--variations 18`. To pass other flags (e.g. `--clip`, to use CLIP embeddings for
+picking better family representatives — slower, requires backfilled embeddings),
+call the script directly.
 
 **Deploy** — syncs `docs/` to the `gh-pages` branch and pushes to GitHub Pages:
 
 ```bash
-./deploy-site.sh
+just deploy-static   # or: just static
 ```
 
 The site is served from the `gh-pages` branch (configured in GitHub repo
@@ -88,8 +96,8 @@ Names are auto-generated from chaos level, symmetry, and other traits
 python build_site.py --dump-names
 
 # Edit family_names.json with better names, then rebuild + deploy
-python build_site.py --ratings data/ratings.json --out docs/ --families 18 --variations 18
-./deploy-site.sh
+just build-site
+just deploy-static
 ```
 
 `family_names.json` is read automatically on each build if present. Slug
