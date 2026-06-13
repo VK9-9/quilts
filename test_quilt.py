@@ -1,19 +1,27 @@
 """Tests for quilt.py — render pipeline, rotation, palette selection."""
+
 import os
 import tempfile
 
 import pytest
-from quilt import (render_quilt, pick_palettes, rotate_patches,
-                   build_layout, BORDER_STYLES, QUILT_STITCH_STYLES)
+from quilt import (
+    render_quilt,
+    pick_palettes,
+    rotate_patches,
+    build_layout,
+    BORDER_STYLES,
+    QUILT_STITCH_STYLES,
+)
 from layout import SYMMETRY_MODES
 
 
 # --- pick_palettes ---
 
-class TestPickPalettes:
 
+class TestPickPalettes:
     def test_named_palette(self):
         import random
+
         colors = pick_palettes("ocean breeze", 1, random.Random(42))
         assert len(colors) >= 2
         for r, g, b in colors:
@@ -23,19 +31,21 @@ class TestPickPalettes:
 
     def test_random_palette(self):
         import random
+
         colors = pick_palettes("random", 1, random.Random(42))
         assert len(colors) >= 2
 
     def test_unknown_palette_raises(self):
         import random
+
         with pytest.raises(ValueError, match="Unknown palette"):
             pick_palettes("nonexistent palette", 1, random.Random(42))
 
 
 # --- rotate_patches ---
 
-class TestRotatePatches:
 
+class TestRotatePatches:
     def test_rotation_0_identity(self):
         patches = [
             ([(0, 0), (10, 0), (10, 10)], 0),
@@ -83,12 +93,18 @@ class TestRotatePatches:
 
 # --- build_layout ---
 
-class TestBuildLayout:
 
+class TestBuildLayout:
     def test_returns_grid_and_palette(self):
         grid, allowed, palette, rng = build_layout(
-            seed=42, rows=4, cols=4, symmetry="none", chaos=0.3,
-            palette_name="ocean breeze", max_patterns=2, max_colors=4,
+            seed=42,
+            rows=4,
+            cols=4,
+            symmetry="none",
+            chaos=0.3,
+            palette_name="ocean breeze",
+            max_patterns=2,
+            max_colors=4,
         )
         assert len(grid) == 16  # 4x4
         assert len(palette) == 4
@@ -97,7 +113,11 @@ class TestBuildLayout:
 
     def test_no_max_patterns(self):
         grid, allowed, palette, rng = build_layout(
-            seed=42, rows=4, cols=4, symmetry="none", chaos=0.3,
+            seed=42,
+            rows=4,
+            cols=4,
+            symmetry="none",
+            chaos=0.3,
             palette_name="ocean breeze",
         )
         assert allowed is None
@@ -105,8 +125,13 @@ class TestBuildLayout:
 
     def test_bargello_forces_color_maps(self):
         grid, _, palette, _ = build_layout(
-            seed=42, rows=4, cols=4, symmetry="bargello", chaos=0.3,
-            palette_name="ocean breeze", max_colors=4,
+            seed=42,
+            rows=4,
+            cols=4,
+            symmetry="bargello",
+            chaos=0.3,
+            palette_name="ocean breeze",
+            max_colors=4,
         )
         for cell in grid.values():
             cm = cell["color_map"]
@@ -114,44 +139,83 @@ class TestBuildLayout:
 
     def test_partial_symmetry_uses_chaos(self):
         grid, _, _, _ = build_layout(
-            seed=42, rows=4, cols=4, symmetry="partial", chaos=0.5,
-            palette_name="ocean breeze", max_patterns=2, max_colors=4,
+            seed=42,
+            rows=4,
+            cols=4,
+            symmetry="partial",
+            chaos=0.5,
+            palette_name="ocean breeze",
+            max_patterns=2,
+            max_colors=4,
         )
         assert len(grid) == 16
 
     def test_seed_reproducibility(self):
-        r1 = build_layout(seed=99, rows=4, cols=4, symmetry="mirror",
-                          chaos=0.3, palette_name="ocean breeze", max_colors=4)
-        r2 = build_layout(seed=99, rows=4, cols=4, symmetry="mirror",
-                          chaos=0.3, palette_name="ocean breeze", max_colors=4)
+        r1 = build_layout(
+            seed=99,
+            rows=4,
+            cols=4,
+            symmetry="mirror",
+            chaos=0.3,
+            palette_name="ocean breeze",
+            max_colors=4,
+        )
+        r2 = build_layout(
+            seed=99,
+            rows=4,
+            cols=4,
+            symmetry="mirror",
+            chaos=0.3,
+            palette_name="ocean breeze",
+            max_colors=4,
+        )
         assert r1[0] == r2[0]  # same grid
         assert r1[2] == r2[2]  # same palette
 
     def test_max_colors_trims_palette(self):
         _, _, palette, _ = build_layout(
-            seed=42, rows=4, cols=4, symmetry="none", chaos=0.3,
-            palette_name="ocean breeze", max_colors=3,
+            seed=42,
+            rows=4,
+            cols=4,
+            symmetry="none",
+            chaos=0.3,
+            palette_name="ocean breeze",
+            max_colors=3,
         )
         assert len(palette) == 3
 
 
 # --- render_quilt ---
 
-class TestRenderQuilt:
 
+class TestRenderQuilt:
     def test_returns_png_bytes(self):
         result = render_quilt(
-            rows=4, cols=4, block_size=20, symmetry="none", chaos=0.3,
-            palette_name="ocean breeze", seed=42, output=None, border=5,
+            rows=4,
+            cols=4,
+            block_size=20,
+            symmetry="none",
+            chaos=0.3,
+            palette_name="ocean breeze",
+            seed=42,
+            output=None,
+            border=5,
         )
         assert isinstance(result, bytes)
-        assert result[:8] == b'\x89PNG\r\n\x1a\n'
+        assert result[:8] == b"\x89PNG\r\n\x1a\n"
 
     def test_seed_reproducibility(self):
         # Use symmetry mode that avoids blocks with global random calls
         kwargs = dict(
-            rows=4, cols=4, block_size=20, symmetry="bargello", chaos=0.3,
-            palette_name="ocean breeze", seed=42, output=None, border=5,
+            rows=4,
+            cols=4,
+            block_size=20,
+            symmetry="bargello",
+            chaos=0.3,
+            palette_name="ocean breeze",
+            seed=42,
+            output=None,
+            border=5,
             max_colors=4,
         )
         r1 = render_quilt(**kwargs)
@@ -160,8 +224,14 @@ class TestRenderQuilt:
 
     def test_different_seeds_differ(self):
         kwargs = dict(
-            rows=4, cols=4, block_size=20, symmetry="none", chaos=0.3,
-            palette_name="ocean breeze", output=None, border=5,
+            rows=4,
+            cols=4,
+            block_size=20,
+            symmetry="none",
+            chaos=0.3,
+            palette_name="ocean breeze",
+            output=None,
+            border=5,
         )
         r1 = render_quilt(seed=1, **kwargs)
         r2 = render_quilt(seed=2, **kwargs)
@@ -172,20 +242,34 @@ class TestRenderQuilt:
             path = f.name
         try:
             result = render_quilt(
-                rows=4, cols=4, block_size=20, symmetry="none", chaos=0.3,
-                palette_name="ocean breeze", seed=42, output=path, border=5,
+                rows=4,
+                cols=4,
+                block_size=20,
+                symmetry="none",
+                chaos=0.3,
+                palette_name="ocean breeze",
+                seed=42,
+                output=path,
+                border=5,
             )
             assert result is None
             assert os.path.exists(path)
             with open(path, "rb") as f:
-                assert f.read(4) == b'\x89PNG'
+                assert f.read(4) == b"\x89PNG"
         finally:
             os.unlink(path)
 
     def test_auto_seed_when_none(self):
         result = render_quilt(
-            rows=4, cols=4, block_size=20, symmetry="none", chaos=0.3,
-            palette_name="ocean breeze", seed=None, output=None, border=5,
+            rows=4,
+            cols=4,
+            block_size=20,
+            symmetry="none",
+            chaos=0.3,
+            palette_name="ocean breeze",
+            seed=None,
+            output=None,
+            border=5,
         )
         assert isinstance(result, bytes)
 
@@ -199,11 +283,19 @@ class TestRenderAllSymmetries:
 
     def test_render_symmetry(self, symmetry):
         result = render_quilt(
-            rows=8, cols=8, block_size=15, symmetry=symmetry, chaos=0.3,
-            palette_name="lavender fields", seed=42, output=None, border=5,
-            max_patterns=2, max_colors=4,
+            rows=8,
+            cols=8,
+            block_size=15,
+            symmetry=symmetry,
+            chaos=0.3,
+            palette_name="lavender fields",
+            seed=42,
+            output=None,
+            border=5,
+            max_patterns=2,
+            max_colors=4,
         )
-        assert result[:8] == b'\x89PNG\r\n\x1a\n'
+        assert result[:8] == b"\x89PNG\r\n\x1a\n"
 
 
 class TestRenderFeatures:
@@ -211,132 +303,252 @@ class TestRenderFeatures:
 
     def test_tiled_grid(self):
         result = render_quilt(
-            rows=8, cols=8, block_size=15, symmetry="none", chaos=0.3,
-            palette_name="ocean breeze", seed=42, output=None, border=5,
-            tile_size=4, tile_variation=0.1,
+            rows=8,
+            cols=8,
+            block_size=15,
+            symmetry="none",
+            chaos=0.3,
+            palette_name="ocean breeze",
+            seed=42,
+            output=None,
+            border=5,
+            tile_size=4,
+            tile_variation=0.1,
         )
-        assert result[:8] == b'\x89PNG\r\n\x1a\n'
+        assert result[:8] == b"\x89PNG\r\n\x1a\n"
 
     def test_max_patterns_and_colors(self):
         result = render_quilt(
-            rows=4, cols=4, block_size=20, symmetry="mirror", chaos=0.3,
-            palette_name="ocean breeze", seed=42, output=None, border=5,
-            max_patterns=2, max_colors=3,
+            rows=4,
+            cols=4,
+            block_size=20,
+            symmetry="mirror",
+            chaos=0.3,
+            palette_name="ocean breeze",
+            seed=42,
+            output=None,
+            border=5,
+            max_patterns=2,
+            max_colors=3,
         )
-        assert result[:8] == b'\x89PNG\r\n\x1a\n'
+        assert result[:8] == b"\x89PNG\r\n\x1a\n"
 
     @pytest.mark.parametrize("style", BORDER_STYLES)
     def test_border_styles(self, style):
         result = render_quilt(
-            rows=4, cols=4, block_size=20, symmetry="mirror", chaos=0.3,
-            palette_name="ocean breeze", seed=42, output=None, border=15,
+            rows=4,
+            cols=4,
+            block_size=20,
+            symmetry="mirror",
+            chaos=0.3,
+            palette_name="ocean breeze",
+            seed=42,
+            output=None,
+            border=15,
             border_style=style,
         )
-        assert result[:8] == b'\x89PNG\r\n\x1a\n'
+        assert result[:8] == b"\x89PNG\r\n\x1a\n"
 
     @pytest.mark.parametrize("stitch", QUILT_STITCH_STYLES)
     def test_quilt_stitching(self, stitch):
         result = render_quilt(
-            rows=4, cols=4, block_size=20, symmetry="mirror", chaos=0.3,
-            palette_name="ocean breeze", seed=42, output=None, border=5,
+            rows=4,
+            cols=4,
+            block_size=20,
+            symmetry="mirror",
+            chaos=0.3,
+            palette_name="ocean breeze",
+            seed=42,
+            output=None,
+            border=5,
             quilt_stitch=stitch,
         )
-        assert result[:8] == b'\x89PNG\r\n\x1a\n'
+        assert result[:8] == b"\x89PNG\r\n\x1a\n"
 
     def test_mega_blocks(self):
         result = render_quilt(
-            rows=6, cols=6, block_size=20, symmetry="mirror", chaos=0.3,
-            palette_name="ocean breeze", seed=42, output=None, border=5,
+            rows=6,
+            cols=6,
+            block_size=20,
+            symmetry="mirror",
+            chaos=0.3,
+            palette_name="ocean breeze",
+            seed=42,
+            output=None,
+            border=5,
             mega_frac=0.5,
         )
-        assert result[:8] == b'\x89PNG\r\n\x1a\n'
+        assert result[:8] == b"\x89PNG\r\n\x1a\n"
 
     def test_plain_frac(self):
         result = render_quilt(
-            rows=4, cols=4, block_size=20, symmetry="mirror", chaos=0.3,
-            palette_name="ocean breeze", seed=42, output=None, border=5,
+            rows=4,
+            cols=4,
+            block_size=20,
+            symmetry="mirror",
+            chaos=0.3,
+            palette_name="ocean breeze",
+            seed=42,
+            output=None,
+            border=5,
             plain_frac=0.5,
         )
-        assert result[:8] == b'\x89PNG\r\n\x1a\n'
+        assert result[:8] == b"\x89PNG\r\n\x1a\n"
 
     def test_wonky(self):
         result = render_quilt(
-            rows=4, cols=4, block_size=20, symmetry="none", chaos=0.3,
-            palette_name="ocean breeze", seed=42, output=None, border=5,
-            wonky=0.05, tile_size=4,
+            rows=4,
+            cols=4,
+            block_size=20,
+            symmetry="none",
+            chaos=0.3,
+            palette_name="ocean breeze",
+            seed=42,
+            output=None,
+            border=5,
+            wonky=0.05,
+            tile_size=4,
         )
-        assert result[:8] == b'\x89PNG\r\n\x1a\n'
+        assert result[:8] == b"\x89PNG\r\n\x1a\n"
 
     def test_wash_alpha(self):
         result = render_quilt(
-            rows=4, cols=4, block_size=20, symmetry="mirror", chaos=0.3,
-            palette_name="ocean breeze", seed=42, output=None, border=5,
+            rows=4,
+            cols=4,
+            block_size=20,
+            symmetry="mirror",
+            chaos=0.3,
+            palette_name="ocean breeze",
+            seed=42,
+            output=None,
+            border=5,
             wash_alpha=0.3,
         )
-        assert result[:8] == b'\x89PNG\r\n\x1a\n'
+        assert result[:8] == b"\x89PNG\r\n\x1a\n"
 
     def test_palette_mix(self):
         result = render_quilt(
-            rows=4, cols=4, block_size=20, symmetry="mirror", chaos=0.3,
-            palette_name="ocean breeze", seed=42, output=None, border=5,
-            palette_mix="wildflower", max_colors=4,
+            rows=4,
+            cols=4,
+            block_size=20,
+            symmetry="mirror",
+            chaos=0.3,
+            palette_name="ocean breeze",
+            seed=42,
+            output=None,
+            border=5,
+            palette_mix="wildflower",
+            max_colors=4,
         )
-        assert result[:8] == b'\x89PNG\r\n\x1a\n'
+        assert result[:8] == b"\x89PNG\r\n\x1a\n"
 
     def test_palette_name_2(self):
         result = render_quilt(
-            rows=4, cols=4, block_size=20, symmetry="mirror", chaos=0.3,
-            palette_name="ocean breeze", seed=42, output=None, border=5,
-            palette_name_2="wildflower", max_colors=3,
+            rows=4,
+            cols=4,
+            block_size=20,
+            symmetry="mirror",
+            chaos=0.3,
+            palette_name="ocean breeze",
+            seed=42,
+            output=None,
+            border=5,
+            palette_name_2="wildflower",
+            max_colors=3,
         )
-        assert result[:8] == b'\x89PNG\r\n\x1a\n'
+        assert result[:8] == b"\x89PNG\r\n\x1a\n"
 
     def test_palette_name_2_retired(self):
         # Retired palette name should be silently dropped
         result = render_quilt(
-            rows=4, cols=4, block_size=20, symmetry="mirror", chaos=0.3,
-            palette_name="ocean breeze", seed=42, output=None, border=5,
+            rows=4,
+            cols=4,
+            block_size=20,
+            symmetry="mirror",
+            chaos=0.3,
+            palette_name="ocean breeze",
+            seed=42,
+            output=None,
+            border=5,
             palette_name_2="nonexistent retired",
         )
-        assert result[:8] == b'\x89PNG\r\n\x1a\n'
+        assert result[:8] == b"\x89PNG\r\n\x1a\n"
 
     def test_bargello_renders(self):
         result = render_quilt(
-            rows=8, cols=8, block_size=15, symmetry="bargello", chaos=0.3,
-            palette_name="lavender fields", seed=42, output=None, border=5,
+            rows=8,
+            cols=8,
+            block_size=15,
+            symmetry="bargello",
+            chaos=0.3,
+            palette_name="lavender fields",
+            seed=42,
+            output=None,
+            border=5,
             max_colors=4,
         )
-        assert result[:8] == b'\x89PNG\r\n\x1a\n'
+        assert result[:8] == b"\x89PNG\r\n\x1a\n"
 
     def test_mega_blocks_with_wonky(self):
         result = render_quilt(
-            rows=6, cols=6, block_size=20, symmetry="none", chaos=0.3,
-            palette_name="ocean breeze", seed=42, output=None, border=5,
-            mega_frac=0.5, wonky=0.04, tile_size=6,
+            rows=6,
+            cols=6,
+            block_size=20,
+            symmetry="none",
+            chaos=0.3,
+            palette_name="ocean breeze",
+            seed=42,
+            output=None,
+            border=5,
+            mega_frac=0.5,
+            wonky=0.04,
+            tile_size=6,
         )
-        assert result[:8] == b'\x89PNG\r\n\x1a\n'
+        assert result[:8] == b"\x89PNG\r\n\x1a\n"
 
     def test_strippy(self):
         result = render_quilt(
-            rows=4, cols=4, block_size=20, symmetry="none", chaos=0.3,
-            palette_name="ocean breeze", seed=42, output=None, border=5,
+            rows=4,
+            cols=4,
+            block_size=20,
+            symmetry="none",
+            chaos=0.3,
+            palette_name="ocean breeze",
+            seed=42,
+            output=None,
+            border=5,
             strippy=0.3,
         )
-        assert result[:8] == b'\x89PNG\r\n\x1a\n'
+        assert result[:8] == b"\x89PNG\r\n\x1a\n"
 
     def test_stripes_border(self):
         # "stripes" is internal border style used by _draw_border
         result = render_quilt(
-            rows=4, cols=4, block_size=20, symmetry="mirror", chaos=0.3,
-            palette_name="ocean breeze", seed=42, output=None, border=15,
+            rows=4,
+            cols=4,
+            block_size=20,
+            symmetry="mirror",
+            chaos=0.3,
+            palette_name="ocean breeze",
+            seed=42,
+            output=None,
+            border=15,
             border_style="solid",
         )
-        assert result[:8] == b'\x89PNG\r\n\x1a\n'
+        assert result[:8] == b"\x89PNG\r\n\x1a\n"
 
     def test_tile_boundary_lines(self):
         result = render_quilt(
-            rows=8, cols=8, block_size=15, symmetry="none", chaos=0.3,
-            palette_name="ocean breeze", seed=42, output=None, border=5,
-            tile_size=4, tile_variation=0.2,
+            rows=8,
+            cols=8,
+            block_size=15,
+            symmetry="none",
+            chaos=0.3,
+            palette_name="ocean breeze",
+            seed=42,
+            output=None,
+            border=5,
+            tile_size=4,
+            tile_variation=0.2,
         )
-        assert result[:8] == b'\x89PNG\r\n\x1a\n'
+        assert result[:8] == b"\x89PNG\r\n\x1a\n"

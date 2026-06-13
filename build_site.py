@@ -4,6 +4,7 @@
 Usage:
     python build_site.py --ratings ratings.json --out docs/ --families 18 --variations 18
 """
+
 import argparse
 import json
 import os
@@ -22,6 +23,7 @@ from quilt import render_quilt
 from quilt_id import encode, _V2_PALETTES, _V2_SYMMETRY
 
 from palettes import PALETTES as _ALL_PALETTES
+
 _RENDERABLE_PALETTES = {p[0] for p in _ALL_PALETTES}
 _ENCODABLE_PALETTES = set(_V2_PALETTES) & _RENDERABLE_PALETTES
 
@@ -36,19 +38,19 @@ def nearest_square(n):
     >>> nearest_square(25)
     25
     """
-    root = round(n ** 0.5)
+    root = round(n**0.5)
     return root * root
 
 
 def _encodable(params):
     """Return True if params can be rendered and encoded as a v2 quilt ID."""
-    return (params.get("palette") in _ENCODABLE_PALETTES
-            and params.get("symmetry") in _V2_SYMMETRY)
+    return params.get("palette") in _ENCODABLE_PALETTES and params.get("symmetry") in _V2_SYMMETRY
 
 
 # ---------------------------------------------------------------------------
 # Clustering
 # ---------------------------------------------------------------------------
+
 
 def load_liked(ratings_path):
     """Load liked quilts from ratings JSON, filtered to encodable params.
@@ -166,16 +168,16 @@ _CHAOS_ADJ = [
 
 _SYM_NOUN = {
     "rotational": "Spiral",
-    "mirror":     "Crystal",
-    "stripe":     "Ribbons",
-    "partial":    "Mosaic",
-    "none":       "Garden",
+    "mirror": "Crystal",
+    "stripe": "Ribbons",
+    "partial": "Mosaic",
+    "none": "Garden",
 }
 
 _SECONDARY = [
-    ("mega",    lambda m: sum(p.get("mega_frac", 0) for p in m) / len(m) > 0.08,          "Bold"),
-    ("plain",   lambda m: sum(p.get("plain_frac", 0) for p in m) / len(m) > 0.08,         "Spare"),
-    ("large",   lambda m: sum(p["rows"] for p in m) / len(m) >= 17.5,                     "Grand"),
+    ("mega", lambda m: sum(p.get("mega_frac", 0) for p in m) / len(m) > 0.08, "Bold"),
+    ("plain", lambda m: sum(p.get("plain_frac", 0) for p in m) / len(m) > 0.08, "Spare"),
+    ("large", lambda m: sum(p["rows"] for p in m) / len(m) >= 17.5, "Grand"),
 ]
 
 
@@ -261,8 +263,14 @@ def generate_variations(symmetry, members, n, rng):
     return variations
 
 
-def define_families(liked, n_families, n_variations, rng,  # pylint: disable=too-many-locals,too-many-arguments,too-many-positional-arguments
-                    name_overrides=None, clip_embeddings=None):
+def define_families(
+    liked,
+    n_families,
+    n_variations,
+    rng,  # pylint: disable=too-many-locals,too-many-arguments,too-many-positional-arguments
+    name_overrides=None,
+    clip_embeddings=None,
+):
     """Group liked quilts by palette x symmetry and build families.
 
     clip_embeddings is used for picking a better representative if available.
@@ -284,10 +292,11 @@ def define_families(liked, n_families, n_variations, rng,  # pylint: disable=too
         # find indices of these members in the liked list for CLIP lookup
         member_clip = None
         if n_clip > 0:
-            member_indices = [i for i, p in enumerate(liked) if
-                              p["symmetry"] == sym
-                              and _chaos_band(p["chaos"]) == _band
-                              and i < n_clip]
+            member_indices = [
+                i
+                for i, p in enumerate(liked)
+                if p["symmetry"] == sym and _chaos_band(p["chaos"]) == _band and i < n_clip
+            ]
             if len(member_indices) >= 3:
                 member_clip = clip_embeddings[member_indices]
                 clip_members = [liked[i] for i in member_indices]
@@ -299,14 +308,16 @@ def define_families(liked, n_families, n_variations, rng,  # pylint: disable=too
 
         variations = generate_variations(sym, members, n_variations, rng)
 
-        families.append({
-            "name": name,
-            "slug": slug,
-            "rep": rep,
-            "rep_id": encode(rep),
-            "variations": [{"params": vp, "qid": encode(vp)} for vp in variations],
-            "size": len(members),
-        })
+        families.append(
+            {
+                "name": name,
+                "slug": slug,
+                "rep": rep,
+                "rep_id": encode(rep),
+                "variations": [{"params": vp, "qid": encode(vp)} for vp in variations],
+                "size": len(members),
+            }
+        )
 
     return families
 
@@ -314,6 +325,7 @@ def define_families(liked, n_families, n_variations, rng,  # pylint: disable=too
 # ---------------------------------------------------------------------------
 # Image rendering
 # ---------------------------------------------------------------------------
+
 
 def render_to_file(params, path, block_size):
     """Render a quilt to a PNG file."""
@@ -496,17 +508,18 @@ def params_summary(params):
 def render_html(families, out, n_families, n_variations):  # pylint: disable=too-many-locals
     """Render index, family, and quilt HTML pages to out/."""
     from datetime import datetime  # pylint: disable=import-outside-toplevel
+
     generated_at = datetime.now().strftime("%Y-%m-%d %H:%M")
     env = Environment(loader=BaseLoader())
-    index_cols = round(n_families ** 0.5)
-    family_cols = round(n_variations ** 0.5)
+    index_cols = round(n_families**0.5)
+    family_cols = round(n_variations**0.5)
 
     # index
     tmpl = env.from_string(_INDEX_HTML)
     total = sum(len(f["variations"]) for f in families)
     (out / "index.html").write_text(
-        tmpl.render(families=families, total=total, cols=index_cols,
-                    generated_at=generated_at), encoding="utf-8"
+        tmpl.render(families=families, total=total, cols=index_cols, generated_at=generated_at),
+        encoding="utf-8",
     )
 
     # family pages
@@ -515,8 +528,7 @@ def render_html(families, out, n_families, n_variations):  # pylint: disable=too
         fam_dir = out / "family" / fam["slug"]
         fam_dir.mkdir(parents=True, exist_ok=True)
         (fam_dir / "index.html").write_text(
-            tmpl.render(fam=fam, cols=family_cols,
-                        generated_at=generated_at), encoding="utf-8"
+            tmpl.render(fam=fam, cols=family_cols, generated_at=generated_at), encoding="utf-8"
         )
 
     # quilt pages
@@ -544,6 +556,7 @@ def render_html(families, out, n_families, n_variations):  # pylint: disable=too
 # Main
 # ---------------------------------------------------------------------------
 
+
 def main():  # pylint: disable=too-many-locals,too-many-statements,too-many-branches
     """Parse CLI args and build the static gallery site."""
     parser = argparse.ArgumentParser(description="Build static quilt gallery")
@@ -551,16 +564,28 @@ def main():  # pylint: disable=too-many-locals,too-many-statements,too-many-bran
     parser.add_argument("--out", default="docs/")
     parser.add_argument("--families", type=int, default=18)
     parser.add_argument("--variations", type=int, default=18)
-    parser.add_argument("--block-size", type=int, default=40,
-                        help="Block size in px for rendered images (default: 40)")
-    parser.add_argument("--seed", type=int, default=42,
-                        help="RNG seed for variation sampling (default: 42)")
-    parser.add_argument("--names", default="family_names.json",
-                        help="JSON file mapping slug → custom name (default: family_names.json)")
-    parser.add_argument("--dump-names", action="store_true",
-                        help="Write auto-generated names to --names file and exit")
-    parser.add_argument("--clip", action="store_true",
-                        help="Cluster by CLIP visual embeddings instead of params")
+    parser.add_argument(
+        "--block-size",
+        type=int,
+        default=40,
+        help="Block size in px for rendered images (default: 40)",
+    )
+    parser.add_argument(
+        "--seed", type=int, default=42, help="RNG seed for variation sampling (default: 42)"
+    )
+    parser.add_argument(
+        "--names",
+        default="family_names.json",
+        help="JSON file mapping slug → custom name (default: family_names.json)",
+    )
+    parser.add_argument(
+        "--dump-names",
+        action="store_true",
+        help="Write auto-generated names to --names file and exit",
+    )
+    parser.add_argument(
+        "--clip", action="store_true", help="Cluster by CLIP visual embeddings instead of params"
+    )
     args = parser.parse_args()
 
     out = Path(args.out)
@@ -600,8 +625,7 @@ def main():  # pylint: disable=too-many-locals,too-many-statements,too-many-bran
     rng = random.Random(args.seed)
 
     if args.dump_names:
-        families = define_families(liked, n_families, n_variations, rng,
-                                   clip_embeddings=clip_emb)
+        families = define_families(liked, n_families, n_variations, rng, clip_embeddings=clip_emb)
         names = {f["slug"]: f["name"] for f in families}
         with open(args.names, "w", encoding="utf-8") as f:
             json.dump(names, f, indent=2)
@@ -617,14 +641,21 @@ def main():  # pylint: disable=too-many-locals,too-many-statements,too-many-bran
             name_overrides = json.load(f)
         print(f"Loaded {len(name_overrides)} name overrides from {args.names}")
 
-    families = define_families(liked, n_families, n_variations, rng,
-                               name_overrides=name_overrides,
-                               clip_embeddings=clip_emb)
+    families = define_families(
+        liked,
+        n_families,
+        n_variations,
+        rng,
+        name_overrides=name_overrides,
+        clip_embeddings=clip_emb,
+    )
     for fam in families:
         print(f"  {fam['name']} ({fam['size']} members) → {fam['slug']}")
 
-    print(f"\nRendering images ({len(families)} reps + "
-          f"{sum(len(f['variations']) for f in families)} variations)...")
+    print(
+        f"\nRendering images ({len(families)} reps + "
+        f"{sum(len(f['variations']) for f in families)} variations)..."
+    )
     render_images(families, out, args.block_size, args.block_size)
 
     print("\nRendering HTML...")

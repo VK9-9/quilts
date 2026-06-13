@@ -1,4 +1,5 @@
 """Tests for palettes.py."""
+
 from palettes import PALETTES, hex_to_rgb
 
 

@@ -1,4 +1,5 @@
 """Flask webapp for active learning of quilt aesthetic preferences."""
+
 import json
 import sys
 import os
@@ -27,11 +28,13 @@ def index():
 def next_quilt():
     """Return suggested quilt params plus model stats."""
     params = explorer.suggest_params()
-    return jsonify({
-        "params": params,
-        "stats": explorer.stats(),
-        "importance": explorer.feature_importance(),
-    })
+    return jsonify(
+        {
+            "params": params,
+            "stats": explorer.stats(),
+            "importance": explorer.feature_importance(),
+        }
+    )
 
 
 @app.route("/render")

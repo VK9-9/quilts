@@ -1,4 +1,5 @@
 """Tests for generator.py — Flask webapp routes and param parsing."""
+
 import pytest
 from generator import app, PRESETS
 from render_params import params_to_render_kwargs
@@ -13,15 +14,25 @@ def client():
 
 # --- params_to_render_kwargs ---
 
-class TestParamsToRenderKwargs:
 
+class TestParamsToRenderKwargs:
     def test_basic_conversion(self):
         params = {
-            "palette": "ocean breeze", "symmetry": "bargello",
-            "chaos": 0.3, "rows": 16, "cols": 16, "n_patterns": 2,
-            "n_colors": 4, "tile_size": 6, "tile_variation": 0.1,
-            "border_style": "none", "mega_frac": 0.0, "plain_frac": 0.0,
-            "quilt_stitch": "grid", "wonky": 0.0, "seed": 42,
+            "palette": "ocean breeze",
+            "symmetry": "bargello",
+            "chaos": 0.3,
+            "rows": 16,
+            "cols": 16,
+            "n_patterns": 2,
+            "n_colors": 4,
+            "tile_size": 6,
+            "tile_variation": 0.1,
+            "border_style": "none",
+            "mega_frac": 0.0,
+            "plain_frac": 0.0,
+            "quilt_stitch": "grid",
+            "wonky": 0.0,
+            "seed": 42,
         }
         kwargs = params_to_render_kwargs(params, block_size=36)
         assert kwargs["rows"] == 16
@@ -32,20 +43,34 @@ class TestParamsToRenderKwargs:
 
     def test_tile_size_zero_becomes_none(self):
         params = {
-            "palette": "ocean breeze", "symmetry": "none",
-            "chaos": 0.3, "rows": 16, "cols": 16, "n_patterns": 2,
-            "n_colors": 4, "tile_size": 0, "tile_variation": 0.1,
-            "border_style": "solid", "seed": 42,
+            "palette": "ocean breeze",
+            "symmetry": "none",
+            "chaos": 0.3,
+            "rows": 16,
+            "cols": 16,
+            "n_patterns": 2,
+            "n_colors": 4,
+            "tile_size": 0,
+            "tile_variation": 0.1,
+            "border_style": "solid",
+            "seed": 42,
         }
         kwargs = params_to_render_kwargs(params)
         assert kwargs["tile_size"] is None
 
     def test_border_style_solid_preserved(self):
         params = {
-            "palette": "ocean breeze", "symmetry": "none",
-            "chaos": 0.3, "rows": 16, "cols": 16, "n_patterns": 2,
-            "n_colors": 4, "tile_size": 6, "tile_variation": 0.1,
-            "border_style": "solid", "seed": 42,
+            "palette": "ocean breeze",
+            "symmetry": "none",
+            "chaos": 0.3,
+            "rows": 16,
+            "cols": 16,
+            "n_patterns": 2,
+            "n_colors": 4,
+            "tile_size": 6,
+            "tile_variation": 0.1,
+            "border_style": "solid",
+            "seed": 42,
         }
         kwargs = params_to_render_kwargs(params)
         assert kwargs["border_style"] == "solid"
@@ -53,8 +78,8 @@ class TestParamsToRenderKwargs:
 
 # --- Routes ---
 
-class TestIndexRoute:
 
+class TestIndexRoute:
     def test_index_returns_200(self, client):
         resp = client.get("/")
         assert resp.status_code == 200
@@ -72,7 +97,6 @@ class TestIndexRoute:
 
 
 class TestCreateRoute:
-
     def test_create_default(self, client):
         resp = client.get("/create")
         assert resp.status_code == 200
@@ -89,12 +113,23 @@ class TestCreateRoute:
 
     def test_create_with_quilt_id(self, client):
         from quilt_id import encode
+
         params = {
-            "seed": 12345, "palette": "ocean breeze", "symmetry": "bargello",
-            "chaos": 0.3, "rows": 16, "cols": 16, "n_patterns": 2,
-            "n_colors": 4, "tile_size": 5, "tile_variation": 0.1,
-            "border_style": "none", "mega_frac": 0.0, "plain_frac": 0.0,
-            "quilt_stitch": "grid", "wonky": 0.0,
+            "seed": 12345,
+            "palette": "ocean breeze",
+            "symmetry": "bargello",
+            "chaos": 0.3,
+            "rows": 16,
+            "cols": 16,
+            "n_patterns": 2,
+            "n_colors": 4,
+            "tile_size": 5,
+            "tile_variation": 0.1,
+            "border_style": "none",
+            "mega_frac": 0.0,
+            "plain_frac": 0.0,
+            "quilt_stitch": "grid",
+            "wonky": 0.0,
         }
         qid = encode(params)
         resp = client.get(f"/create?id={qid}")
@@ -108,12 +143,11 @@ class TestCreateRoute:
 
 
 class TestRenderRoute:
-
     def test_render_returns_png(self, client):
         resp = client.get("/render?seed=42&symmetry=bargello&palette=ocean+breeze&rows=4")
         assert resp.status_code == 200
         assert resp.content_type == "image/png"
-        assert resp.data[:8] == b'\x89PNG\r\n\x1a\n'
+        assert resp.data[:8] == b"\x89PNG\r\n\x1a\n"
 
     def test_render_no_cache(self, client):
         resp = client.get("/render?seed=42&symmetry=bargello&palette=ocean+breeze&rows=4")
@@ -134,7 +168,6 @@ class TestRenderRoute:
 
 
 class TestDownloadRoute:
-
     def test_download_returns_png(self, client):
         resp = client.get("/download?seed=42&symmetry=bargello&palette=ocean+breeze&rows=4")
         assert resp.status_code == 200
@@ -149,49 +182,39 @@ class TestDownloadRoute:
 
 
 class TestPatternRoute:
-
     def test_pattern_returns_pdf(self, client):
-        resp = client.get(
-            "/pattern?seed=42&symmetry=rotational&palette=ocean+breeze&rows=4"
-        )
+        resp = client.get("/pattern?seed=42&symmetry=rotational&palette=ocean+breeze&rows=4")
         assert resp.status_code == 200
         assert resp.content_type == "application/pdf"
-        assert resp.data[:5] == b'%PDF-'
+        assert resp.data[:5] == b"%PDF-"
 
     def test_pattern_has_filename(self, client):
-        resp = client.get(
-            "/pattern?seed=42&symmetry=rotational&palette=ocean+breeze&rows=4"
-        )
+        resp = client.get("/pattern?seed=42&symmetry=rotational&palette=ocean+breeze&rows=4")
         cd = resp.headers.get("Content-Disposition", "")
         assert "attachment" in cd
         assert "pattern-" in cd
         assert ".pdf" in cd
 
     def test_pattern_bargello(self, client):
-        resp = client.get(
-            "/pattern?seed=42&symmetry=bargello&palette=ocean+breeze&rows=4"
-        )
+        resp = client.get("/pattern?seed=42&symmetry=bargello&palette=ocean+breeze&rows=4")
         assert resp.status_code == 200
-        assert resp.data[:5] == b'%PDF-'
+        assert resp.data[:5] == b"%PDF-"
 
     def test_pattern_with_quilt_size(self, client):
         resp = client.get(
-            "/pattern?seed=42&symmetry=rotational&palette=ocean+breeze"
-            "&rows=4&quilt_size=throw"
+            "/pattern?seed=42&symmetry=rotational&palette=ocean+breeze&rows=4&quilt_size=throw"
         )
         assert resp.status_code == 200
 
 
 class TestParamParsing:
-
     def test_invalid_int_falls_back(self, client):
         resp = client.get("/render?seed=42&symmetry=bargello&palette=ocean+breeze&rows=abc")
         assert resp.status_code == 200  # "abc" can't parse as int → uses default
 
     def test_stitch_none_string(self, client):
         resp = client.get(
-            "/render?seed=42&symmetry=bargello&palette=ocean+breeze"
-            "&rows=4&quilt_stitch=none"
+            "/render?seed=42&symmetry=bargello&palette=ocean+breeze&rows=4&quilt_stitch=none"
         )
         assert resp.status_code == 200
 
@@ -204,7 +227,6 @@ class TestParamParsing:
 
 
 class TestPresets:
-
     def test_all_presets_have_required_keys(self):
         for key, preset in PRESETS.items():
             assert "name" in preset, f"Preset {key} missing name"
@@ -213,12 +235,15 @@ class TestPresets:
 
     def test_all_preset_params_have_palette(self):
         from quilt_id import _V2_PALETTES, _V2_SYMMETRY
+
         for key, preset in PRESETS.items():
             p = preset["params"]
-            assert p["palette"] in _V2_PALETTES, \
+            assert p["palette"] in _V2_PALETTES, (
                 f"Preset {key} palette '{p['palette']}' not in V2 palettes"
-            assert p["symmetry"] in _V2_SYMMETRY, \
+            )
+            assert p["symmetry"] in _V2_SYMMETRY, (
                 f"Preset {key} symmetry '{p['symmetry']}' not in V2 symmetries"
+            )
 
     def test_all_presets_renderable(self, client):
         """Each preset should produce a valid PNG via /render."""
@@ -227,4 +252,4 @@ class TestPresets:
             qs = "&".join(f"{k}={v}" for k, v in params.items())
             resp = client.get(f"/render?{qs}")
             assert resp.status_code == 200, f"Preset {key} failed to render"
-            assert resp.data[:8] == b'\x89PNG\r\n\x1a\n'
+            assert resp.data[:8] == b"\x89PNG\r\n\x1a\n"

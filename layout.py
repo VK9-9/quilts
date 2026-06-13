@@ -3,6 +3,7 @@
 Assigns block patterns and color indices to each cell in the grid,
 respecting the chosen symmetry mode.
 """
+
 import math
 
 import noise
@@ -233,7 +234,7 @@ def layout_emergent(rows, cols, n_patterns, _n_palettes, rng):  # pylint: disabl
     """
     grid = {}
 
-    macro = rng.choice(['zigzag', 'diamond', 'barn_raising', 'pinwheel_macro'])
+    macro = rng.choice(["zigzag", "diamond", "barn_raising", "pinwheel_macro"])
     pat = rng.randint(0, n_patterns - 1)
     pal = 0
 
@@ -242,11 +243,11 @@ def layout_emergent(rows, cols, n_patterns, _n_palettes, rng):  # pylint: disabl
 
     for r in range(rows):
         for c in range(cols):
-            if macro == 'zigzag':
+            if macro == "zigzag":
                 # alternating cells flip diagonal → chevron paths
                 rotation = 0 if (r + c) % 2 == 0 else 1
 
-            elif macro == 'diamond':
+            elif macro == "diamond":
                 # quadrant determines base rotation; Manhattan ring alternates
                 cr = r - mid_r
                 cc = c - mid_c
@@ -262,7 +263,7 @@ def layout_emergent(rows, cols, n_patterns, _n_palettes, rng):  # pylint: disabl
                 if dist % 2 == 1:
                     rotation = (rotation + 2) % 4
 
-            elif macro == 'barn_raising':
+            elif macro == "barn_raising":
                 # concentric rings from edge; quadrant rotation
                 ring = min(r, rows - 1 - r, c, cols - 1 - c)
                 if r < mid_r and c < mid_c:
@@ -276,7 +277,7 @@ def layout_emergent(rows, cols, n_patterns, _n_palettes, rng):  # pylint: disabl
                 if ring % 2 == 1:
                     rotation = (rotation + 2) % 4
 
-            elif macro == 'pinwheel_macro':
+            elif macro == "pinwheel_macro":
                 # 2x2 groups, each cell rotated 90° from neighbors
                 lr, lc = r % 2, c % 2
                 rotation = [0, 1, 3, 2][lr * 2 + lc]

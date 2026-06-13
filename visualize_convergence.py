@@ -11,12 +11,14 @@ Round boundaries (cumulative record counts):
   R6:  1538 – 1913 (376 ratings)
   R7:  1914 – 2286 (373 ratings)
 """
+
 import json
 import sys
 import os
 from collections import defaultdict
 
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # pylint: disable=wrong-import-position
 
@@ -30,6 +32,8 @@ ROUND_SLICES = [
     ("R7", slice(1914, 2287)),
     ("R8", slice(2287, None)),
 ]
+
+
 def compute_round_rates(ratings):
     """Return list of like-rate percentages (int) for each round slice."""
     rates = []
@@ -40,12 +44,30 @@ def compute_round_rates(ratings):
         rates.append(round(100 * sum(1 for r in chunk if r["liked"]) / len(chunk)))
     return rates
 
+
 DROPPED = {
-    "palette": {"berry patch", "cedar and moss", "dusty rose", "forest floor",
-                "jewel box", "prairie", "slate and sage", "tidal pool",
-                "frost", "ember", "mosaic", "spring garden", "patchwork classic",
-                "midnight garden", "sunset",
-                "winter sky", "copper canyon", "autumn embers", "peacock feather", "cardinal"},
+    "palette": {
+        "berry patch",
+        "cedar and moss",
+        "dusty rose",
+        "forest floor",
+        "jewel box",
+        "prairie",
+        "slate and sage",
+        "tidal pool",
+        "frost",
+        "ember",
+        "mosaic",
+        "spring garden",
+        "patchwork classic",
+        "midnight garden",
+        "sunset",
+        "winter sky",
+        "copper canyon",
+        "autumn embers",
+        "peacock feather",
+        "cardinal",
+    },
     "symmetry": {"flower", "emergent"},
 }
 
@@ -71,10 +93,8 @@ def overall_like_rates(ratings, param):
 
 def _sorted_bars(rates, dropped):
     """Split rates into (survivors, cut) sorted by like rate."""
-    survivors = sorted([(k, v) for k, v in rates.items() if k not in dropped],
-                       key=lambda x: x[1])
-    cut = sorted([(k, v) for k, v in rates.items() if k in dropped],
-                 key=lambda x: x[1])
+    survivors = sorted([(k, v) for k, v in rates.items() if k not in dropped], key=lambda x: x[1])
+    cut = sorted([(k, v) for k, v in rates.items() if k in dropped], key=lambda x: x[1])
     return survivors, cut
 
 
@@ -85,7 +105,7 @@ def _plot_trend(ax, rates):
     for x, y in zip(xs, rates):
         ax.text(x, y + 1.5, f"{y}%", ha="center", fontsize=11)
     ax.set_xticks(list(xs))
-    ax.set_xticklabels([r for r, _ in ROUND_SLICES[:len(rates)]])
+    ax.set_xticklabels([r for r, _ in ROUND_SLICES[: len(rates)]])
     ax.set_ylabel("Like rate %")
     ax.set_ylim(0, 50)
     ax.set_title("Like rate over rounds", fontweight="bold")
@@ -103,7 +123,7 @@ def _plot_bars(ax, survivors, cut, title, overall_rate, fontsize=9):  # pylint: 
     ax.barh(list(ys), vals, color=colors, height=0.7)
     ax.axvline(overall_rate / 100, color="gray", linestyle="--", linewidth=1)
     for i, v in enumerate(vals):
-        ax.text(v + 0.005, i, f"{int(round(v*100))}%", va="center", fontsize=fontsize)
+        ax.text(v + 0.005, i, f"{int(round(v * 100))}%", va="center", fontsize=fontsize)
     ax.set_yticks(list(ys))
     ax.set_yticklabels(labels, fontsize=fontsize)
     ax.set_xlim(0, 0.75)
@@ -116,13 +136,12 @@ def _plot_bars(ax, survivors, cut, title, overall_rate, fontsize=9):  # pylint: 
 def make_figure(ratings):
     """Render convergence chart and save to quilts/convergence.png."""
     rates = compute_round_rates(ratings)
-    pal_surv, pal_cut = _sorted_bars(
-        overall_like_rates(ratings, "palette"), DROPPED["palette"])
-    sym_surv, sym_cut = _sorted_bars(
-        overall_like_rates(ratings, "symmetry"), DROPPED["symmetry"])
+    pal_surv, pal_cut = _sorted_bars(overall_like_rates(ratings, "palette"), DROPPED["palette"])
+    sym_surv, sym_cut = _sorted_bars(overall_like_rates(ratings, "symmetry"), DROPPED["symmetry"])
 
-    fig, axes = plt.subplots(1, 3, figsize=(14, 6),
-                             gridspec_kw={"width_ratios": [1, 2.5, 1], "wspace": 0.4})
+    fig, axes = plt.subplots(
+        1, 3, figsize=(14, 6), gridspec_kw={"width_ratios": [1, 2.5, 1], "wspace": 0.4}
+    )
     overall_rate = round(sum(rates) / len(rates)) if rates else 0
     _plot_trend(axes[0], rates)
     _plot_bars(axes[1], pal_surv, pal_cut, "Palettes  (red = dropped)", overall_rate, fontsize=8.5)

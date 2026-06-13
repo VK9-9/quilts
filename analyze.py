@@ -1,4 +1,5 @@
 """Analyze quilt ratings data and print a summary report."""
+
 import json
 import sys
 from collections import Counter, defaultdict
@@ -98,14 +99,13 @@ def print_report(ratings, rounds=None):  # pylint: disable=too-many-locals
     """Print a full analysis report to stdout."""
     n = len(ratings)
     liked = sum(1 for r in ratings if r["liked"])
-    print(f"Total: {n} ratings, {liked} liked ({liked/n*100:.1f}%)\n")
+    print(f"Total: {n} ratings, {liked} liked ({liked / n * 100:.1f}%)\n")
 
     if rounds:
         round_summary(ratings, rounds)
 
     # Categorical / integer params
-    for param in ["symmetry", "palette", "n_patterns", "n_colors", "rows",
-                   "border_style"]:
+    for param in ["symmetry", "palette", "n_patterns", "n_colors", "rows", "border_style"]:
         print(f"--- {param} ---")
         buckets = analyze_categorical(ratings, param)
         for val in sorted(buckets, key=lambda v: (isinstance(v, str), v)):
@@ -131,12 +131,13 @@ def print_report(ratings, rounds=None):  # pylint: disable=too-many-locals
     print("--- Palette frequency (uniform would be ~8% each) ---")
     freq = palette_frequency(ratings)
     for pal, count in freq.most_common():
-        print(f"  {pal}: {count}/{n} ({count/n*100:.1f}%)")
+        print(f"  {pal}: {count}/{n} ({count / n * 100:.1f}%)")
     print()
 
 
 if __name__ == "__main__":
     import os
+
     _path = sys.argv[1] if len(sys.argv) > 1 else "ratings.json"
     _rounds_path = os.path.join(os.path.dirname(_path), "ratings_rounds.json")
     _rounds = load_rounds(_rounds_path) if os.path.exists(_rounds_path) else None

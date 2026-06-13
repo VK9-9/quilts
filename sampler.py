@@ -11,6 +11,7 @@ suggest_params() uses a two-stage pipeline:
   1. param_model scores 200 random candidates → keep top 30
   2. clip_model renders those 30 at low-res, embeds, picks best predicted
 """
+
 import json
 import os
 import random
@@ -25,9 +26,22 @@ from layout import SYMMETRY_MODES
 from quilt import BORDER_STYLES, QUILT_STITCH_STYLES, render_quilt
 from render_params import params_to_render_kwargs
 
-_DROP_PALETTES = {"storm", "midnight moss", "terracotta", "slate and rust", "coral reef",
-                   "autumn harvest", "aurora", "deep sea", "amber glow", "sage garden",
-                   "plum wine", "copper canyon", "moonstone", "coastal fog"}
+_DROP_PALETTES = {
+    "storm",
+    "midnight moss",
+    "terracotta",
+    "slate and rust",
+    "coral reef",
+    "autumn harvest",
+    "aurora",
+    "deep sea",
+    "amber glow",
+    "sage garden",
+    "plum wine",
+    "copper canyon",
+    "moonstone",
+    "coastal fog",
+}
 # Proven palettes: shown at fixed probability instead of normal rotation
 _PROVEN_PALETTES = {"lavender fields": 0.50}
 PALETTE_NAMES = [p[0] for p in PALETTES if p[0] not in _DROP_PALETTES]
@@ -47,7 +61,7 @@ PARAM_SPACE = {
     "palette": PALETTE_NAMES,
     "n_patterns": (2, 2),
     "n_colors": (4, 6),
-    "tile_size": (4, 10),       # small tiles (1-3) disliked
+    "tile_size": (4, 10),  # small tiles (1-3) disliked
     "tile_variation": (0.0, 0.3),
 }
 
@@ -65,6 +79,7 @@ _CLIP_TOP_N = 30
 def _random_wash_direction(rng):
     """Pick a random unit-vector direction for color wash."""
     import math  # pylint: disable=import-outside-toplevel
+
     angle = rng.uniform(0, 2 * math.pi)
     return (round(math.cos(angle), 3), round(math.sin(angle), 3))
 
@@ -104,18 +119,23 @@ def sample_random_params(rng=None, explore_only=False):
         "symmetry": (
             next((s for s, p in _PROVEN_SYMMETRIES.items() if rng.random() < p), None)
             or rng.choice(_BASE_SYMMETRIES)
-        ) if not explore_only else rng.choice(_BASE_SYMMETRIES),
+        )
+        if not explore_only
+        else rng.choice(_BASE_SYMMETRIES),
         "chaos": round(rng.uniform(*PARAM_SPACE["chaos"]), 2),
         "palette": _pick_palette(rng, explore_only=explore_only),
         "n_patterns": rng.randint(*PARAM_SPACE["n_patterns"]),
         "n_colors": rng.choices([4, 5, 6], weights=[40, 45, 15])[0],
         "tile_size": rng.randint(*PARAM_SPACE["tile_size"]),
         "tile_variation": round(rng.uniform(*PARAM_SPACE["tile_variation"]), 2),
-        "border_style": (rng.choices(
-                             [b for b in BORDER_STYLES if b != "stripes"],
-                             weights=[2.0 if b == "solid" else 1.0
-                                      for b in BORDER_STYLES if b != "stripes"],
-                         )[0] if rng.random() < 0.35 else "none"),
+        "border_style": (
+            rng.choices(
+                [b for b in BORDER_STYLES if b != "stripes"],
+                weights=[2.0 if b == "solid" else 1.0 for b in BORDER_STYLES if b != "stripes"],
+            )[0]
+            if rng.random() < 0.35
+            else "none"
+        ),
         "mega_frac": round(rng.uniform(0.1, 0.25), 2) if rng.random() < 0.05 else 0.0,
         "plain_frac": round(rng.uniform(0.1, 0.4), 2) if rng.random() < 0.15 else 0.0,
         "quilt_stitch": _weighted_stitch(rng) if rng.random() < 0.98 else None,
@@ -159,7 +179,6 @@ def params_to_features(params):
     return np.array(features, dtype=np.float64)
 
 
-
 def _render_small(params, block_size):
     """Render params at the given block_size and return PNG bytes."""
     kwargs = params_to_render_kwargs(params, block_size=block_size)
@@ -177,7 +196,7 @@ class QuiltExplorer:  # pylint: disable=too-many-instance-attributes
         self.embeddings = np.zeros((0, 512), dtype=np.float32)
         self.rounds = []
         self._load()
-        self.model = None       # param model
+        self.model = None  # param model
         self.clip_model = None  # CLIP embedding model
         self._retrain()
 
@@ -204,12 +223,14 @@ class QuiltExplorer:  # pylint: disable=too-many-instance-attributes
     def start_round(self, label=None):
         """Start a new scoring round. Returns the round number."""
         num = len(self.rounds) + 1
-        self.rounds.append({
-            "round": num,
-            "label": label or f"R{num}",
-            "start_index": len(self.ratings),
-            "ts": time.time(),
-        })
+        self.rounds.append(
+            {
+                "round": num,
+                "label": label or f"R{num}",
+                "start_index": len(self.ratings),
+                "ts": time.time(),
+            }
+        )
         self._save_rounds()
         return num
 
@@ -226,6 +247,7 @@ class QuiltExplorer:  # pylint: disable=too-many-instance-attributes
     def _append_embedding(self, params):
         """Render params, embed with CLIP, append to embeddings array."""
         from clip_embed import embed_image  # pylint: disable=import-outside-toplevel
+
         png_bytes = _render_small(params, block_size=_CLIP_EMBED_BLOCK_SIZE)
         vec = embed_image(png_bytes)
         self.embeddings = np.vstack([self.embeddings, vec[np.newaxis, :]])
@@ -245,7 +267,9 @@ class QuiltExplorer:  # pylint: disable=too-many-instance-attributes
             return
 
         self.model = GradientBoostingClassifier(
-            n_estimators=50, max_depth=3, random_state=42,
+            n_estimators=50,
+            max_depth=3,
+            random_state=42,
         )
         self.model.fit(features, y)
 
@@ -257,9 +281,7 @@ class QuiltExplorer:  # pylint: disable=too-many-instance-attributes
             x_valid = self.embeddings[valid]
             y_valid = y_emb[valid]
             if len(x_valid) >= 10 and len(set(y_valid)) >= 2:
-                self.clip_model = LogisticRegression(
-                    max_iter=1000, C=1.0, random_state=42
-                )
+                self.clip_model = LogisticRegression(max_iter=1000, C=1.0, random_state=42)
                 self.clip_model.fit(x_valid, y_valid)
 
     def suggest_params(self, explore_prob=0.3):  # pylint: disable=too-many-locals
@@ -304,9 +326,9 @@ class QuiltExplorer:  # pylint: disable=too-many-instance-attributes
         top_indices = np.argsort(param_probs)[-_CLIP_TOP_N:]
         top_candidates = [candidates[i] for i in top_indices]
 
-        png_list = [_render_small(c, block_size=_CLIP_CANDIDATE_BLOCK_SIZE)
-                    for c in top_candidates]
+        png_list = [_render_small(c, block_size=_CLIP_CANDIDATE_BLOCK_SIZE) for c in top_candidates]
         from clip_embed import embed_images  # pylint: disable=import-outside-toplevel
+
         embs = embed_images(png_list)
         clip_probs = self.clip_model.predict_proba(embs)[:, 1]
         pick = top_candidates[int(np.argmax(clip_probs))]
@@ -328,7 +350,7 @@ class QuiltExplorer:  # pylint: disable=too-many-instance-attributes
         }
         if self.rounds:
             cur = self.rounds[-1]
-            rnd_ratings = self.ratings[cur["start_index"]:]
+            rnd_ratings = self.ratings[cur["start_index"] :]
             rnd_liked = sum(1 for r in rnd_ratings if r["liked"])
             result["round"] = {
                 "label": cur["label"],
@@ -345,10 +367,22 @@ class QuiltExplorer:  # pylint: disable=too-many-instance-attributes
             return None
         border_names = ["none"] + BORDER_STYLES
         names = (
-            ["rows", "chaos", "n_patterns", "n_colors",
-             "tile_size", "tile_variation", "mega_frac", "plain_frac",
-             "wash_alpha", "quilt_stitch", "palette_2",
-             "palette_mix", "wonky", "strippy"]
+            [
+                "rows",
+                "chaos",
+                "n_patterns",
+                "n_colors",
+                "tile_size",
+                "tile_variation",
+                "mega_frac",
+                "plain_frac",
+                "wash_alpha",
+                "quilt_stitch",
+                "palette_2",
+                "palette_mix",
+                "wonky",
+                "strippy",
+            ]
             + [f"brd_{b}" for b in border_names]
             + [f"sym_{s}" for s in SYMMETRY_NAMES]
             + [f"pal_{p}" for p in PALETTE_NAMES]

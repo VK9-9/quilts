@@ -3,6 +3,7 @@
 Loads ViT-B/32 (OpenAI weights) once at module level and exposes
 embed_image() for encoding PNG bytes to a 512-dim float32 vector.
 """
+
 import io
 
 import numpy as np

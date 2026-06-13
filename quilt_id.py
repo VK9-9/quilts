@@ -61,41 +61,52 @@ def _b58dec(s):
 
 # Only the 11 currently-active palettes (v1 uses 4 bits → max 15 entries)
 _V1_PALETTES = [
-    "autumn harvest", "ocean breeze", "wildflower", "farmhouse",
-    "winter sky", "stained glass", "indigo dye", "deep sea",
-    "plum and gold", "storm", "northern lights",
-    "copper canyon", "autumn embers", "peacock feather", "cardinal",
+    "autumn harvest",
+    "ocean breeze",
+    "wildflower",
+    "farmhouse",
+    "winter sky",
+    "stained glass",
+    "indigo dye",
+    "deep sea",
+    "plum and gold",
+    "storm",
+    "northern lights",
+    "copper canyon",
+    "autumn embers",
+    "peacock feather",
+    "cardinal",
     "midnight moss",
 ]
 
 # Active symmetry modes (3 bits → max 7 entries)
 _V1_SYMMETRY = ["none", "mirror", "rotational", "stripe", "partial"]
 
-_V1_BORDER   = ["none", "solid", "checkerboard", "piano_keys"]  # 2 bits
-_V1_GRADIENT = ["none", "diagonal"]                              # 1 bit
+_V1_BORDER = ["none", "solid", "checkerboard", "piano_keys"]  # 2 bits
+_V1_GRADIENT = ["none", "diagonal"]  # 1 bit
 
 # Bit layout — total must equal _V1_TOTAL_BITS
 _V1_SCHEMA = [
-    ("version",        4),
-    ("seed",          31),
-    ("palette",        4),
-    ("symmetry",       3),
-    ("chaos",          7),  # 0–80 representing 0.00–0.80 in steps of 0.01
-    ("rows",           3),  # offset 14: stored as rows-14, range 0–5
-    ("n_patterns",     1),  # offset 1: stored as n_patterns-1
-    ("n_colors",       1),  # offset 3: stored as n_colors-3
-    ("tile_size",      4),  # 0–10
+    ("version", 4),
+    ("seed", 31),
+    ("palette", 4),
+    ("symmetry", 3),
+    ("chaos", 7),  # 0–80 representing 0.00–0.80 in steps of 0.01
+    ("rows", 3),  # offset 14: stored as rows-14, range 0–5
+    ("n_patterns", 1),  # offset 1: stored as n_patterns-1
+    ("n_colors", 1),  # offset 3: stored as n_colors-3
+    ("tile_size", 4),  # 0–10
     ("tile_variation", 5),  # 0–30 representing 0.00–0.30 in steps of 0.01
-    ("border_style",   2),
-    ("sash_width",     1),  # 0=off, 1=5px
-    ("cornerstones",   1),
+    ("border_style", 2),
+    ("sash_width", 1),  # 0=off, 1=5px
+    ("cornerstones", 1),
     ("color_gradient", 1),
-    ("mega_frac",      4),  # 0=off, 1–15 → 0.10–0.24 in steps of 0.01
-    ("plain_frac",     4),  # 0=off, 1–15 → 0.10–0.38 in steps of 0.02
+    ("mega_frac", 4),  # 0=off, 1–15 → 0.10–0.24 in steps of 0.01
+    ("plain_frac", 4),  # 0=off, 1–15 → 0.10–0.38 in steps of 0.02
 ]
 
 _V1_TOTAL_BITS = sum(bits for _, bits in _V1_SCHEMA)  # 76
-_V1_LEN = 13   # ceil(76 / log2(58)) = 13 chars
+_V1_LEN = 13  # ceil(76 / log2(58)) = 13 chars
 
 
 # ---------------------------------------------------------------------------
@@ -105,16 +116,36 @@ _V1_LEN = 13   # ceil(76 / log2(58)) = 13 chars
 # ---------------------------------------------------------------------------
 
 _V2_PALETTES = [
-    "ocean breeze", "wildflower", "indigo dye", "northern lights",
-    "cherry blossom", "tide pool", "lavender fields", "winter frost",
-    "twilight", "sea glass", "wisteria", "honey oak",
-    "thistle", "river stone", "bluebell", "frosted berry", "dove grey",
+    "ocean breeze",
+    "wildflower",
+    "indigo dye",
+    "northern lights",
+    "cherry blossom",
+    "tide pool",
+    "lavender fields",
+    "winter frost",
+    "twilight",
+    "sea glass",
+    "wisteria",
+    "honey oak",
+    "thistle",
+    "river stone",
+    "bluebell",
+    "frosted berry",
+    "dove grey",
     "handloom",
 ]  # 5 bits → max 31 entries
 
 _V2_SYMMETRY = [
-    "none", "mirror", "rotational", "stripe", "partial",
-    "flower", "emergent", "bargello", "columns",
+    "none",
+    "mirror",
+    "rotational",
+    "stripe",
+    "partial",
+    "flower",
+    "emergent",
+    "bargello",
+    "columns",
 ]  # 4 bits → max 15 entries
 
 _V2_BORDER = ["none", "solid", "checkerboard", "piano_keys"]  # 2 bits (same as V1)
@@ -126,25 +157,25 @@ _V2_STITCH = ["grid", "diagonal", "sashiko_wave", "sashiko_asanoha"]  # 3 bits �
 _V2_WONKY = [0.0, 0.02, 0.04, 0.06]  # 2 bits
 
 _V2_SCHEMA = [
-    ("version",        4),
-    ("seed",          31),
-    ("palette",        5),
-    ("symmetry",       4),
-    ("chaos",          7),  # 0–80 representing 0.00–0.80 in steps of 0.01
-    ("rows",           3),  # offset 14: stored as rows-14, range 0–7
-    ("n_patterns",     1),  # offset 1: stored as n_patterns-1
-    ("n_colors",       1),  # offset 3: stored as n_colors-3
-    ("tile_size",      4),  # 0–10
+    ("version", 4),
+    ("seed", 31),
+    ("palette", 5),
+    ("symmetry", 4),
+    ("chaos", 7),  # 0–80 representing 0.00–0.80 in steps of 0.01
+    ("rows", 3),  # offset 14: stored as rows-14, range 0–7
+    ("n_patterns", 1),  # offset 1: stored as n_patterns-1
+    ("n_colors", 1),  # offset 3: stored as n_colors-3
+    ("tile_size", 4),  # 0–10
     ("tile_variation", 5),  # 0–30 representing 0.00–0.30 in steps of 0.01
-    ("border_style",   2),
-    ("mega_frac",      4),  # 0=off, 1–15 → 0.10–0.24 in steps of 0.01
-    ("plain_frac",     4),  # 0=off, 1–15 → 0.10–0.38 in steps of 0.02
-    ("quilt_stitch",   3),  # 0=none, 1-4=style
-    ("wonky",          2),  # 0=off, 1=0.02, 2=0.04, 3=0.06
+    ("border_style", 2),
+    ("mega_frac", 4),  # 0=off, 1–15 → 0.10–0.24 in steps of 0.01
+    ("plain_frac", 4),  # 0=off, 1–15 → 0.10–0.38 in steps of 0.02
+    ("quilt_stitch", 3),  # 0=none, 1-4=style
+    ("wonky", 2),  # 0=off, 1=0.02, 2=0.04, 3=0.06
 ]
 
 _V2_TOTAL_BITS = sum(bits for _, bits in _V2_SCHEMA)  # 80
-_V2_LEN = 14   # ceil(80 / log2(58)) = 14 chars
+_V2_LEN = 14  # ceil(80 / log2(58)) = 14 chars
 
 
 # ---------------------------------------------------------------------------
@@ -153,25 +184,25 @@ _V2_LEN = 14   # ceil(80 / log2(58)) = 14 chars
 # ---------------------------------------------------------------------------
 
 _V3_SCHEMA = [
-    ("version",        4),
-    ("seed",          31),
-    ("palette",        5),
-    ("symmetry",       4),
-    ("chaos",          7),
-    ("rows",           3),
-    ("n_patterns",     1),
-    ("n_colors",       2),  # offset 3: stored as n_colors-3, range 0–3 (3-6 colors)
-    ("tile_size",      4),
+    ("version", 4),
+    ("seed", 31),
+    ("palette", 5),
+    ("symmetry", 4),
+    ("chaos", 7),
+    ("rows", 3),
+    ("n_patterns", 1),
+    ("n_colors", 2),  # offset 3: stored as n_colors-3, range 0–3 (3-6 colors)
+    ("tile_size", 4),
     ("tile_variation", 5),
-    ("border_style",   2),
-    ("mega_frac",      4),
-    ("plain_frac",     4),
-    ("quilt_stitch",   3),
-    ("wonky",          2),
+    ("border_style", 2),
+    ("mega_frac", 4),
+    ("plain_frac", 4),
+    ("quilt_stitch", 3),
+    ("wonky", 2),
 ]
 
 _V3_TOTAL_BITS = sum(bits for _, bits in _V3_SCHEMA)  # 81
-_V3_LEN = 14   # ceil(81 / log2(58)) = 14 chars
+_V3_LEN = 14  # ceil(81 / log2(58)) = 14 chars
 
 
 def _pack(schema_values):
@@ -245,21 +276,21 @@ def encode(params):
     stitch_idx = (_V2_STITCH.index(stitch) + 1) if stitch in _V2_STITCH else 0
 
     fields = [
-        (3,                                                            4),  # version
-        (params["seed"] & ((1 << 31) - 1),                           31),
-        (_V2_PALETTES.index(params["palette"]),                        5),
-        (_V2_SYMMETRY.index(params["symmetry"]),                       4),
-        (round(params["chaos"] * 100),                                 7),
-        (params["rows"] - 14,                                          3),
-        (params["n_patterns"] - 1,                                     1),
-        (params["n_colors"] - 3,                                       2),
-        (params.get("tile_size", 0),                                   4),
-        (round(params.get("tile_variation", 0.0) * 100),               5),
-        (_V2_BORDER.index(border),                                     2),
-        (_quantize(params.get("mega_frac",  0.0), 0.10, 0.01, 15),    4),
-        (_quantize(params.get("plain_frac", 0.0), 0.10, 0.02, 15),    4),
-        (stitch_idx,                                                   3),
-        (_encode_wonky(params.get("wonky", 0.0)),                      2),
+        (3, 4),  # version
+        (params["seed"] & ((1 << 31) - 1), 31),
+        (_V2_PALETTES.index(params["palette"]), 5),
+        (_V2_SYMMETRY.index(params["symmetry"]), 4),
+        (round(params["chaos"] * 100), 7),
+        (params["rows"] - 14, 3),
+        (params["n_patterns"] - 1, 1),
+        (params["n_colors"] - 3, 2),
+        (params.get("tile_size", 0), 4),
+        (round(params.get("tile_variation", 0.0) * 100), 5),
+        (_V2_BORDER.index(border), 2),
+        (_quantize(params.get("mega_frac", 0.0), 0.10, 0.01, 15), 4),
+        (_quantize(params.get("plain_frac", 0.0), 0.10, 0.02, 15), 4),
+        (stitch_idx, 3),
+        (_encode_wonky(params.get("wonky", 0.0)), 2),
     ]
     return _b58enc(_pack(fields), _V3_LEN)
 
@@ -269,24 +300,24 @@ def _decode_v2_v3(n, schema, _total_bits):
     raw = _unpack(n, schema)
     stitch_idx = raw["quilt_stitch"]
     return {
-        "seed":           raw["seed"],
-        "palette":        _V2_PALETTES[raw["palette"]],
-        "symmetry":       _V2_SYMMETRY[raw["symmetry"]],
-        "chaos":          round(raw["chaos"] / 100, 2),
-        "rows":           raw["rows"] + 14,
-        "cols":           raw["rows"] + 14,
-        "n_patterns":     raw["n_patterns"] + 1,
-        "n_colors":       raw["n_colors"] + 3,
-        "tile_size":      raw["tile_size"],
+        "seed": raw["seed"],
+        "palette": _V2_PALETTES[raw["palette"]],
+        "symmetry": _V2_SYMMETRY[raw["symmetry"]],
+        "chaos": round(raw["chaos"] / 100, 2),
+        "rows": raw["rows"] + 14,
+        "cols": raw["rows"] + 14,
+        "n_patterns": raw["n_patterns"] + 1,
+        "n_colors": raw["n_colors"] + 3,
+        "tile_size": raw["tile_size"],
         "tile_variation": round(raw["tile_variation"] / 100, 2),
-        "border_style":   _V2_BORDER[raw["border_style"]],
-        "sash_width":     0,
-        "cornerstones":   False,
+        "border_style": _V2_BORDER[raw["border_style"]],
+        "sash_width": 0,
+        "cornerstones": False,
         "color_gradient": "none",
-        "mega_frac":      _dequantize(raw["mega_frac"],  0.10, 0.01),
-        "plain_frac":     _dequantize(raw["plain_frac"], 0.10, 0.02),
-        "quilt_stitch":   _V2_STITCH[stitch_idx - 1] if stitch_idx else None,
-        "wonky":          _V2_WONKY[raw["wonky"]],
+        "mega_frac": _dequantize(raw["mega_frac"], 0.10, 0.01),
+        "plain_frac": _dequantize(raw["plain_frac"], 0.10, 0.02),
+        "quilt_stitch": _V2_STITCH[stitch_idx - 1] if stitch_idx else None,
+        "wonky": _V2_WONKY[raw["wonky"]],
     }
 
 
@@ -319,22 +350,22 @@ def decode(qid):
         if version == 1:
             raw = _unpack(n, _V1_SCHEMA)
             return {
-                "seed":           raw["seed"],
-                "palette":        _V1_PALETTES[raw["palette"]],
-                "symmetry":       _V1_SYMMETRY[raw["symmetry"]],
-                "chaos":          round(raw["chaos"] / 100, 2),
-                "rows":           raw["rows"] + 14,
-                "cols":           raw["rows"] + 14,
-                "n_patterns":     raw["n_patterns"] + 1,
-                "n_colors":       raw["n_colors"] + 3,
-                "tile_size":      raw["tile_size"],
+                "seed": raw["seed"],
+                "palette": _V1_PALETTES[raw["palette"]],
+                "symmetry": _V1_SYMMETRY[raw["symmetry"]],
+                "chaos": round(raw["chaos"] / 100, 2),
+                "rows": raw["rows"] + 14,
+                "cols": raw["rows"] + 14,
+                "n_patterns": raw["n_patterns"] + 1,
+                "n_colors": raw["n_colors"] + 3,
+                "tile_size": raw["tile_size"],
                 "tile_variation": round(raw["tile_variation"] / 100, 2),
-                "border_style":   _V1_BORDER[raw["border_style"]],
-                "sash_width":     5 if raw["sash_width"] else 0,
-                "cornerstones":   bool(raw["cornerstones"]),
+                "border_style": _V1_BORDER[raw["border_style"]],
+                "sash_width": 5 if raw["sash_width"] else 0,
+                "cornerstones": bool(raw["cornerstones"]),
                 "color_gradient": _V1_GRADIENT[raw["color_gradient"]],
-                "mega_frac":      _dequantize(raw["mega_frac"],  0.10, 0.01),
-                "plain_frac":     _dequantize(raw["plain_frac"], 0.10, 0.02),
+                "mega_frac": _dequantize(raw["mega_frac"], 0.10, 0.01),
+                "plain_frac": _dequantize(raw["plain_frac"], 0.10, 0.02),
             }
 
     if len(qid) == _V2_LEN:
@@ -360,7 +391,7 @@ def _decode_cmd(args):
             "python quilt.py",
             f"--rows {params['rows']}",
             f"--cols {params['cols']}",
-            f"--palette \"{params['palette']}\"",
+            f'--palette "{params["palette"]}"',
             f"--symmetry {params['symmetry']}",
             f"--chaos {params['chaos']}",
             f"--seed {params['seed']}",
@@ -407,6 +438,7 @@ def _cli():
 
     elif cmd == "test":
         import doctest  # pylint: disable=import-outside-toplevel
+
         doctest.testmod(verbose=True)
 
     else:

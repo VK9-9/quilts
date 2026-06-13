@@ -9,6 +9,7 @@ Before build_layout learned about n_palettes and tiling, the 'palette_two' and
 'none_tiled' cases below produced mismatched grids — exactly the silent
 wrong-pattern bug this guards against.
 """
+
 import pytest
 
 import quilt
@@ -20,24 +21,53 @@ from quilt import render_quilt
 # render grid and the reconstruction historically diverged.
 CASES = {
     "plain_partial": {
-        "rows": 16, "cols": 16, "symmetry": "partial", "chaos": 0.4,
-        "palette": "ocean breeze", "n_patterns": 2, "n_colors": 4,
-        "tile_size": 0, "tile_variation": 0.1, "seed": 2001,
+        "rows": 16,
+        "cols": 16,
+        "symmetry": "partial",
+        "chaos": 0.4,
+        "palette": "ocean breeze",
+        "n_patterns": 2,
+        "n_colors": 4,
+        "tile_size": 0,
+        "tile_variation": 0.1,
+        "seed": 2001,
     },
     "bargello": {
-        "rows": 16, "cols": 16, "symmetry": "bargello", "chaos": 0.3,
-        "palette": "lavender fields", "n_patterns": 2, "n_colors": 4,
-        "tile_size": 0, "tile_variation": 0.1, "seed": 2002,
+        "rows": 16,
+        "cols": 16,
+        "symmetry": "bargello",
+        "chaos": 0.3,
+        "palette": "lavender fields",
+        "n_patterns": 2,
+        "n_colors": 4,
+        "tile_size": 0,
+        "tile_variation": 0.1,
+        "seed": 2002,
     },
     "palette_two": {
-        "rows": 16, "cols": 16, "symmetry": "partial", "chaos": 0.4,
-        "palette": "ocean breeze", "palette_2": "wildflower", "n_patterns": 2,
-        "n_colors": 4, "tile_size": 0, "tile_variation": 0.1, "seed": 2003,
+        "rows": 16,
+        "cols": 16,
+        "symmetry": "partial",
+        "chaos": 0.4,
+        "palette": "ocean breeze",
+        "palette_2": "wildflower",
+        "n_patterns": 2,
+        "n_colors": 4,
+        "tile_size": 0,
+        "tile_variation": 0.1,
+        "seed": 2003,
     },
     "none_tiled": {
-        "rows": 16, "cols": 16, "symmetry": "none", "chaos": 0.5,
-        "palette": "thistle", "n_patterns": 2, "n_colors": 4,
-        "tile_size": 6, "tile_variation": 0.15, "seed": 2004,
+        "rows": 16,
+        "cols": 16,
+        "symmetry": "none",
+        "chaos": 0.5,
+        "palette": "thistle",
+        "n_patterns": 2,
+        "n_colors": 4,
+        "tile_size": 6,
+        "tile_variation": 0.15,
+        "seed": 2004,
     },
 }
 

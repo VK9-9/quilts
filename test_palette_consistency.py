@@ -11,6 +11,7 @@ are intentionally allowed to reference palettes that no longer exist — they ex
 to decode old IDs / exclude old names, not to be rendered. Only the *active*
 sets are required to exist.
 """
+
 from palettes import PALETTES
 from layout import SYMMETRY_MODES
 import sampler
@@ -20,6 +21,7 @@ CURRENT_PALETTES = {name for name, _ in PALETTES}
 
 
 # --- active palettes must exist in palettes.py ---
+
 
 def test_v2_palettes_all_renderable():
     """Every generator/encoding palette must exist (else the dropdown breaks)."""
@@ -41,6 +43,7 @@ def test_proven_palettes_exist():
 
 # --- active symmetries must be real layout modes ---
 
+
 def test_v2_symmetries_are_layout_modes():
     bad = [s for s in _V2_SYMMETRY if s not in SYMMETRY_MODES]
     assert not bad, f"_V2_SYMMETRY references unknown modes: {bad}"
@@ -58,6 +61,7 @@ def test_proven_symmetries_are_layout_modes():
 
 # --- sampler internal consistency ---
 
+
 def test_proven_and_dropped_palettes_disjoint():
     overlap = set(sampler._PROVEN_PALETTES) & sampler._DROP_PALETTES
     assert not overlap, f"palettes both proven and dropped: {overlap}"
@@ -65,16 +69,19 @@ def test_proven_and_dropped_palettes_disjoint():
 
 # --- encoding integrity: index-based lookup requires unique names in budget ---
 
+
 def test_encoding_lists_have_no_duplicates():
-    for label, names in [("_V1_PALETTES", _V1_PALETTES),
-                         ("_V2_PALETTES", _V2_PALETTES),
-                         ("_V2_SYMMETRY", _V2_SYMMETRY)]:
+    for label, names in [
+        ("_V1_PALETTES", _V1_PALETTES),
+        ("_V2_PALETTES", _V2_PALETTES),
+        ("_V2_SYMMETRY", _V2_SYMMETRY),
+    ]:
         assert len(names) == len(set(names)), f"{label} has duplicate entries"
 
 
 def test_encoding_lists_fit_bit_budget():
     # Frozen widths from quilt_id schema: V1 palette 4 bits, V2 palette 5 bits,
     # V2 symmetry 4 bits. Overflowing these silently corrupts encode/decode.
-    assert len(_V1_PALETTES) <= 2 ** 4
-    assert len(_V2_PALETTES) <= 2 ** 5
-    assert len(_V2_SYMMETRY) <= 2 ** 4
+    assert len(_V1_PALETTES) <= 2**4
+    assert len(_V2_PALETTES) <= 2**5
+    assert len(_V2_SYMMETRY) <= 2**4
