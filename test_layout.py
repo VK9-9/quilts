@@ -1,10 +1,17 @@
 """Tests for layout.py — symmetry modes and grid generation."""
+
 import random
 
 import pytest
 from layout import (
-    SYMMETRY_MODES, layout_none, layout_mirror4, layout_rotational,
-    layout_stripe, layout_partial, layout_flower, layout_emergent,
+    SYMMETRY_MODES,
+    layout_none,
+    layout_mirror4,
+    layout_rotational,
+    layout_stripe,
+    layout_partial,
+    layout_flower,
+    layout_emergent,
     layout_bargello,
 )
 
@@ -19,13 +26,13 @@ def _make_grid(fn, rows=ROWS, cols=COLS, seed=42, **kwargs):
 
 # --- Properties that hold for all modes ---
 
+
 @pytest.fixture(params=list(SYMMETRY_MODES.items()), ids=lambda x: x[0])
 def mode_and_fn(request):
     return request.param
 
 
 class TestAllModes:
-
     def test_grid_has_all_cells(self, mode_and_fn):
         name, fn = mode_and_fn
         kwargs = {"chaos": 0.3} if name == "partial" else {}
@@ -82,8 +89,8 @@ class TestAllModes:
 
 # --- Mode-specific tests ---
 
-class TestMirror4:
 
+class TestMirror4:
     def test_horizontal_symmetry(self):
         grid = _make_grid(layout_mirror4)
         for r in range(ROWS):
@@ -101,7 +108,6 @@ class TestMirror4:
 
 
 class TestRotational:
-
     def test_quadrants_share_pattern(self):
         grid = _make_grid(layout_rotational)
         # Top-left and bottom-right should use same pattern (180° rotation)
@@ -121,7 +127,6 @@ class TestRotational:
 
 
 class TestStripe:
-
     def test_top_bottom_mirror(self):
         grid = _make_grid(layout_stripe)
         for r in range(ROWS // 2):
@@ -133,7 +138,6 @@ class TestStripe:
 
 
 class TestPartial:
-
     def test_chaos_zero_is_mirror(self):
         g_mirror = _make_grid(layout_mirror4, seed=42)
         g_partial = _make_grid(layout_partial, seed=42, chaos=0.0)
@@ -149,7 +153,6 @@ class TestPartial:
 
 
 class TestFlower:
-
     def test_has_two_patterns(self):
         grid = _make_grid(layout_flower)
         patterns = {cell["pattern"] for cell in grid.values()}
@@ -167,7 +170,6 @@ class TestFlower:
 
 
 class TestEmergent:
-
     def test_single_pattern(self):
         grid = _make_grid(layout_emergent)
         patterns = {cell["pattern"] for cell in grid.values()}
@@ -193,7 +195,6 @@ class TestEmergent:
 
 
 class TestBargello:
-
     def test_has_bargello_color(self):
         grid = _make_grid(layout_bargello)
         for cell in grid.values():
@@ -216,10 +217,18 @@ class TestBargello:
 
 
 class TestSymmetryModeRegistry:
-
     def test_all_modes_present(self):
-        expected = {"none", "mirror", "rotational", "stripe", "partial",
-                    "flower", "emergent", "bargello", "columns"}
+        expected = {
+            "none",
+            "mirror",
+            "rotational",
+            "stripe",
+            "partial",
+            "flower",
+            "emergent",
+            "bargello",
+            "columns",
+        }
         assert set(SYMMETRY_MODES.keys()) == expected
 
     def test_all_modes_callable(self):

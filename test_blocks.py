@@ -1,4 +1,5 @@
 """Tests for blocks.py — block pattern geometry and color indices."""
+
 import random
 
 import pytest
@@ -68,51 +69,58 @@ class TestSpecificPatterns:
 
     def test_nine_patch_returns_9(self):
         from blocks import nine_patch
+
         patches = nine_patch(0, 0, 90, 4)
         assert len(patches) == 9
 
     def test_pinwheel_returns_4(self):
         from blocks import pinwheel
+
         patches = pinwheel(0, 0, 100, 4)
         assert len(patches) == 4
 
     def test_diagonal_is_deterministic(self):
         from blocks import diagonal
+
         p1 = diagonal(0, 0, 100, 2)
         p2 = diagonal(0, 0, 100, 2)
         assert p1 == p2
 
     def test_half_square_triangle_has_two_patches(self):
         from blocks import half_square_triangle
+
         patches = half_square_triangle(0, 0, 100, 4)
         assert len(patches) == 2
 
     def test_cherry_blossom_uses_rgb_tuples(self):
         from blocks import cherry_blossom
+
         patches = cherry_blossom(0, 0, 100, 4)
         rgb_patches = [(p, c) for p, c in patches if isinstance(c, tuple)]
         assert len(rgb_patches) > 0, "cherry_blossom should use RGB tuple colors"
 
     def test_flying_geese_geometry(self):
         from blocks import flying_geese
+
         patches = flying_geese(0, 0, 90, 4)
         # 3 geese × 3 patches each = 9
         assert len(patches) == 9
 
     def test_star_returns_9_patches(self):
         from blocks import star
+
         patches = star(0, 0, 100, 4)
         assert len(patches) == 9
 
     def test_checkerboard_4x4_returns_24(self):
         from blocks import checkerboard_4x4
+
         patches = checkerboard_4x4(0, 0, 100, 4)
         # 8 solid + 8×2 split = 24
         assert len(patches) == 24
 
 
 class TestBlockRegistry:
-
     def test_registry_not_empty(self):
         assert len(BLOCK_PATTERNS) > 0
 

@@ -1,32 +1,54 @@
 # Quilts project tasks. Run `just` (or `just --list`) to see all recipes.
 
-# Use the project venv if present, else fall back to system python3.
-python := `[ -x venv/bin/python ] && echo venv/bin/python || echo python3`
+python := "venv/bin/python"
 ratings := "data/ratings.json"
 
 # List available recipes
 default:
     @just --list
 
-# Run the full test suite (doctests + pylint + pytest). Pass -v for verbose: `just test -v`
-test *args:
-    ./test.sh {{args}}
+# Idempotent environment bootstrap: create venv (if missing) + install deps
+setup:
+    [ -d venv ] || python3 -m venv venv
+    venv/bin/pip install -r requirements.txt
 
-# Run pylint only
+# Autoformat all Python in place
+fmt:
+    venv/bin/ruff format .
+
+# Static analysis only (pylint), warnings as errors
 lint:
     {{python}} -m pylint --ignore-patterns='test_.*\.py' *.py
 
-# Rating webapp (active-learning scorer) on :5555
-score:
-    {{python}} app.py {{ratings}}
+# Tests only (doctests + pytest). Extra pytest args pass through: `just test -k name`
+test *args:
+    {{python}} -m doctest quilt_id.py clip_embed.py
+    {{python}} -m pytest {{args}}
 
-# Public generator webapp on :5001
-generator:
+# Dependency vulnerability scan.
+# Ignored: CVE-2025-3000 (torch.jit.script memory corruption) — no fix released,
+# local-only exploit, torch is a dev-only dep (not in requirements-railway.txt)
+# and the vulnerable jit.script path is unused. Re-check when a fix ships.
+audit:
+    venv/bin/pip-audit -r requirements.txt --ignore-vuln CVE-2025-3000
+
+# Local pre-commit gate: format, lint, test, audit
+check: fmt lint test audit
+
+# CI gate: same as check but only verifies formatting (never rewrites)
+ci: fmt-check lint test audit
+
+[private]
+fmt-check:
+    venv/bin/ruff format --check .
+
+# Run the default app: public generator webapp on :5001 (what `deploy` ships)
+run:
     {{python}} generator.py
 
-# Build the static gallery into docs/
-build-site:
-    {{python}} build_site.py --ratings {{ratings}} --out docs/ --families 18 --variations 18
+# Run the active-learning scorer webapp on :5555 (local admin tool)
+run-score:
+    {{python}} app.py {{ratings}}
 
 # Deploy the generator webapp to Railway (merges main -> release). Optional source branch arg.
 deploy *args:
@@ -36,6 +58,12 @@ deploy *args:
 deploy-static *args:
     ./deploy-site.sh {{args}}
 
+# --- project-specific tasks ---
+
+# Build the static gallery into docs/
+build-site:
+    {{python}} build_site.py --ratings {{ratings}} --out docs/ --families 18 --variations 18
+
 # Backfill CLIP embeddings for existing ratings
 backfill:
     {{python}} backfill_embeddings.py {{ratings}}
@@ -43,5 +71,3 @@ backfill:
 # Round analysis of the ratings data
 analyze:
     {{python}} analyze.py {{ratings}}
-
-alias static := deploy-static

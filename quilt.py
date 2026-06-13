@@ -14,6 +14,7 @@ Options:
     --output FILE     Output filename (default: quilts/out.png)
     --border N        Border/margin in pixels (default: 20)
 """
+
 import argparse
 import io
 import math
@@ -35,9 +36,7 @@ def pick_palettes(palette_name, _n_needed, rng):
         matches = [p for p in PALETTES if p[0] == palette_name]
         if not matches:
             available = ", ".join(p[0] for p in PALETTES)
-            raise ValueError(
-                f"Unknown palette '{palette_name}'. Available: {available}"
-            )
+            raise ValueError(f"Unknown palette '{palette_name}'. Available: {available}")
         chosen = matches[0]
 
     name, colors = chosen
@@ -76,9 +75,16 @@ def _block_patches(cell, size, n_colors, wonky=0.0, wonky_seed=0):
         wonky_rng = random.Random(wonky_seed)
         jitter = wonky * size
         patches = [
-            ([(px + wonky_rng.uniform(-jitter, jitter),
-               py + wonky_rng.uniform(-jitter, jitter))
-              for px, py in poly], ci)
+            (
+                [
+                    (
+                        px + wonky_rng.uniform(-jitter, jitter),
+                        py + wonky_rng.uniform(-jitter, jitter),
+                    )
+                    for px, py in poly
+                ],
+                ci,
+            )
             for poly, ci in patches
         ]
     return patches
@@ -111,8 +117,15 @@ def _stroke_patches(ctx, patches, bx, by, sx, sy):  # pylint: disable=too-many-a
         ctx.stroke()
 
 
-def _build_tiled_grid(rows, cols, tile_size, tile_variation, n_patterns,  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals,too-many-nested-blocks
-                      n_colors, rng):
+def _build_tiled_grid(
+    rows,
+    cols,
+    tile_size,
+    tile_variation,
+    n_patterns,  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals,too-many-nested-blocks
+    n_colors,
+    rng,
+):
     """Build grid by stamping a template tile with tiny per-copy variations.
 
     1. Generate one template tile (tile_size x tile_size) with the layout engine
@@ -161,8 +174,19 @@ def _build_tiled_grid(rows, cols, tile_size, tile_variation, n_patterns,  # pyli
     return grid
 
 
-def _draw_border(ctx, width, height, border, quilt_x, quilt_y, quilt_w,  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals,too-many-branches,too-many-statements
-                  quilt_h, style, colors, block_size):
+def _draw_border(
+    ctx,
+    width,
+    height,
+    border,
+    quilt_x,
+    quilt_y,
+    quilt_w,  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals,too-many-branches,too-many-statements
+    quilt_h,
+    style,
+    colors,
+    block_size,
+):
     """Draw a decorative border around the quilt area.
 
     styles: solid, stripes, checkerboard, piano_keys
@@ -183,8 +207,7 @@ def _draw_border(ctx, width, height, border, quilt_x, quilt_y, quilt_w,  # pylin
         ctx.rectangle(0, quilt_y, quilt_x, quilt_h)
         ctx.fill()
         # right
-        ctx.rectangle(quilt_x + quilt_w, quilt_y, width - quilt_x - quilt_w,
-                      quilt_h)
+        ctx.rectangle(quilt_x + quilt_w, quilt_y, width - quilt_x - quilt_w, quilt_h)
         ctx.fill()
 
     elif style == "stripes":
@@ -216,8 +239,7 @@ def _draw_border(ctx, width, height, border, quilt_x, quilt_y, quilt_w,  # pylin
         for sy in range(0, height, sq):
             for sx in range(0, width, sq):
                 # skip quilt interior
-                if (quilt_x <= sx < quilt_x + quilt_w and
-                        quilt_y <= sy < quilt_y + quilt_h):
+                if quilt_x <= sx < quilt_x + quilt_w and quilt_y <= sy < quilt_y + quilt_h:
                     continue
                 color = c1 if (sx // sq + sy // sq) % 2 == 0 else c2
                 ctx.set_source_rgb(*color)
@@ -248,17 +270,19 @@ def _draw_border(ctx, width, height, border, quilt_x, quilt_y, quilt_w,  # pylin
             ctx.fill()
         # corners solid
         ctx.set_source_rgb(*c1)
-        for cx, cy in [(0, 0), (quilt_x + quilt_w, 0),
-                        (0, quilt_y + quilt_h),
-                        (quilt_x + quilt_w, quilt_y + quilt_h)]:
+        for cx, cy in [
+            (0, 0),
+            (quilt_x + quilt_w, 0),
+            (0, quilt_y + quilt_h),
+            (quilt_x + quilt_w, quilt_y + quilt_h),
+        ]:
             ctx.rectangle(cx, cy, border, border)
             ctx.fill()
 
 
 BORDER_STYLES = ["solid", "stripes", "checkerboard", "piano_keys"]
 
-QUILT_STITCH_STYLES = ["grid", "diagonal", "crosshatch",
-                       "sashiko_wave", "sashiko_asanoha"]
+QUILT_STITCH_STYLES = ["grid", "diagonal", "crosshatch", "sashiko_wave", "sashiko_asanoha"]
 
 
 def _draw_quilt_stitching(ctx, qx, qy, qw, qh, style, spacing):  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals
@@ -294,8 +318,8 @@ def _draw_quilt_stitching(ctx, qx, qy, qw, qh, style, spacing):  # pylint: disab
         ctx.stroke()
 
     if style in ("grid", "crosshatch"):
-        draw_lines_at_angle(0)    # horizontal
-        draw_lines_at_angle(90)   # vertical
+        draw_lines_at_angle(0)  # horizontal
+        draw_lines_at_angle(90)  # vertical
     if style in ("diagonal", "crosshatch"):
         draw_lines_at_angle(45)
         draw_lines_at_angle(-45)
@@ -328,16 +352,25 @@ def _draw_quilt_stitching(ctx, qx, qy, qw, qh, style, spacing):  # pylint: disab
                 for a in range(6):
                     angle = math.radians(a * 60)
                     ctx.move_to(cx, cy)
-                    ctx.line_to(cx + s / 2 * math.cos(angle),
-                                cy + s / 2 * math.sin(angle))
+                    ctx.line_to(cx + s / 2 * math.cos(angle), cy + s / 2 * math.sin(angle))
                 ctx.stroke()
 
     ctx.set_dash([])
     ctx.restore()
 
 
-def _build_grid(rng, rows, cols, symmetry, chaos, max_patterns,  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals,too-many-branches
-                n_colors, n_palettes, tile_size, tile_variation):
+def _build_grid(
+    rng,
+    rows,
+    cols,
+    symmetry,
+    chaos,
+    max_patterns,  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals,too-many-branches
+    n_colors,
+    n_palettes,
+    tile_size,
+    tile_variation,
+):
     """Build the cell grid (pattern/palette/rotation/color_map) for a quilt.
 
     This is the single source of truth for the layout. It consumes only the
@@ -362,8 +395,7 @@ def _build_grid(rng, rows, cols, symmetry, chaos, max_patterns,  # pylint: disab
         tile_size = None
 
     if tile_size is not None:
-        grid = _build_tiled_grid(rows, cols, tile_size, tile_variation,
-                                 n_patterns, n_colors, rng)
+        grid = _build_tiled_grid(rows, cols, tile_size, tile_variation, n_patterns, n_colors, rng)
         if allowed is not None:
             for cell in grid.values():
                 cell["pattern"] = allowed[cell["pattern"]]
@@ -392,9 +424,19 @@ def _build_grid(rng, rows, cols, symmetry, chaos, max_patterns,  # pylint: disab
     return grid, allowed
 
 
-def build_layout(seed, rows, cols, symmetry, chaos, palette_name,  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals
-                 max_patterns=None, max_colors=None, n_palettes=1,
-                 tile_size=None, tile_variation=0.05):
+def build_layout(
+    seed,
+    rows,
+    cols,
+    symmetry,
+    chaos,
+    palette_name,  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals
+    max_patterns=None,
+    max_colors=None,
+    n_palettes=1,
+    tile_size=None,
+    tile_variation=0.05,
+):
     """Reconstruct layout grid and palette from quilt params.
 
     Returns (grid, allowed_patterns, palette_colors, rng) where rng is the
@@ -412,8 +454,18 @@ def build_layout(seed, rows, cols, symmetry, chaos, palette_name,  # pylint: dis
         palette_colors = color_rng.sample(palette_colors, max_colors)
     n_colors = len(palette_colors)
 
-    grid, allowed = _build_grid(rng, rows, cols, symmetry, chaos, max_patterns,
-                                n_colors, n_palettes, tile_size, tile_variation)
+    grid, allowed = _build_grid(
+        rng,
+        rows,
+        cols,
+        symmetry,
+        chaos,
+        max_patterns,
+        n_colors,
+        n_palettes,
+        tile_size,
+        tile_variation,
+    )
     return grid, allowed, palette_colors, rng
 
 
@@ -472,12 +524,30 @@ def _resolve_palettes(palette_name, palette_mix, palette_name_2, max_colors, col
     return [palette_colors], 1
 
 
-def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals,too-many-branches,too-many-statements
-                 seed, output, border, max_patterns=None, max_colors=None,
-                 tile_size=None, tile_variation=0.05, border_style=None,
-                 mega_frac=0.0, plain_frac=0.0, quilt_stitch=None,
-                 wash_alpha=0.0, palette_name_2=None, palette_mix=None,
-                 wonky=0.0, strippy=0.0):
+def render_quilt(
+    rows,
+    cols,
+    block_size,
+    symmetry,
+    chaos,
+    palette_name,  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals,too-many-branches,too-many-statements
+    seed,
+    output,
+    border,
+    max_patterns=None,
+    max_colors=None,
+    tile_size=None,
+    tile_variation=0.05,
+    border_style=None,
+    mega_frac=0.0,
+    plain_frac=0.0,
+    quilt_stitch=None,
+    wash_alpha=0.0,
+    palette_name_2=None,
+    palette_mix=None,
+    wonky=0.0,
+    strippy=0.0,
+):
     """Generate and render a quilt to an image file."""
     if seed is None:
         seed = random.randint(0, 2**31)
@@ -488,7 +558,8 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylin
     color_rng = random.Random(rng.randint(0, 2**31))
 
     all_palettes, n_palettes = _resolve_palettes(
-        palette_name, palette_mix, palette_name_2, max_colors, color_rng)
+        palette_name, palette_mix, palette_name_2, max_colors, color_rng
+    )
     palette_colors = all_palettes[0]
     n_colors = len(palette_colors)
 
@@ -497,8 +568,18 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylin
     if symmetry != "none":
         tile_size = None
 
-    grid, _allowed = _build_grid(rng, rows, cols, symmetry, chaos, max_patterns,
-                                 n_colors, n_palettes, tile_size, tile_variation)
+    grid, _allowed = _build_grid(
+        rng,
+        rows,
+        cols,
+        symmetry,
+        chaos,
+        max_patterns,
+        n_colors,
+        n_palettes,
+        tile_size,
+        tile_variation,
+    )
 
     # plain blocks: random cells rendered as solid color (no pattern)
     plain_cells = set()
@@ -511,7 +592,7 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylin
                     plain_cells.add((r, c))
 
     # mega-blocks: greedily select non-overlapping 2x2 regions
-    mega_tl = set()       # top-left corners of mega-blocks
+    mega_tl = set()  # top-left corners of mega-blocks
     mega_covered = set()  # all 4 cells covered by mega-blocks
     if mega_frac > 0.0 and rows >= 2 and cols >= 2:
         candidates = [(r, c) for r in range(rows - 1) for c in range(cols - 1)]
@@ -552,9 +633,19 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylin
         # pick 2 border colors from palette
         border_c1 = palette_colors[rng.randint(0, n_colors - 1)]
         border_c2 = palette_colors[rng.randint(0, n_colors - 1)]
-        _draw_border(ctx, width, height, border, quilt_x, quilt_y,
-                     quilt_w, quilt_h, border_style,
-                     [border_c1, border_c2], block_size)
+        _draw_border(
+            ctx,
+            width,
+            height,
+            border,
+            quilt_x,
+            quilt_y,
+            quilt_w,
+            quilt_h,
+            border_style,
+            [border_c1, border_c2],
+            block_size,
+        )
 
     # render blocks (skip cells covered by mega-blocks)
     for r in range(rows):
@@ -575,13 +666,11 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylin
                 continue
 
             # Generate pattern in square coords (block_size), scale to cell (cw × ch)
-            patches = _block_patches(cell, block_size, n_colors, wonky,
-                                     seed * 10000 + r * 1000 + c)
+            patches = _block_patches(cell, block_size, n_colors, wonky, seed * 10000 + r * 1000 + c)
             sx, sy = cw / block_size, ch / block_size
             color_map = cell["color_map"]
             active_pal = all_palettes[cell.get("palette", 0) % len(all_palettes)]
-            _fill_patches(ctx, patches, bx, by, sx, sy,
-                          color_map, active_pal, n_colors)
+            _fill_patches(ctx, patches, bx, by, sx, sy, color_map, active_pal, n_colors)
 
     # grid lines (seam lines between blocks)
     # interior seam lines of mega-blocks are skipped
@@ -622,7 +711,7 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylin
             ctx.stroke()
 
     # render mega-blocks (after grid lines so they paint over interior seams)
-    for (mr, mc) in mega_tl:
+    for mr, mc in mega_tl:
         cell = grid[(mr, mc)]
         bx = border + col_pos[mc]
         by = border + row_pos[mr]
@@ -630,13 +719,13 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylin
         mh = row_sizes[mr] + row_sizes[mr + 1]
         mega_sq = 2 * block_size  # square coord size for pattern
 
-        patches = _block_patches(cell, mega_sq, n_colors, wonky,
-                                 seed * 10000 + mr * 1000 + mc + 500)
+        patches = _block_patches(
+            cell, mega_sq, n_colors, wonky, seed * 10000 + mr * 1000 + mc + 500
+        )
         sx, sy = mw / mega_sq, mh / mega_sq
         color_map = cell["color_map"]
         active_pal = all_palettes[cell.get("palette", 0) % len(all_palettes)]
-        _fill_patches(ctx, patches, bx, by, sx, sy,
-                      color_map, active_pal, n_colors)
+        _fill_patches(ctx, patches, bx, by, sx, sy, color_map, active_pal, n_colors)
 
     # patch seam lines (within blocks) — skip mega-covered, draw mega seams after
     ctx.set_source_rgba(0, 0, 0, 0.08)
@@ -655,7 +744,7 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylin
             patches = _block_patches(cell, block_size, n_colors)
             _stroke_patches(ctx, patches, bx, by, sx, sy)
 
-    for (mr, mc) in mega_tl:
+    for mr, mc in mega_tl:
         cell = grid[(mr, mc)]
         bx = border + col_pos[mc]
         by = border + row_pos[mr]
@@ -676,8 +765,7 @@ def render_quilt(rows, cols, block_size, symmetry, chaos, palette_name,  # pylin
 
     # thread quilting overlay
     if quilt_stitch is not None:
-        _draw_quilt_stitching(ctx, quilt_x, quilt_y, quilt_w, quilt_h,
-                              quilt_stitch, block_size)
+        _draw_quilt_stitching(ctx, quilt_x, quilt_y, quilt_w, quilt_h, quilt_stitch, block_size)
 
     # save or return bytes
     if output is None:
@@ -697,28 +785,42 @@ def main():
     parser.add_argument("--rows", type=int, default=20)
     parser.add_argument("--cols", type=int, default=20)
     parser.add_argument("--block-size", type=int, default=60)
-    parser.add_argument("--symmetry", default="partial",
-                        choices=list(SYMMETRY_MODES.keys()))
+    parser.add_argument("--symmetry", default="partial", choices=list(SYMMETRY_MODES.keys()))
     parser.add_argument("--chaos", type=float, default=0.3)
     parser.add_argument("--palette", default="random")
     parser.add_argument("--seed", type=int, default=None)
     parser.add_argument("--output", default="quilts/out.png")
     parser.add_argument("--border", type=int, default=20)
-    parser.add_argument("--n-patterns", type=int, default=None,
-                        help="Max block patterns to use (default: all)")
-    parser.add_argument("--n-colors", type=int, default=None,
-                        help="Max palette colors to use (default: all)")
-    parser.add_argument("--tile-size", type=int, default=None,
-                        help="Blocks per tile side (e.g. 5 for 5x5 tiles)")
-    parser.add_argument("--tile-variation", type=float, default=0.05,
-                        help="Fraction of blocks perturbed per tile (default: 0.05)")
-    parser.add_argument("--border-style", default=None,
-                        choices=BORDER_STYLES,
-                        help="Decorative border style (default: none)")
-    parser.add_argument("--mega-frac", type=float, default=0.0,
-                        help="Fraction of 2x2 mega-blocks (default: 0.0)")
-    parser.add_argument("--plain-frac", type=float, default=0.0,
-                        help="Fraction of plain solid-color blocks (default: 0.0)")
+    parser.add_argument(
+        "--n-patterns", type=int, default=None, help="Max block patterns to use (default: all)"
+    )
+    parser.add_argument(
+        "--n-colors", type=int, default=None, help="Max palette colors to use (default: all)"
+    )
+    parser.add_argument(
+        "--tile-size", type=int, default=None, help="Blocks per tile side (e.g. 5 for 5x5 tiles)"
+    )
+    parser.add_argument(
+        "--tile-variation",
+        type=float,
+        default=0.05,
+        help="Fraction of blocks perturbed per tile (default: 0.05)",
+    )
+    parser.add_argument(
+        "--border-style",
+        default=None,
+        choices=BORDER_STYLES,
+        help="Decorative border style (default: none)",
+    )
+    parser.add_argument(
+        "--mega-frac", type=float, default=0.0, help="Fraction of 2x2 mega-blocks (default: 0.0)"
+    )
+    parser.add_argument(
+        "--plain-frac",
+        type=float,
+        default=0.0,
+        help="Fraction of plain solid-color blocks (default: 0.0)",
+    )
     args = parser.parse_args()
 
     render_quilt(

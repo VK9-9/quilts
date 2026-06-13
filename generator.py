@@ -6,6 +6,7 @@ Routes:
     GET /render         Render quilt PNG from query params
     GET /download       Same as /render but as file download
 """
+
 import os
 import subprocess
 import sys
@@ -30,17 +31,22 @@ if not _COMMIT:
     try:
         _COMMIT = subprocess.check_output(
             ["git", "rev-parse", "--short", "HEAD"],
-            stderr=subprocess.DEVNULL, text=True,
+            stderr=subprocess.DEVNULL,
+            text=True,
         ).strip()
     except (OSError, subprocess.SubprocessError):
         _COMMIT = "unknown"
-_BUILD_TIME = __import__("datetime").datetime.now(
-    __import__("datetime").timezone.utc
-).strftime("%Y-%m-%d %H:%M UTC")
+_BUILD_TIME = (
+    __import__("datetime")
+    .datetime.now(__import__("datetime").timezone.utc)
+    .strftime("%Y-%m-%d %H:%M UTC")
+)
+
 
 @app.context_processor
 def _inject_build_info():
     return {"build_commit": _COMMIT, "build_time": _BUILD_TIME}
+
 
 PALETTE_NAMES = _V2_PALETTES
 SYMMETRY_NAMES = _V2_SYMMETRY
@@ -56,101 +62,167 @@ PRESETS = {
         "name": "Bargello — Calm",
         "description": "Gentle undulating waves in soft lavender",
         "params": {
-            "palette": "lavender fields", "symmetry": "bargello",
-            "chaos": 0.15, "rows": 16, "n_colors": 4, "tile_size": 6, "tile_variation": 0.1,
-            "border_style": "none", "mega_frac": 0.0, "plain_frac": 0.0,
-            "quilt_stitch": "grid", "wonky": 0.0, "seed": 1001,
+            "palette": "lavender fields",
+            "symmetry": "bargello",
+            "chaos": 0.15,
+            "rows": 16,
+            "n_colors": 4,
+            "tile_size": 6,
+            "tile_variation": 0.1,
+            "border_style": "none",
+            "mega_frac": 0.0,
+            "plain_frac": 0.0,
+            "quilt_stitch": "grid",
+            "wonky": 0.0,
+            "seed": 1001,
         },
     },
     "bargello-bold": {
         "name": "Bargello — Bold",
         "description": "High-contrast waves with deep indigo tones",
         "params": {
-            "palette": "indigo dye", "symmetry": "bargello",
-            "chaos": 0.55, "rows": 18,
-            "n_colors": 4, "tile_size": 5, "tile_variation": 0.15,
-            "border_style": "solid", "mega_frac": 0.0, "plain_frac": 0.0,
-            "quilt_stitch": "diagonal", "wonky": 0.0, "seed": 1002,
+            "palette": "indigo dye",
+            "symmetry": "bargello",
+            "chaos": 0.55,
+            "rows": 18,
+            "n_colors": 4,
+            "tile_size": 5,
+            "tile_variation": 0.15,
+            "border_style": "solid",
+            "mega_frac": 0.0,
+            "plain_frac": 0.0,
+            "quilt_stitch": "diagonal",
+            "wonky": 0.0,
+            "seed": 1002,
         },
     },
     "mirror-geometric": {
         "name": "Mirror — Geometric",
         "description": "Clean four-fold reflection with ocean tones",
         "params": {
-            "palette": "ocean breeze", "symmetry": "mirror",
-            "chaos": 0.30, "rows": 16,
-            "n_colors": 4, "tile_size": 7, "tile_variation": 0.1,
-            "border_style": "none", "mega_frac": 0.0, "plain_frac": 0.0,
-            "quilt_stitch": "sashiko_wave", "wonky": 0.0, "seed": 1003,
+            "palette": "ocean breeze",
+            "symmetry": "mirror",
+            "chaos": 0.30,
+            "rows": 16,
+            "n_colors": 4,
+            "tile_size": 7,
+            "tile_variation": 0.1,
+            "border_style": "none",
+            "mega_frac": 0.0,
+            "plain_frac": 0.0,
+            "quilt_stitch": "sashiko_wave",
+            "wonky": 0.0,
+            "seed": 1003,
         },
     },
     "rotational-lively": {
         "name": "Rotational — Lively",
         "description": "Spinning energy with wildflower colours",
         "params": {
-            "palette": "wildflower", "symmetry": "rotational",
-            "chaos": 0.55, "rows": 16,
-            "n_colors": 4, "tile_size": 6, "tile_variation": 0.2,
-            "border_style": "none", "mega_frac": 0.0, "plain_frac": 0.0,
-            "quilt_stitch": "grid", "wonky": 0.0, "seed": 1004,
+            "palette": "wildflower",
+            "symmetry": "rotational",
+            "chaos": 0.55,
+            "rows": 16,
+            "n_colors": 4,
+            "tile_size": 6,
+            "tile_variation": 0.2,
+            "border_style": "none",
+            "mega_frac": 0.0,
+            "plain_frac": 0.0,
+            "quilt_stitch": "grid",
+            "wonky": 0.0,
+            "seed": 1004,
         },
     },
     "stripe-serene": {
         "name": "Stripe — Serene",
         "description": "Calm banded layout in northern lights palette",
         "params": {
-            "palette": "northern lights", "symmetry": "stripe",
-            "chaos": 0.20, "rows": 16,
-            "n_colors": 4, "tile_size": 8, "tile_variation": 0.05,
-            "border_style": "none", "mega_frac": 0.0, "plain_frac": 0.0,
-            "quilt_stitch": "diagonal", "wonky": 0.0, "seed": 1005,
+            "palette": "northern lights",
+            "symmetry": "stripe",
+            "chaos": 0.20,
+            "rows": 16,
+            "n_colors": 4,
+            "tile_size": 8,
+            "tile_variation": 0.05,
+            "border_style": "none",
+            "mega_frac": 0.0,
+            "plain_frac": 0.0,
+            "quilt_stitch": "diagonal",
+            "wonky": 0.0,
+            "seed": 1005,
         },
     },
     "flower-medallion": {
         "name": "Flower — Medallion",
         "description": "Centred bloom radiating outward in cherry blossom",
         "params": {
-            "palette": "cherry blossom", "symmetry": "flower",
-            "chaos": 0.40, "rows": 16, "n_colors": 4, "tile_size": 6, "tile_variation": 0.1,
-            "border_style": "none", "mega_frac": 0.0, "plain_frac": 0.0,
-            "quilt_stitch": "sashiko_asanoha", "wonky": 0.0, "seed": 1006,
+            "palette": "cherry blossom",
+            "symmetry": "flower",
+            "chaos": 0.40,
+            "rows": 16,
+            "n_colors": 4,
+            "tile_size": 6,
+            "tile_variation": 0.1,
+            "border_style": "none",
+            "mega_frac": 0.0,
+            "plain_frac": 0.0,
+            "quilt_stitch": "sashiko_asanoha",
+            "wonky": 0.0,
+            "seed": 1006,
         },
     },
     "emergent-wild": {
         "name": "Emergent — Wild",
         "description": "Macro patterns emerge from coordinated block rotations",
         "params": {
-            "palette": "wisteria", "symmetry": "emergent",
-            "chaos": 0.70, "rows": 18,
-            "n_colors": 4, "tile_size": 5, "tile_variation": 0.2,
-            "border_style": "none", "mega_frac": 0.0, "plain_frac": 0.0,
-            "quilt_stitch": "grid", "wonky": 0.0, "seed": 1007,
+            "palette": "wisteria",
+            "symmetry": "emergent",
+            "chaos": 0.70,
+            "rows": 18,
+            "n_colors": 4,
+            "tile_size": 5,
+            "tile_variation": 0.2,
+            "border_style": "none",
+            "mega_frac": 0.0,
+            "plain_frac": 0.0,
+            "quilt_stitch": "grid",
+            "wonky": 0.0,
+            "seed": 1007,
         },
     },
     "improv-wonky": {
         "name": "Improv — Wonky",
         "description": "Modern improv quilting with jittered vertices",
         "params": {
-            "palette": "thistle", "symmetry": "none",
-            "chaos": 0.60, "rows": 16,
-            "n_colors": 4, "tile_size": 6, "tile_variation": 0.15,
-            "border_style": "none", "mega_frac": 0.0, "plain_frac": 0.0,
-            "quilt_stitch": "diagonal", "wonky": 0.05, "seed": 1008,
+            "palette": "thistle",
+            "symmetry": "none",
+            "chaos": 0.60,
+            "rows": 16,
+            "n_colors": 4,
+            "tile_size": 6,
+            "tile_variation": 0.15,
+            "border_style": "none",
+            "mega_frac": 0.0,
+            "plain_frac": 0.0,
+            "quilt_stitch": "diagonal",
+            "wonky": 0.05,
+            "seed": 1008,
         },
     },
 }
 
-_RENDER_BLOCK_SIZE = 36    # ~576px for a 16-row quilt
+_RENDER_BLOCK_SIZE = 36  # ~576px for a 16-row quilt
 _DOWNLOAD_BLOCK_SIZE = 72  # ~1152px for download
 
 QUILT_SIZES = {
-    "throw":  (50, 65,  "Throw (50\" x 65\")"),
-    "twin":   (65, 85,  "Twin (65\" x 85\")"),
-    "queen":  (85, 108, "Queen (85\" x 108\")"),
-    "king":   (110, 108, "King (110\" x 108\")"),
-    "sq6":    (72, 72,  "Square 6' (72\" x 72\")"),
-    "sq8":    (96, 96,  "Square 8' (96\" x 96\")"),
-    "sq10":   (120, 120, "Square 10' (120\" x 120\")"),
+    "throw": (50, 65, 'Throw (50" x 65")'),
+    "twin": (65, 85, 'Twin (65" x 85")'),
+    "queen": (85, 108, 'Queen (85" x 108")'),
+    "king": (110, 108, 'King (110" x 108")'),
+    "sq6": (72, 72, 'Square 6\' (72" x 72")'),
+    "sq8": (96, 96, 'Square 8\' (96" x 96")'),
+    "sq10": (120, 120, 'Square 10\' (120" x 120")'),
 }
 
 
@@ -177,27 +249,26 @@ def _params_from_request(defaults=None):
     size_w, size_h, _ = QUILT_SIZES.get(size_key, QUILT_SIZES["sq8"])
     cols = round(rows * size_w / size_h)
     return {
-        "palette":        _get("palette",        str,   "lavender fields"),
-        "symmetry":       _get("symmetry",        str,   "bargello"),
-        "chaos":          _get("chaos",           float, 0.3),
-        "rows":           rows,
-        "cols":           cols,
-        "n_patterns":     2,
-        "n_colors":       _get("n_colors",        int,   4),
-        "tile_size":      _get("tile_size",        int,   6),
-        "tile_variation": _get("tile_variation",   float, 0.1),
-        "border_style":   _get("border_style",     str,   "none"),
-        "mega_frac":      _get("mega_frac",        float, 0.0),
-        "plain_frac":     _get("plain_frac",       float, 0.0),
-        "quilt_stitch":   stitch,
-        "wonky":          _get("wonky",            float, 0.0),
-        "strippy":        _get("strippy",          float, 0.0),
-        "wash_alpha":     _get("wash_alpha",       float, 0.0),
-        "palette_2":      a.get("palette_2", base.get("palette_2")) or None,
-        "palette_mix":    a.get("palette_mix", base.get("palette_mix")) or None,
-        "seed":           _get("seed",             int,   42),
+        "palette": _get("palette", str, "lavender fields"),
+        "symmetry": _get("symmetry", str, "bargello"),
+        "chaos": _get("chaos", float, 0.3),
+        "rows": rows,
+        "cols": cols,
+        "n_patterns": 2,
+        "n_colors": _get("n_colors", int, 4),
+        "tile_size": _get("tile_size", int, 6),
+        "tile_variation": _get("tile_variation", float, 0.1),
+        "border_style": _get("border_style", str, "none"),
+        "mega_frac": _get("mega_frac", float, 0.0),
+        "plain_frac": _get("plain_frac", float, 0.0),
+        "quilt_stitch": stitch,
+        "wonky": _get("wonky", float, 0.0),
+        "strippy": _get("strippy", float, 0.0),
+        "wash_alpha": _get("wash_alpha", float, 0.0),
+        "palette_2": a.get("palette_2", base.get("palette_2")) or None,
+        "palette_mix": a.get("palette_mix", base.get("palette_mix")) or None,
+        "seed": _get("seed", int, 42),
     }
-
 
 
 def _render_png(params, block_size):
@@ -260,9 +331,9 @@ def render():
     except (ValueError, KeyError):
         qid = "unknown"
     png_bytes = _render_png(params, _RENDER_BLOCK_SIZE)
-    return Response(png_bytes, mimetype="image/png",
-                    headers={"Cache-Control": "no-store",
-                             "X-Quilt-Id": qid})
+    return Response(
+        png_bytes, mimetype="image/png", headers={"Cache-Control": "no-store", "X-Quilt-Id": qid}
+    )
 
 
 @app.route("/download")

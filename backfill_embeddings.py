@@ -9,6 +9,7 @@ to <ratings_stem>_embeddings.npy alongside the ratings file.
 Already-embedded ratings (rows up to existing embeddings count) are
 skipped so the script is safe to resume if interrupted.
 """
+
 import json
 import os
 import sys
@@ -47,8 +48,7 @@ def backfill(ratings_path):
     skipped = 0
     for i, rec in enumerate(ratings[start:], start=start):
         try:
-            kwargs = params_to_render_kwargs(rec["params"],
-                                            block_size=_CLIP_EMBED_BLOCK_SIZE)
+            kwargs = params_to_render_kwargs(rec["params"], block_size=_CLIP_EMBED_BLOCK_SIZE)
             png_bytes = render_quilt(**kwargs)
             vec = embed_image(png_bytes)
         except Exception:  # pylint: disable=broad-except
@@ -61,8 +61,10 @@ def backfill(ratings_path):
             # save incrementally so interruption doesn't lose work
             np.save(embeddings_path, np.array(rows, dtype=np.float32))
 
-    print(f"Saved {embeddings_path}  shape={np.array(rows).shape}  "
-          f"({skipped} zero-padded due to retired palettes)")
+    print(
+        f"Saved {embeddings_path}  shape={np.array(rows).shape}  "
+        f"({skipped} zero-padded due to retired palettes)"
+    )
 
 
 if __name__ == "__main__":

@@ -3,6 +3,7 @@
 Used by sampler.py (scoring pipeline) and generator.py (public webapp)
 so both always pass the same set of params to render_quilt.
 """
+
 from palettes import PALETTES
 
 PALETTE_NAMES = [p[0] for p in PALETTES]

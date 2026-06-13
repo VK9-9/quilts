@@ -3,6 +3,7 @@
 Run locally and commit the output:
     python render_family_thumbnails.py
 """
+
 from pathlib import Path
 from generator import PRESETS
 from render_params import params_to_render_kwargs

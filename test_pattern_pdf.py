@@ -1,4 +1,5 @@
 """Tests for pattern_pdf.py — PDF sewing pattern generation."""
+
 import math
 import os
 import tempfile
@@ -30,12 +31,21 @@ from pattern_pdf import (
 # Minimal params fixture
 # ---------------------------------------------------------------------------
 
+
 def _base_params(**overrides):
     p = {
-        "seed": 42, "rows": 4, "cols": 4, "symmetry": "rotational",
-        "chaos": 0.3, "palette": "ocean breeze", "n_patterns": 2,
-        "n_colors": 4, "tile_size": 6, "tile_variation": 0.1,
-        "border_style": "none", "quilt_stitch": "grid",
+        "seed": 42,
+        "rows": 4,
+        "cols": 4,
+        "symmetry": "rotational",
+        "chaos": 0.3,
+        "palette": "ocean breeze",
+        "n_patterns": 2,
+        "n_colors": 4,
+        "tile_size": 6,
+        "tile_variation": 0.1,
+        "border_style": "none",
+        "quilt_stitch": "grid",
     }
     p.update(overrides)
     return p
@@ -44,6 +54,7 @@ def _base_params(**overrides):
 # ---------------------------------------------------------------------------
 # Unit tests: pure functions
 # ---------------------------------------------------------------------------
+
 
 class TestColorLabel:
     def test_first_labels(self):
@@ -103,17 +114,20 @@ class TestHumanColorName:
 class TestPickPaletteColors:
     def test_known_palette(self):
         import random
+
         colors = _pick_palette_colors("ocean breeze", 4, random.Random(42))
         assert len(colors) == 4
         assert all(c.startswith("#") for c in colors)
 
     def test_full_palette(self):
         import random
+
         colors = _pick_palette_colors("ocean breeze", None, random.Random(42))
         assert len(colors) >= 4
 
     def test_unknown_palette_fallback(self):
         import random
+
         colors = _pick_palette_colors("nonexistent", 4, random.Random(42))
         assert len(colors) == 4
 
@@ -306,8 +320,8 @@ class TestFooterCanvas:
 # End-to-end tests: generate_pattern_pdf
 # ---------------------------------------------------------------------------
 
-class TestGeneratePatternPdf:
 
+class TestGeneratePatternPdf:
     def _gen(self, params, **kwargs):
         with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as f:
             path = f.name

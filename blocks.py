@@ -4,6 +4,7 @@ Each block pattern is a function that takes (x, y, size, n_colors) and returns
 a list of patches. Each patch is (polygon, color_index) where polygon is a list
 of (px, py) points and color_index selects from the block's assigned palette.
 """
+
 import random
 
 
@@ -31,10 +32,12 @@ def nine_patch(x, y, size, _n_colors):
         for c in range(3):
             ci = (r + c) % 2
             px, py = x + c * s, y + r * s
-            patches.append((
-                [(px, py), (px + s, py), (px + s, py + s), (px, py + s)],
-                ci,
-            ))
+            patches.append(
+                (
+                    [(px, py), (px + s, py), (px + s, py + s), (px, py + s)],
+                    ci,
+                )
+            )
     return patches
 
 
@@ -47,11 +50,12 @@ def log_cabin(x, y, size, n_colors):  # pylint: disable=too-many-locals
     patches = []
     cs = size * 0.12  # half-width of center square
     cx, cy = x + size / 2, y + size / 2
-    patches.append((
-        [(cx - cs, cy - cs), (cx + cs, cy - cs),
-         (cx + cs, cy + cs), (cx - cs, cy + cs)],
-        0,
-    ))
+    patches.append(
+        (
+            [(cx - cs, cy - cs), (cx + cs, cy - cs), (cx + cs, cy + cs), (cx - cs, cy + cs)],
+            0,
+        )
+    )
 
     # current inner rectangle edges
     left, top, right, bottom = cx - cs, cy - cs, cx + cs, cy + cs
@@ -63,39 +67,43 @@ def log_cabin(x, y, size, n_colors):  # pylint: disable=too-many-locals
         ci = (ring % max(n_colors - 1, 1)) + 1 if n_colors > 1 else 0
 
         # top strip — spans full width including new corners
-        patches.append((
-            [(left - sw, top - sw), (right, top - sw),
-             (right, top), (left - sw, top)],
-            ci,
-        ))
+        patches.append(
+            (
+                [(left - sw, top - sw), (right, top - sw), (right, top), (left - sw, top)],
+                ci,
+            )
+        )
         top -= sw
         left -= sw
 
         # right strip
         ci = ((ring + 1) % max(n_colors - 1, 1)) + 1 if n_colors > 1 else 0
-        patches.append((
-            [(right, top), (right + sw, top),
-             (right + sw, bottom), (right, bottom)],
-            ci,
-        ))
+        patches.append(
+            (
+                [(right, top), (right + sw, top), (right + sw, bottom), (right, bottom)],
+                ci,
+            )
+        )
         right += sw
 
         # bottom strip
         ci = (ring % max(n_colors - 1, 1)) + 1 if n_colors > 1 else 0
-        patches.append((
-            [(left, bottom), (right, bottom),
-             (right, bottom + sw), (left, bottom + sw)],
-            ci,
-        ))
+        patches.append(
+            (
+                [(left, bottom), (right, bottom), (right, bottom + sw), (left, bottom + sw)],
+                ci,
+            )
+        )
         bottom += sw
 
         # left strip
         ci = ((ring + 1) % max(n_colors - 1, 1)) + 1 if n_colors > 1 else 0
-        patches.append((
-            [(left - sw, top), (left, top),
-             (left, bottom), (left - sw, bottom)],
-            ci,
-        ))
+        patches.append(
+            (
+                [(left - sw, top), (left, top), (left, bottom), (left - sw, bottom)],
+                ci,
+            )
+        )
         left -= sw
 
     return patches
@@ -105,15 +113,19 @@ def pinwheel(x, y, size, _n_colors):
     """Four triangles arranged in a pinwheel rotation."""
     cx, cy = x + size / 2, y + size / 2
     corners = [
-        (x, y), (x + size, y),
-        (x + size, y + size), (x, y + size),
+        (x, y),
+        (x + size, y),
+        (x + size, y + size),
+        (x, y + size),
     ]
     patches = []
     for i in range(4):
-        patches.append((
-            [corners[i], corners[(i + 1) % 4], (cx, cy)],
-            i % 2,
-        ))
+        patches.append(
+            (
+                [corners[i], corners[(i + 1) % 4], (cx, cy)],
+                i % 2,
+            )
+        )
     return patches
 
 
@@ -126,20 +138,26 @@ def flying_geese(x, y, size, _n_colors):
     for i in range(n):
         gx = x + i * w
         # goose triangle (pointing up)
-        patches.append((
-            [(gx, y + h), (gx + w / 2, y), (gx + w, y + h)],
-            0,
-        ))
+        patches.append(
+            (
+                [(gx, y + h), (gx + w / 2, y), (gx + w, y + h)],
+                0,
+            )
+        )
         # left background
-        patches.append((
-            [(gx, y), (gx + w / 2, y), (gx, y + h)],
-            1,
-        ))
+        patches.append(
+            (
+                [(gx, y), (gx + w / 2, y), (gx, y + h)],
+                1,
+            )
+        )
         # right background
-        patches.append((
-            [(gx + w / 2, y), (gx + w, y), (gx + w, y + h)],
-            1,
-        ))
+        patches.append(
+            (
+                [(gx + w / 2, y), (gx + w, y), (gx + w, y + h)],
+                1,
+            )
+        )
     return patches
 
 
@@ -168,15 +186,19 @@ def chevron(x, y, size, n_colors):
         mid = top + h / 2
         bot = top + h
         # left half — triangle pointing right
-        patches.append((
-            [(x, top), (cx, mid), (x, bot)],
-            ci,
-        ))
+        patches.append(
+            (
+                [(x, top), (cx, mid), (x, bot)],
+                ci,
+            )
+        )
         # right half — triangle pointing left
-        patches.append((
-            [(x + size, top), (cx, mid), (x + size, bot)],
-            ci,
-        ))
+        patches.append(
+            (
+                [(x + size, top), (cx, mid), (x + size, bot)],
+                ci,
+            )
+        )
     return patches
 
 
@@ -195,12 +217,12 @@ def star(x, y, size, n_colors):  # pylint: disable=too-many-locals
     ib = (cx, y + size - m)
     il = (x + m, cy)
     patches = [
-        ([it, ir, ib, il], 0),                            # center diamond
-        ([it, mt, ir], 1 % n_colors),                     # star points
+        ([it, ir, ib, il], 0),  # center diamond
+        ([it, mt, ir], 1 % n_colors),  # star points
         ([ir, mr, ib], 1 % n_colors),
         ([ib, mb, il], 1 % n_colors),
         ([il, ml, it], 1 % n_colors),
-        ([(x, y), mt, it, il], 2 % n_colors),             # corner quads
+        ([(x, y), mt, it, il], 2 % n_colors),  # corner quads
         ([(x + size, y), mr, ir, it], 2 % n_colors),
         ([(x + size, y + size), mb, ib, ir], 2 % n_colors),
         ([(x, y + size), ml, il, ib], 2 % n_colors),
@@ -291,16 +313,20 @@ def ohio_star(x, y, size, n_colors):
             px, py = x + c * s, y + r * s
             if (r, c) in [(0, 0), (0, 2), (2, 0), (2, 2)]:
                 # corner squares
-                patches.append((
-                    [(px, py), (px + s, py), (px + s, py + s), (px, py + s)],
-                    0,
-                ))
+                patches.append(
+                    (
+                        [(px, py), (px + s, py), (px + s, py + s), (px, py + s)],
+                        0,
+                    )
+                )
             elif (r, c) == (1, 1):
                 # center square
-                patches.append((
-                    [(px, py), (px + s, py), (px + s, py + s), (px, py + s)],
-                    2 % n_colors,
-                ))
+                patches.append(
+                    (
+                        [(px, py), (px + s, py), (px + s, py + s), (px, py + s)],
+                        2 % n_colors,
+                    )
+                )
             else:
                 # side cells: split into two triangles (star points)
                 mid_x, mid_y = px + s / 2, py + s / 2
@@ -332,11 +358,12 @@ def courthouse_steps(x, y, size, n_colors):  # pylint: disable=too-many-locals
     cs = size * 0.1  # center half-width
     cx, cy = x + size / 2, y + size / 2
     # center square
-    patches.append((
-        [(cx - cs, cy - cs), (cx + cs, cy - cs),
-         (cx + cs, cy + cs), (cx - cs, cy + cs)],
-        0,
-    ))
+    patches.append(
+        (
+            [(cx - cs, cy - cs), (cx + cs, cy - cs), (cx + cs, cy + cs), (cx - cs, cy + cs)],
+            0,
+        )
+    )
 
     left, top, right, bottom = cx - cs, cy - cs, cx + cs, cy + cs
     remaining = size / 2 - cs
@@ -348,30 +375,34 @@ def courthouse_steps(x, y, size, n_colors):  # pylint: disable=too-many-locals
         ci2 = ((ring + 1) % max(n_colors - 1, 1)) + 1 if n_colors > 1 else 0
 
         # top and bottom strips (same color)
-        patches.append((
-            [(left, top - sw), (right, top - sw),
-             (right, top), (left, top)],
-            ci,
-        ))
-        patches.append((
-            [(left, bottom), (right, bottom),
-             (right, bottom + sw), (left, bottom + sw)],
-            ci,
-        ))
+        patches.append(
+            (
+                [(left, top - sw), (right, top - sw), (right, top), (left, top)],
+                ci,
+            )
+        )
+        patches.append(
+            (
+                [(left, bottom), (right, bottom), (right, bottom + sw), (left, bottom + sw)],
+                ci,
+            )
+        )
         top -= sw
         bottom += sw
 
         # left and right strips (different color)
-        patches.append((
-            [(left - sw, top), (left, top),
-             (left, bottom), (left - sw, bottom)],
-            ci2,
-        ))
-        patches.append((
-            [(right, top), (right + sw, top),
-             (right + sw, bottom), (right, bottom)],
-            ci2,
-        ))
+        patches.append(
+            (
+                [(left - sw, top), (left, top), (left, bottom), (left - sw, bottom)],
+                ci2,
+            )
+        )
+        patches.append(
+            (
+                [(right, top), (right + sw, top), (right + sw, bottom), (right, bottom)],
+                ci2,
+            )
+        )
         left -= sw
         right += sw
 
@@ -391,20 +422,26 @@ def checkerboard_4x4(x, y, size, n_colors):
             px, py = x + c * s, y + r * s
             if (r + c) % 2 == 0:
                 # solid square
-                patches.append((
-                    [(px, py), (px + s, py), (px + s, py + s), (px, py + s)],
-                    0,
-                ))
+                patches.append(
+                    (
+                        [(px, py), (px + s, py), (px + s, py + s), (px, py + s)],
+                        0,
+                    )
+                )
             else:
                 # diagonal split
-                patches.append((
-                    [(px, py), (px + s, py), (px, py + s)],
-                    1 % n_colors,
-                ))
-                patches.append((
-                    [(px + s, py), (px + s, py + s), (px, py + s)],
-                    2 % n_colors,
-                ))
+                patches.append(
+                    (
+                        [(px, py), (px + s, py), (px, py + s)],
+                        1 % n_colors,
+                    )
+                )
+                patches.append(
+                    (
+                        [(px + s, py), (px + s, py + s), (px, py + s)],
+                        2 % n_colors,
+                    )
+                )
     return patches
 
 
@@ -418,27 +455,41 @@ def card_trick(x, y, size, n_colors):
     q = size / 4  # quarter
     # center square
     patches = [
-        ([(cx - q, cy - q), (cx + q, cy - q),
-          (cx + q, cy + q), (cx - q, cy + q)], 0),
+        ([(cx - q, cy - q), (cx + q, cy - q), (cx + q, cy + q), (cx - q, cy + q)], 0),
     ]
     # four "cards" — each is a triangle from center to a corner, clipped
     # top-left card
-    patches.append((
-        [(x, y), (cx, y), (cx, cy - q), (cx - q, cy - q), (cx - q, cy), (x, cy)],
-        1 % n_colors))
+    patches.append(
+        ([(x, y), (cx, y), (cx, cy - q), (cx - q, cy - q), (cx - q, cy), (x, cy)], 1 % n_colors)
+    )
     # top-right card
-    patches.append((
-        [(cx, y), (x + size, y), (x + size, cy), (cx + q, cy), (cx + q, cy - q), (cx, cy - q)],
-        2 % n_colors))
+    patches.append(
+        (
+            [(cx, y), (x + size, y), (x + size, cy), (cx + q, cy), (cx + q, cy - q), (cx, cy - q)],
+            2 % n_colors,
+        )
+    )
     # bottom-right card
-    patches.append((
-        [(cx + q, cy), (x + size, cy), (x + size, y + size),
-         (cx, y + size), (cx, cy + q), (cx + q, cy + q)],
-        3 % n_colors))
+    patches.append(
+        (
+            [
+                (cx + q, cy),
+                (x + size, cy),
+                (x + size, y + size),
+                (cx, y + size),
+                (cx, cy + q),
+                (cx + q, cy + q),
+            ],
+            3 % n_colors,
+        )
+    )
     # bottom-left card
-    patches.append((
-        [(x, cy), (cx - q, cy), (cx - q, cy + q), (cx, cy + q), (cx, y + size), (x, y + size)],
-        1 % n_colors))
+    patches.append(
+        (
+            [(x, cy), (cx - q, cy), (cx - q, cy + q), (cx, cy + q), (cx, y + size), (x, y + size)],
+            1 % n_colors,
+        )
+    )
     return patches
 
 
@@ -454,28 +505,36 @@ def double_pinwheel(x, y, size, n_colors):
     corners = [(x, y), (x + size, y), (x + size, y + size), (x, y + size)]
     mids = [(cx, y), (x + size, cy), (cx, y + size), (x, cy)]
     for i in range(4):
-        patches.append((
-            [corners[i], mids[i], (cx, cy)],
-            i % 2,
-        ))
-        patches.append((
-            [mids[i], corners[(i + 1) % 4], (cx, cy)],
-            (i + 1) % 2,
-        ))
+        patches.append(
+            (
+                [corners[i], mids[i], (cx, cy)],
+                i % 2,
+            )
+        )
+        patches.append(
+            (
+                [mids[i], corners[(i + 1) % 4], (cx, cy)],
+                (i + 1) % 2,
+            )
+        )
 
     # inner pinwheel (smaller, using colors 2 and 3)
     q = size / 4
     ic = [(cx - q, cy - q), (cx + q, cy - q), (cx + q, cy + q), (cx - q, cy + q)]
     im = [(cx, cy - q), (cx + q, cy), (cx, cy + q), (cx - q, cy)]
     for i in range(4):
-        patches.append((
-            [ic[i], im[i], (cx, cy)],
-            2 % n_colors,
-        ))
-        patches.append((
-            [im[i], ic[(i + 1) % 4], (cx, cy)],
-            3 % n_colors,
-        ))
+        patches.append(
+            (
+                [ic[i], im[i], (cx, cy)],
+                2 % n_colors,
+            )
+        )
+        patches.append(
+            (
+                [im[i], ic[(i + 1) % 4], (cx, cy)],
+                3 % n_colors,
+            )
+        )
     return patches
 
 
@@ -507,11 +566,9 @@ def path_tile(x, y, size, n_colors):
     # band from left-midpoint to bottom-midpoint
     patches = [
         # top-to-right band (trapezoid through upper-right area)
-        ([(cx - w, y), (cx + w, y),
-          (x + size, cy - w), (x + size, cy + w)], 0),
+        ([(cx - w, y), (cx + w, y), (x + size, cy - w), (x + size, cy + w)], 0),
         # left-to-bottom band (trapezoid through lower-left area)
-        ([(x, cy - w), (x, cy + w),
-          (cx - w, y + size), (cx + w, y + size)], 0),
+        ([(x, cy - w), (x, cy + w), (cx - w, y + size), (cx + w, y + size)], 0),
         # upper-left background triangle
         ([(x, y), (cx - w, y), (x, cy - w)], 1 % n_colors),
         # lower-right background triangle
@@ -526,8 +583,8 @@ def path_tile(x, y, size, n_colors):
 
 _BRANCH_BROWN = (0.36, 0.20, 0.09)  # warm brown for cherry blossom branches
 _PETAL_COLORS = [
-    (1.0, 0.72, 0.77),   # light pink
-    (1.0, 0.41, 0.71),   # hot pink
+    (1.0, 0.72, 0.77),  # light pink
+    (1.0, 0.41, 0.71),  # hot pink
     (0.96, 0.91, 0.93),  # pale blush / white
     (0.82, 0.26, 0.43),  # deep rose
 ]
@@ -541,24 +598,32 @@ def cherry_blossom(x, y, size, n_colors):  # pylint: disable=too-many-locals,unu
     Background uses palette color index 0 to blend with the quilt.
     """
     import math  # pylint: disable=import-outside-toplevel
+
     patches = []
     s = size
 
     # diagonal branch — a thick band from lower-left to upper-right
-    patches.append((
-        [(x, y + s * 0.85), (x + s * 0.15, y + s),
-         (x + s, y + s * 0.15), (x + s * 0.85, y)],
-        _BRANCH_BROWN,
-    ))
+    patches.append(
+        (
+            [(x, y + s * 0.85), (x + s * 0.15, y + s), (x + s, y + s * 0.15), (x + s * 0.85, y)],
+            _BRANCH_BROWN,
+        )
+    )
 
     # small sub-branch going up-left from midpoint
     mx, my = x + s * 0.45, y + s * 0.55
     bw = s * 0.08
-    patches.append((
-        [(mx - bw, my - bw), (mx + bw, my + bw),
-         (x + s * 0.15, y + s * 0.15), (x + s * 0.10, y + s * 0.20)],
-        _BRANCH_BROWN,
-    ))
+    patches.append(
+        (
+            [
+                (mx - bw, my - bw),
+                (mx + bw, my + bw),
+                (x + s * 0.15, y + s * 0.15),
+                (x + s * 0.10, y + s * 0.20),
+            ],
+            _BRANCH_BROWN,
+        )
+    )
 
     # generate blossoms at several points along and near the branch
     rng = random.Random(hash((x, y)))
@@ -588,17 +653,20 @@ def cherry_blossom(x, y, size, n_colors):  # pylint: disable=too-many-locals,unu
             base_ly = bcy + pa * math.sin(left_a)
             base_rx = bcx + pa * math.cos(right_a)
             base_ry = bcy + pa * math.sin(right_a)
-            patches.append((
-                [(base_lx, base_ly), (tip_x, tip_y), (base_rx, base_ry)],
-                petal_color,
-            ))
+            patches.append(
+                (
+                    [(base_lx, base_ly), (tip_x, tip_y), (base_rx, base_ry)],
+                    petal_color,
+                )
+            )
         # center dot — small diamond
         cd = s * 0.02
-        patches.append((
-            [(bcx, bcy - cd), (bcx + cd, bcy),
-             (bcx, bcy + cd), (bcx - cd, bcy)],
-            (0.95, 0.85, 0.20),  # golden yellow center
-        ))
+        patches.append(
+            (
+                [(bcx, bcy - cd), (bcx + cd, bcy), (bcx, bcy + cd), (bcx - cd, bcy)],
+                (0.95, 0.85, 0.20),  # golden yellow center
+            )
+        )
 
     # background uses palette color index 0 to blend with the quilt
     bg = [
@@ -614,6 +682,7 @@ def drunkards_path(x, y, size, n_colors):
     adjacent blocks' curves connect to form flowing rivers and waves.
     """
     import math  # pylint: disable=import-outside-toplevel
+
     n_seg = 12  # segments to approximate the quarter-circle
     # quarter-circle arc from (x, y+size) to (x+size, y), centered at (x, y)
     arc = [(x, y + size)]  # exact start point
@@ -642,6 +711,7 @@ def cathedral_windows(x, y, size, n_colors):  # pylint: disable=too-many-locals
     curved folds in color 2.
     """
     import math  # pylint: disable=import-outside-toplevel
+
     cx, cy = x + size / 2, y + size / 2
     n_seg = 16
 
@@ -651,7 +721,10 @@ def cathedral_windows(x, y, size, n_colors):  # pylint: disable=too-many-locals
     # central diamond window — the reveal where all four folds meet
     dm = size * 0.22
     diamond = [
-        (cx, cy - dm), (cx + dm, cy), (cx, cy + dm), (cx - dm, cy),
+        (cx, cy - dm),
+        (cx + dm, cy),
+        (cx, cy + dm),
+        (cx - dm, cy),
     ]
 
     # four curved fold petals — quarter-circle arcs from each corner
@@ -660,7 +733,10 @@ def cathedral_windows(x, y, size, n_colors):  # pylint: disable=too-many-locals
     folds = []
     corners = [(x, y), (x + size, y), (x + size, y + size), (x, y + size)]
     diamond_pts = [
-        (cx, cy - dm), (cx + dm, cy), (cx, cy + dm), (cx - dm, cy),
+        (cx, cy - dm),
+        (cx + dm, cy),
+        (cx, cy + dm),
+        (cx - dm, cy),
     ]
     for i in range(4):
         corner = corners[i]
@@ -690,7 +766,10 @@ def cathedral_windows(x, y, size, n_colors):  # pylint: disable=too-many-locals
     edge_color = 1 % n_colors
     em = size * 0.10
     edge_midpoints = [
-        (cx, y), (x + size, cy), (cx, y + size), (x, cy),
+        (cx, y),
+        (x + size, cy),
+        (cx, y + size),
+        (x, cy),
     ]
     edge_diamonds = []
     # each half-diamond points inward
@@ -700,11 +779,13 @@ def cathedral_windows(x, y, size, n_colors):  # pylint: disable=too-many-locals
         emx, emy = edge_midpoints[i]
         dx, dy = edge_inward[i]
         px, py = edge_perp[i]
-        edge_diamonds.append([
-            (emx, emy),
-            (emx + dx * em, emy + dy * em),
-            (emx + dx * em * 2, emy + dy * em * 2),  # tip not needed, use 3-point
-        ])
+        edge_diamonds.append(
+            [
+                (emx, emy),
+                (emx + dx * em, emy + dy * em),
+                (emx + dx * em * 2, emy + dy * em * 2),  # tip not needed, use 3-point
+            ]
+        )
 
     # build simpler edge diamonds as triangles pointing inward
     edge_patches = []
@@ -736,6 +817,7 @@ def applique(x, y, size, n_colors):  # pylint: disable=too-many-locals
     many-sided polygons.
     """
     import math  # pylint: disable=import-outside-toplevel
+
     cx, cy = x + size / 2, y + size / 2
 
     # background square

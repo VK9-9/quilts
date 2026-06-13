@@ -1,15 +1,31 @@
 """Tests for quilt_id.py — encoding/decoding quilt parameters."""
+
 import pytest
 from quilt_id import (
-    encode, decode, _b58enc, _b58dec, _pack, _unpack,
-    _quantize, _dequantize, _encode_wonky,
-    _V1_PALETTES, _V1_SYMMETRY, _V1_LEN,
-    _V2_PALETTES, _V2_SYMMETRY, _V2_STITCH, _V2_WONKY, _V2_LEN,
-    _V2_SCHEMA, _V3_LEN,
+    encode,
+    decode,
+    _b58enc,
+    _b58dec,
+    _pack,
+    _unpack,
+    _quantize,
+    _dequantize,
+    _encode_wonky,
+    _V1_PALETTES,
+    _V1_SYMMETRY,
+    _V1_LEN,
+    _V2_PALETTES,
+    _V2_SYMMETRY,
+    _V2_STITCH,
+    _V2_WONKY,
+    _V2_LEN,
+    _V2_SCHEMA,
+    _V3_LEN,
 )
 
 
 # --- base58 ---
+
 
 def test_b58_roundtrip():
     for n in [0, 1, 57, 58, 999, 2**31 - 1, 2**76]:
@@ -24,6 +40,7 @@ def test_b58enc_length():
 
 
 # --- pack/unpack ---
+
 
 def test_pack_unpack_roundtrip():
     schema = [("a", 4), ("b", 8), ("c", 3)]
@@ -41,6 +58,7 @@ def test_pack_truncates_overflow():
 
 
 # --- quantize/dequantize ---
+
 
 def test_quantize_zero():
     assert _quantize(0.0, 0.10, 0.01, 15) == 0
@@ -68,6 +86,7 @@ def test_quantize_dequantize_roundtrip():
 
 # --- wonky ---
 
+
 def test_encode_wonky_zero():
     assert _encode_wonky(0.0) == 0
 
@@ -85,11 +104,21 @@ def test_encode_wonky_clamps():
 # --- V2 encode/decode roundtrip ---
 
 _BASE_PARAMS = {
-    "seed": 12345, "palette": "ocean breeze", "symmetry": "bargello",
-    "chaos": 0.3, "rows": 16, "cols": 16, "n_patterns": 2,
-    "n_colors": 4, "tile_size": 5, "tile_variation": 0.10,
-    "border_style": "none", "mega_frac": 0.0, "plain_frac": 0.0,
-    "quilt_stitch": "grid", "wonky": 0.0,
+    "seed": 12345,
+    "palette": "ocean breeze",
+    "symmetry": "bargello",
+    "chaos": 0.3,
+    "rows": 16,
+    "cols": 16,
+    "n_patterns": 2,
+    "n_colors": 4,
+    "tile_size": 5,
+    "tile_variation": 0.10,
+    "border_style": "none",
+    "mega_frac": 0.0,
+    "plain_frac": 0.0,
+    "quilt_stitch": "grid",
+    "wonky": 0.0,
 }
 
 
@@ -193,27 +222,29 @@ def test_v2_drops_v1_fields():
 
 # --- V1 decode ---
 
+
 def test_v1_decode_legacy():
     # Build a known V1 ID by hand: version=1, seed=100, palette=0 (autumn harvest),
     # symmetry=0 (none), etc.
     from quilt_id import _V1_SCHEMA
+
     fields = [
-        (1, 4),   # version
-        (100, 31), # seed
-        (0, 4),   # palette (autumn harvest)
-        (0, 3),   # symmetry (none)
+        (1, 4),  # version
+        (100, 31),  # seed
+        (0, 4),  # palette (autumn harvest)
+        (0, 3),  # symmetry (none)
         (30, 7),  # chaos (0.30)
-        (2, 3),   # rows-14=2 → 16
-        (1, 1),   # n_patterns-1=1 → 2
-        (1, 1),   # n_colors-3=1 → 4
-        (5, 4),   # tile_size
+        (2, 3),  # rows-14=2 → 16
+        (1, 1),  # n_patterns-1=1 → 2
+        (1, 1),  # n_colors-3=1 → 4
+        (5, 4),  # tile_size
         (10, 5),  # tile_variation (0.10)
-        (0, 2),   # border (none)
-        (0, 1),   # sash_width
-        (0, 1),   # cornerstones
-        (0, 1),   # color_gradient
-        (0, 4),   # mega_frac
-        (0, 4),   # plain_frac
+        (0, 2),  # border (none)
+        (0, 1),  # sash_width
+        (0, 1),  # cornerstones
+        (0, 1),  # color_gradient
+        (0, 4),  # mega_frac
+        (0, 4),  # plain_frac
     ]
     n = _pack(fields)
     qid = _b58enc(n, 13)
@@ -227,6 +258,7 @@ def test_v1_decode_legacy():
 
 
 # --- error cases ---
+
 
 def test_decode_invalid_length():
     with pytest.raises(ValueError, match="Unknown quilt ID version"):
