@@ -15,17 +15,19 @@ pip install -r requirements.txt
 
 Common tasks are run with [`just`](https://github.com/casey/just)
 (`brew install just`). Run `just` or `just --list` to see everything; the
-recipes used below are noted inline.
+recipes used below are noted inline. `just check` runs the full local gate
+(format, lint, test, audit); `just test` is tests-only and `just lint` is
+lint-only.
 
 ## Generator webapp
 
 ```bash
-just generator
+just run
 ```
 
 Opens at `http://localhost:5001`. Pick a preset family or tweak params
 (symmetry, palette, chaos, etc.) and see the quilt update live. Download
-high-res PNGs.
+high-res PNGs. (This is the default app; `just deploy` ships it.)
 
 Deploy to Railway:
 
@@ -36,7 +38,7 @@ just deploy
 ## Rating webapp (private)
 
 ```bash
-just score
+just run-score
 ```
 
 Opens at `http://localhost:5555`. Rate quilts like/dislike;
