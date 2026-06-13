@@ -12,3 +12,5 @@ reportlab
 pylint
 pytest
 pytest-cov
+ruff
+pip-audit

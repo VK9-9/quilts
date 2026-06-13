@@ -1,0 +1,4 @@
+# Formatting config for `just fmt` / `just ci`.
+# Linting stays with pylint; ruff is used only as the autoformatter here.
+line-length = 100
+extend-exclude = ["docs", ".gh-pages-worktree"]
