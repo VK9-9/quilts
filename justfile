@@ -25,9 +25,12 @@ test *args:
     {{python}} -m doctest quilt_id.py clip_embed.py
     {{python}} -m pytest {{args}}
 
-# Dependency vulnerability scan
+# Dependency vulnerability scan.
+# Ignored: CVE-2025-3000 (torch.jit.script memory corruption) — no fix released,
+# local-only exploit, torch is a dev-only dep (not in requirements-railway.txt)
+# and the vulnerable jit.script path is unused. Re-check when a fix ships.
 audit:
-    venv/bin/pip-audit -r requirements.txt
+    venv/bin/pip-audit -r requirements.txt --ignore-vuln CVE-2025-3000
 
 # Local pre-commit gate: format, lint, test, audit
 check: fmt lint test audit
