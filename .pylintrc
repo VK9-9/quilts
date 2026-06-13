@@ -1,4 +1,18 @@
 [MESSAGES CONTROL]
 # cairo is a C extension — pylint can't inspect its members
 ignored-modules=cairo
-disable=duplicate-code
+
+# ruff owns formatting/line-wrapping; the too-many-* design heuristics were
+# already suppressed inline throughout, so disable them globally rather than
+# have ruff's wrapped signatures fight relocated inline disable comments.
+disable=
+    duplicate-code,
+    too-many-arguments,
+    too-many-positional-arguments,
+    too-many-locals,
+    too-many-branches,
+    too-many-statements,
+    too-many-nested-blocks,
+    too-many-instance-attributes,
+    too-many-return-statements,
+    too-many-lines
