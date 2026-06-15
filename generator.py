@@ -18,7 +18,6 @@ sys.path.insert(0, os.path.dirname(__file__))
 from flask import Flask, render_template, request, Response
 from quilt import render_quilt, BORDER_STYLES as _QUILT_BORDER_STYLES
 from quilt_id import encode, decode, _V2_PALETTES, _V2_SYMMETRY, _V2_STITCH
-from pattern_pdf import generate_pattern_pdf
 from render_params import params_to_render_kwargs
 # pylint: enable=wrong-import-position
 
@@ -358,6 +357,10 @@ def download():
 @app.route("/pattern")
 def pattern():
     """Generate PDF sewing pattern for the current quilt."""
+    # Imported lazily: reportlab is ~17 MB and is only needed by this route,
+    # so it stays out of every worker's baseline footprint.
+    from pattern_pdf import generate_pattern_pdf  # pylint: disable=import-outside-toplevel
+
     params = _params_from_request()
     try:
         qid = encode(params)
