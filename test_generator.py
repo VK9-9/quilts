@@ -225,6 +225,25 @@ class TestParamParsing:
         )
         assert resp.status_code == 200
 
+    def test_huge_rows_clamped(self, client):
+        """Unbounded rows must not OOM the worker — params are clamped server-side."""
+        from generator import _params_from_request
+
+        with app.test_request_context("/render?rows=100000&strippy=1e9&tile_size=99999"):
+            params = _params_from_request()
+        assert params["rows"] <= 40
+        assert params["tile_size"] <= 12
+        assert params["strippy"] <= 0.6
+
+    def test_invalid_palette_falls_back(self, client):
+        """An unknown palette must not 500 (and must not leak the palette list)."""
+        resp = client.get("/render?seed=42&rows=4&palette=definitely+not+a+palette")
+        assert resp.status_code == 200
+
+    def test_invalid_symmetry_falls_back(self, client):
+        resp = client.get("/render?seed=42&rows=4&symmetry=bogus")
+        assert resp.status_code == 200
+
 
 class TestPresets:
     def test_all_presets_have_required_keys(self):
