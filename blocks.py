@@ -3,14 +3,24 @@
 Each block pattern is a function that takes (x, y, size, n_colors) and returns
 a list of patches. Each patch is (polygon, color_index) where polygon is a list
 of (px, py) points and color_index selects from the block's assigned palette.
+
+Blocks are always invoked with x=y=0 (patches are normalized and translated at
+draw time). Patterns that need per-cell variation must draw from the module RNG,
+which the renderer seeds per cell before each call (see quilt._block_patches);
+they must NOT derive randomness from x/y, which carry no positional information.
 """
 
 import random
 
 
 def half_square_triangle(x, y, size, _n_colors):
-    """Two triangles split along the diagonal."""
-    direction = hash((x, y)) % 2
+    """Two triangles split along the diagonal.
+
+    The diagonal direction is drawn from the module RNG, which the renderer
+    seeds per cell (see quilt._block_patches) — x/y always arrive as 0, so
+    position can't drive the variation.
+    """
+    direction = random.randint(0, 1)
     if direction == 0:
         # top-left to bottom-right diagonal
         return [
@@ -625,8 +635,10 @@ def cherry_blossom(x, y, size, n_colors):  # pylint: disable=too-many-locals,unu
         )
     )
 
-    # generate blossoms at several points along and near the branch
-    rng = random.Random(hash((x, y)))
+    # generate blossoms at several points along and near the branch. The module
+    # RNG is seeded per cell by the renderer (quilt._block_patches); x/y always
+    # arrive as 0, so position can't drive the variation.
+    rng = random
     blossom_centers = [
         (x + s * 0.20, y + s * 0.75),
         (x + s * 0.40, y + s * 0.55),
