@@ -39,10 +39,8 @@ def pick_palettes(palette_name, _n_needed, rng):
             raise ValueError(f"Unknown palette '{palette_name}'. Available: {available}")
         chosen = matches[0]
 
-    name, colors = chosen
-    print(f"Palette: {name}")
-    rgb_colors = [hex_to_rgb(c) for c in colors]
-    return rgb_colors
+    _name, colors = chosen
+    return [hex_to_rgb(c) for c in colors]
 
 
 def rotate_patches(patches, cx, cy, rotation):
@@ -767,7 +765,7 @@ def render_quilt(
         _stroke_patches(ctx, mega_base[(mr, mc)], bx, by, sx, sy)
 
     # color wash — semi-transparent tint over entire quilt area
-    if wash_alpha and wash_alpha > 0:
+    if wash_alpha > 0:
         wash_rgb = palette_colors[rng.randint(0, n_colors - 1)]
         ctx.set_source_rgba(*wash_rgb, wash_alpha)
         ctx.rectangle(quilt_x, quilt_y, quilt_w, quilt_h)
