@@ -416,4 +416,8 @@ def pattern():
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5001))
-    app.run(debug=True, port=port)
+    # Default debug off: this app is public, and the Werkzeug debugger exposes an
+    # RCE console. Opt in locally with FLASK_DEBUG=1. (Production runs gunicorn,
+    # which ignores this block, but never ship debug=True in source.)
+    debug = os.environ.get("FLASK_DEBUG") == "1"
+    app.run(debug=debug, port=port)

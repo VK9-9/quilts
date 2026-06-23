@@ -77,4 +77,6 @@ def start_round():
 
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5555)
+    # Local admin tool, but the Werkzeug debugger is an RCE console — opt in with
+    # FLASK_DEBUG=1 rather than shipping it on, and never bind this to 0.0.0.0.
+    app.run(debug=os.environ.get("FLASK_DEBUG") == "1", port=5555)
