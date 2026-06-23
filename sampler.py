@@ -26,6 +26,17 @@ from layout import SYMMETRY_MODES
 from quilt import BORDER_STYLES, QUILT_STITCH_STYLES, render_quilt
 from render_params import params_to_render_kwargs
 
+
+def _atomic_write_json(path, obj):
+    """Write JSON to a temp file then atomically replace, so an interrupted
+    write (or a concurrent reader) never leaves a truncated/corrupt file."""
+    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(obj, f, indent=2)
+    os.replace(tmp, path)
+
+
 _DROP_PALETTES = {
     "storm",
     "midnight moss",
@@ -224,14 +235,10 @@ class QuiltExplorer:  # pylint: disable=too-many-instance-attributes
                 self.rounds = json.load(f)
 
     def _save(self):
-        os.makedirs(os.path.dirname(self.data_path) or ".", exist_ok=True)
-        with open(self.data_path, "w", encoding="utf-8") as f:
-            json.dump(self.ratings, f, indent=2)
+        _atomic_write_json(self.data_path, self.ratings)
 
     def _save_rounds(self):
-        os.makedirs(os.path.dirname(self.rounds_path) or ".", exist_ok=True)
-        with open(self.rounds_path, "w", encoding="utf-8") as f:
-            json.dump(self.rounds, f, indent=2)
+        _atomic_write_json(self.rounds_path, self.rounds)
 
     def start_round(self, label=None):
         """Start a new scoring round. Returns the round number."""
@@ -248,7 +255,11 @@ class QuiltExplorer:  # pylint: disable=too-many-instance-attributes
         return num
 
     def _save_embeddings(self):
-        np.save(self.embeddings_path, self.embeddings)
+        # Write to a temp file then atomically replace, so an interrupted save
+        # (or a concurrent reader) never sees a half-written array.
+        tmp = self.embeddings_path + ".tmp.npy"
+        np.save(tmp, self.embeddings)
+        os.replace(tmp, self.embeddings_path)
 
     def add_rating(self, params, liked):
         """Record a rating (liked=True/False) for a param set and embed the image."""

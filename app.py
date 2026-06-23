@@ -3,6 +3,7 @@
 import json
 import sys
 import os
+import threading
 
 sys.path.insert(0, os.path.dirname(__file__))
 
@@ -16,6 +17,11 @@ from render_params import params_to_render_kwargs
 app = Flask(__name__)
 _ratings_path = sys.argv[1] if len(sys.argv) > 1 else "data/ratings.json"
 explorer = QuiltExplorer(_ratings_path)
+
+# The Flask dev server is threaded, so two requests can mutate explorer state
+# (ratings list, embeddings array, model) concurrently. Serialize all mutations
+# so the non-atomic in-memory updates and file writes can't interleave/corrupt.
+_explorer_lock = threading.Lock()
 
 
 @app.route("/")
@@ -40,8 +46,14 @@ def next_quilt():
 @app.route("/render")
 def render():
     """Render a quilt PNG from params and return it."""
-    params = json.loads(request.args["params"])
-    kwargs = params_to_render_kwargs(params)
+    raw = request.args.get("params")
+    if not raw:
+        return jsonify({"error": "missing params"}), 400
+    try:
+        params = json.loads(raw)
+        kwargs = params_to_render_kwargs(params)
+    except (ValueError, KeyError, TypeError) as exc:
+        return jsonify({"error": f"bad params: {exc}"}), 400
     png_bytes = render_quilt(**kwargs)
     return Response(png_bytes, mimetype="image/png")
 
@@ -50,7 +62,8 @@ def render():
 def rate():
     """Record a like/dislike rating for a quilt."""
     data = request.get_json()
-    explorer.add_rating(data["params"], data["liked"])
+    with _explorer_lock:
+        explorer.add_rating(data["params"], data["liked"])
     return jsonify({"ok": True})
 
 
@@ -58,7 +71,8 @@ def rate():
 def start_round():
     """Start a new scoring round."""
     data = request.get_json() or {}
-    num = explorer.start_round(label=data.get("label"))
+    with _explorer_lock:
+        num = explorer.start_round(label=data.get("label"))
     return jsonify({"round": num})
 
 
