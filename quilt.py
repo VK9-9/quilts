@@ -767,16 +767,20 @@ def render_quilt(
     if quilt_stitch is not None:
         _draw_quilt_stitching(ctx, quilt_x, quilt_y, quilt_w, quilt_h, quilt_stitch, block_size)
 
-    # save or return bytes
-    if output is None:
-        buf = io.BytesIO()
-        surface.write_to_png(buf)
-        buf.seek(0)
-        return buf.getvalue()
-    os.makedirs(os.path.dirname(output) or ".", exist_ok=True)
-    surface.write_to_png(output)
-    print(f"Saved to {output} ({width}x{height})")
-    return None
+    # save or return bytes. Finish the surface promptly so the underlying
+    # cairo C buffer is released rather than lingering until GC — under a
+    # long-lived web worker these large transient buffers ratchet RSS upward.
+    try:
+        if output is None:
+            buf = io.BytesIO()
+            surface.write_to_png(buf)
+            return buf.getvalue()
+        os.makedirs(os.path.dirname(output) or ".", exist_ok=True)
+        surface.write_to_png(output)
+        print(f"Saved to {output} ({width}x{height})")
+        return None
+    finally:
+        surface.finish()
 
 
 def main():
