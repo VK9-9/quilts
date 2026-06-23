@@ -56,7 +56,9 @@ def backfill(ratings_path):
     failed = 0
     for n, i in enumerate(todo):
         try:
-            kwargs = params_to_render_kwargs(ratings[i]["params"], block_size=_CLIP_EMBED_BLOCK_SIZE)
+            kwargs = params_to_render_kwargs(
+                ratings[i]["params"], block_size=_CLIP_EMBED_BLOCK_SIZE
+            )
             png_bytes = render_quilt(**kwargs)
             rows[i] = embed_image(png_bytes)
         except Exception as exc:  # pylint: disable=broad-except

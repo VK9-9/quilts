@@ -57,9 +57,7 @@ def time_windows(ratings, window=25):
 
 def palette_frequency(ratings):
     """Return Counter of palette usage."""
-    return Counter(
-        p for r in ratings if (p := r["params"].get("palette")) is not None
-    )
+    return Counter(p for r in ratings if (p := r["params"].get("palette")) is not None)
 
 
 def load_rounds(path="data/ratings_rounds.json"):

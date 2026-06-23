@@ -120,9 +120,7 @@ def make_figure(ratings, rounds, out="convergence.png"):
     _plot_bars(axes[1], pal_surv, pal_cut, "Palettes  (red = dropped)", overall_rate, fontsize=8.5)
     _plot_bars(axes[2], sym_surv, sym_cut, "Symmetry  (red = dropped)", overall_rate)
 
-    fig.suptitle(
-        f"Active learning: {len(ratings)} quilts rated, {len(labels)} rounds", fontsize=13
-    )
+    fig.suptitle(f"Active learning: {len(ratings)} quilts rated, {len(labels)} rounds", fontsize=13)
 
     out_dir = os.path.dirname(out)
     if out_dir:
