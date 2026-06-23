@@ -50,11 +50,19 @@ def test_pack_unpack_roundtrip():
     assert unpacked == {"a": 10, "b": 200, "c": 5}
 
 
-def test_pack_truncates_overflow():
-    # 4-bit field with value 20 (0b10100) → should keep low 4 bits = 4
+def test_pack_saturates_overflow():
+    # 4-bit field with value 20 saturates to the max (15), not wraps to 4 —
+    # wrapping would decode out-of-range params to unrelated values.
     packed = _pack([(20, 4)])
     unpacked = _unpack(packed, [("x", 4)])
-    assert unpacked["x"] == 20 & 0xF
+    assert unpacked["x"] == 15
+
+
+def test_pack_saturates_negative():
+    # Negative offset values (e.g. rows-14 when rows < 14) saturate to 0.
+    packed = _pack([(-3, 4)])
+    unpacked = _unpack(packed, [("x", 4)])
+    assert unpacked["x"] == 0
 
 
 # --- quantize/dequantize ---
