@@ -49,12 +49,6 @@ def _color_label(index):
     return chr(ord("A") + index)
 
 
-_COLOR_NAMES = {
-    # rough mapping from hue/saturation/lightness to human names
-    # populated lazily by _human_color_name
-}
-
-
 def _human_color_name(hex_color):  # pylint: disable=too-many-return-statements
     """Map hex to a human-readable color name."""
     r, g, b = hex_to_rgb(hex_color)
@@ -274,7 +268,9 @@ def _render_quilt_image(params):
         palette_name=params["palette"],
         max_patterns=params.get("n_patterns", 2),
         max_colors=params.get("n_colors", 4),
-        tile_size=params.get("tile_size", 6),
+        # Match _reconstruct_layout's resolution exactly (falsy -> None), else the
+        # cover thumbnail tiles while the cutting diagrams don't (or vice versa).
+        tile_size=params.get("tile_size") or None,
         block_size=40,
         output=tmp.name,
         border=0,
@@ -968,7 +964,6 @@ def _draw_block_page(
     # Seam allowance in pattern units (may differ per axis for rectangular blocks)
     sa_pat_x = seam_allowance * pattern_size / block_w_in
     sa_pat_y = seam_allowance * pattern_size / block_h_in
-    sa_pattern = max(sa_pat_x, sa_pat_y)  # use larger for bbox calculations
     piece_bboxes = []
     for poly, color_idx in polygons:
         xs = [px for px, py in poly]
@@ -1030,8 +1025,9 @@ def _draw_block_page(
         path.close()
         c.drawPath(path, fill=0, stroke=1)
 
-        # draw cut line (dashed) — seam allowance offset; skip for non-convex
-        sa_poly = _offset_polygon(poly, -sa_pattern)
+        # draw cut line (dashed) — true seam allowance outward in inch space
+        # (correct on both axes for rectangular blocks); skip for non-convex
+        sa_poly = _offset_polygon_real(poly, -seam_allowance, block_w_in / 100, block_h_in / 100)
         if sa_poly is not None:
             c.setStrokeColorRGB(0.4, 0.4, 0.4)
             c.setLineWidth(0.5)
@@ -1059,11 +1055,10 @@ def _draw_block_page(
         c.setFont("Helvetica-Bold", 9)
         c.drawCentredString(cx, cy - 3, label)
 
-        # edge dimensions on cut line
-        if sa_poly is not None:
-            _draw_edge_dimensions(c, sa_pts, sa_poly, block_w_in, block_h_in)
-        else:
-            _draw_edge_dimensions(c, pts, poly, block_w_in, block_h_in)
+        # edge dimensions on the finished (seam) line — matches the cover's
+        # "solid = finished size" convention, and is consistent for every piece
+        # (cut = finished + the stated seam allowance).
+        _draw_edge_dimensions(c, pts, poly, block_w_in, block_h_in)
 
         # grain line arrow
         _draw_grain_arrow(c, pts, cx, cy)
@@ -1087,7 +1082,10 @@ def _try_layout_pieces(bboxes, scale, avail_w, avail_h, gap):
         pw = pw_pat * scale
         ph = ph_pat * scale
 
-        if col_x + pw > avail_w and col_x > 0.1:
+        # Wrap predicate must match the draw loop (which includes `gap`), else
+        # the planner can validate a layout the drawer then wraps onto an extra
+        # row/page.
+        if col_x + pw + gap > avail_w and col_x > 0.1:
             col_x = 0.0
             cur_y += row_h + gap
             row_h = 0.0
@@ -1204,6 +1202,22 @@ def _offset_polygon(polygon, offset):  # pylint: disable=too-many-locals
             result.append((e1[2], e1[3]))
 
     return result
+
+
+def _offset_polygon_real(polygon, offset_in, sx, sy):
+    """Offset a pattern-space polygon outward by `offset_in` inches.
+
+    Pattern units map to inches anisotropically for rectangular blocks
+    (sx = block_w_in/100, sy = block_h_in/100), so a single pattern-unit
+    scalar offset gives too much seam allowance on one axis. Convert to inch
+    space, offset by a uniform `offset_in`, and convert back. For square
+    blocks (sx == sy) this is identical to _offset_polygon with a scalar.
+    """
+    scaled = [(px * sx, py * sy) for px, py in polygon]
+    off = _offset_polygon(scaled, offset_in)
+    if off is None:
+        return None
+    return [(x / sx, y / sy) for x, y in off]
 
 
 def _line_intersection(x1, y1, x2, y2, x3, y3, x4, y4):  # pylint: disable=too-many-arguments,too-many-positional-arguments
