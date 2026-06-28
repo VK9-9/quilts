@@ -64,6 +64,38 @@ class TestAllPatterns:
             assert len(patches) > 0
 
 
+class TestSeedVariation:
+    """Blocks that randomize must vary with the module RNG seed (per cell),
+    not with x/y, which always arrive as 0 (see blocks.py module docstring)."""
+
+    def test_half_square_triangle_varies_by_seed(self):
+        from blocks import half_square_triangle
+
+        seen = set()
+        for s in range(20):
+            random.seed(s)
+            seen.add(tuple(tuple(p) for p, _ in half_square_triangle(0, 0, 100, 4)))
+        assert len(seen) > 1, "diagonal direction never varies across seeds"
+
+    def test_cherry_blossom_varies_by_seed(self):
+        from blocks import cherry_blossom
+
+        random.seed(1)
+        a = cherry_blossom(0, 0, 100, 4)
+        random.seed(2)
+        b = cherry_blossom(0, 0, 100, 4)
+        assert a != b, "blossom layout identical across seeds"
+
+    def test_half_square_triangle_reproducible(self):
+        from blocks import half_square_triangle
+
+        random.seed(7)
+        a = half_square_triangle(0, 0, 100, 4)
+        random.seed(7)
+        b = half_square_triangle(0, 0, 100, 4)
+        assert a == b
+
+
 class TestSpecificPatterns:
     """Tests for specific pattern properties."""
 

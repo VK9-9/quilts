@@ -39,10 +39,8 @@ def pick_palettes(palette_name, _n_needed, rng):
             raise ValueError(f"Unknown palette '{palette_name}'. Available: {available}")
         chosen = matches[0]
 
-    name, colors = chosen
-    print(f"Palette: {name}")
-    rgb_colors = [hex_to_rgb(c) for c in colors]
-    return rgb_colors
+    _name, colors = chosen
+    return [hex_to_rgb(c) for c in colors]
 
 
 def rotate_patches(patches, cx, cy, rotation):
@@ -63,31 +61,37 @@ def rotate_patches(patches, cx, cy, rotation):
     return rotated
 
 
-def _block_patches(cell, size, n_colors, wonky=0.0, wonky_seed=0):
-    """Build a cell's patches in [0, size] coords: pattern → rotate → wonky jitter.
+def _block_patches(cell, size, n_colors, seed=0):
+    """Build a cell's base patches in [0, size] coords: pattern → rotate.
 
-    wonky defaults to 0 (no jitter) so the seam-line passes, which trace the
-    un-jittered block outlines, can share this builder with the fill passes.
+    Seeds the module RNG with `seed` first so patterns that randomize
+    (half_square_triangle, cherry_blossom) vary per cell yet stay reproducible;
+    blocks receive x=y=0 and cannot derive variation from position. No wonky
+    jitter here — the fill and seam-stroke passes share one base build per cell,
+    and seams trace the un-jittered outline (apply jitter via _jitter_patches).
     """
+    random.seed(seed)
     patches = BLOCK_PATTERNS[cell["pattern"]](0, 0, size, n_colors)
-    patches = rotate_patches(patches, size / 2, size / 2, cell["rotation"])
-    if wonky > 0:
-        wonky_rng = random.Random(wonky_seed)
-        jitter = wonky * size
-        patches = [
-            (
-                [
-                    (
-                        px + wonky_rng.uniform(-jitter, jitter),
-                        py + wonky_rng.uniform(-jitter, jitter),
-                    )
-                    for px, py in poly
-                ],
-                ci,
-            )
-            for poly, ci in patches
-        ]
-    return patches
+    return rotate_patches(patches, size / 2, size / 2, cell["rotation"])
+
+
+def _jitter_patches(patches, size, wonky, wonky_seed):
+    """Nudge every vertex by up to ±(wonky*size) for the improv/wonky look."""
+    wonky_rng = random.Random(wonky_seed)
+    jitter = wonky * size
+    return [
+        (
+            [
+                (
+                    px + wonky_rng.uniform(-jitter, jitter),
+                    py + wonky_rng.uniform(-jitter, jitter),
+                )
+                for px, py in poly
+            ],
+            ci,
+        )
+        for poly, ci in patches
+    ]
 
 
 def _trace_polygon(ctx, poly, bx, by, sx, sy):  # pylint: disable=too-many-arguments,too-many-positional-arguments
@@ -647,7 +651,10 @@ def render_quilt(
             block_size,
         )
 
-    # render blocks (skip cells covered by mega-blocks)
+    # render blocks (skip cells covered by mega-blocks). Cache each cell's base
+    # (un-jittered) patches so the seam-stroke pass below reuses them instead of
+    # rebuilding every block's geometry a second time.
+    base_patches = {}
     for r in range(rows):
         for c in range(cols):
             if (r, c) in mega_covered:
@@ -666,7 +673,10 @@ def render_quilt(
                 continue
 
             # Generate pattern in square coords (block_size), scale to cell (cw × ch)
-            patches = _block_patches(cell, block_size, n_colors, wonky, seed * 10000 + r * 1000 + c)
+            cell_seed = seed * 10000 + r * 1000 + c
+            base = _block_patches(cell, block_size, n_colors, cell_seed)
+            base_patches[(r, c)] = base
+            patches = _jitter_patches(base, block_size, wonky, cell_seed) if wonky > 0 else base
             sx, sy = cw / block_size, ch / block_size
             color_map = cell["color_map"]
             active_pal = all_palettes[cell.get("palette", 0) % len(all_palettes)]
@@ -711,6 +721,7 @@ def render_quilt(
             ctx.stroke()
 
     # render mega-blocks (after grid lines so they paint over interior seams)
+    mega_base = {}
     for mr, mc in mega_tl:
         cell = grid[(mr, mc)]
         bx = border + col_pos[mc]
@@ -719,9 +730,10 @@ def render_quilt(
         mh = row_sizes[mr] + row_sizes[mr + 1]
         mega_sq = 2 * block_size  # square coord size for pattern
 
-        patches = _block_patches(
-            cell, mega_sq, n_colors, wonky, seed * 10000 + mr * 1000 + mc + 500
-        )
+        cell_seed = seed * 10000 + mr * 1000 + mc + 500
+        base = _block_patches(cell, mega_sq, n_colors, cell_seed)
+        mega_base[(mr, mc)] = base
+        patches = _jitter_patches(base, mega_sq, wonky, cell_seed) if wonky > 0 else base
         sx, sy = mw / mega_sq, mh / mega_sq
         color_map = cell["color_map"]
         active_pal = all_palettes[cell.get("palette", 0) % len(all_palettes)]
@@ -734,18 +746,15 @@ def render_quilt(
         for c in range(cols):
             if (r, c) in mega_covered or (r, c) in plain_cells:
                 continue
-            cell = grid[(r, c)]
             cw, ch = col_sizes[c], row_sizes[r]
             bx = border + col_pos[c]
             by = border + row_pos[r]
             sx, sy = cw / block_size, ch / block_size
 
-            # seams trace the un-jittered block outline (no wonky)
-            patches = _block_patches(cell, block_size, n_colors)
-            _stroke_patches(ctx, patches, bx, by, sx, sy)
+            # seams trace the un-jittered base outline, reusing the fill pass's build
+            _stroke_patches(ctx, base_patches[(r, c)], bx, by, sx, sy)
 
     for mr, mc in mega_tl:
-        cell = grid[(mr, mc)]
         bx = border + col_pos[mc]
         by = border + row_pos[mr]
         mw = col_sizes[mc] + col_sizes[mc + 1]
@@ -753,11 +762,10 @@ def render_quilt(
         mega_sq = 2 * block_size
         sx, sy = mw / mega_sq, mh / mega_sq
 
-        patches = _block_patches(cell, mega_sq, n_colors)
-        _stroke_patches(ctx, patches, bx, by, sx, sy)
+        _stroke_patches(ctx, mega_base[(mr, mc)], bx, by, sx, sy)
 
     # color wash — semi-transparent tint over entire quilt area
-    if wash_alpha and wash_alpha > 0:
+    if wash_alpha > 0:
         wash_rgb = palette_colors[rng.randint(0, n_colors - 1)]
         ctx.set_source_rgba(*wash_rgb, wash_alpha)
         ctx.rectangle(quilt_x, quilt_y, quilt_w, quilt_h)
@@ -767,16 +775,20 @@ def render_quilt(
     if quilt_stitch is not None:
         _draw_quilt_stitching(ctx, quilt_x, quilt_y, quilt_w, quilt_h, quilt_stitch, block_size)
 
-    # save or return bytes
-    if output is None:
-        buf = io.BytesIO()
-        surface.write_to_png(buf)
-        buf.seek(0)
-        return buf.getvalue()
-    os.makedirs(os.path.dirname(output) or ".", exist_ok=True)
-    surface.write_to_png(output)
-    print(f"Saved to {output} ({width}x{height})")
-    return None
+    # save or return bytes. Finish the surface promptly so the underlying
+    # cairo C buffer is released rather than lingering until GC — under a
+    # long-lived web worker these large transient buffers ratchet RSS upward.
+    try:
+        if output is None:
+            buf = io.BytesIO()
+            surface.write_to_png(buf)
+            return buf.getvalue()
+        os.makedirs(os.path.dirname(output) or ".", exist_ok=True)
+        surface.write_to_png(output)
+        print(f"Saved to {output} ({width}x{height})")
+        return None
+    finally:
+        surface.finish()
 
 
 def main():

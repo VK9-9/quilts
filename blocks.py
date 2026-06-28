@@ -3,14 +3,25 @@
 Each block pattern is a function that takes (x, y, size, n_colors) and returns
 a list of patches. Each patch is (polygon, color_index) where polygon is a list
 of (px, py) points and color_index selects from the block's assigned palette.
+
+Blocks are always invoked with x=y=0 (patches are normalized and translated at
+draw time). Patterns that need per-cell variation must draw from the module RNG,
+which the renderer seeds per cell before each call (see quilt._block_patches);
+they must NOT derive randomness from x/y, which carry no positional information.
 """
 
+import math
 import random
 
 
 def half_square_triangle(x, y, size, _n_colors):
-    """Two triangles split along the diagonal."""
-    direction = hash((x, y)) % 2
+    """Two triangles split along the diagonal.
+
+    The diagonal direction is drawn from the module RNG, which the renderer
+    seeds per cell (see quilt._block_patches) — x/y always arrive as 0, so
+    position can't drive the variation.
+    """
+    direction = random.randint(0, 1)
     if direction == 0:
         # top-left to bottom-right diagonal
         return [
@@ -597,7 +608,6 @@ def cherry_blossom(x, y, size, n_colors):  # pylint: disable=too-many-locals,unu
     block looks like a cherry tree regardless of which palette is active.
     Background uses palette color index 0 to blend with the quilt.
     """
-    import math  # pylint: disable=import-outside-toplevel
 
     patches = []
     s = size
@@ -625,8 +635,10 @@ def cherry_blossom(x, y, size, n_colors):  # pylint: disable=too-many-locals,unu
         )
     )
 
-    # generate blossoms at several points along and near the branch
-    rng = random.Random(hash((x, y)))
+    # generate blossoms at several points along and near the branch. The module
+    # RNG is seeded per cell by the renderer (quilt._block_patches); x/y always
+    # arrive as 0, so position can't drive the variation.
+    rng = random
     blossom_centers = [
         (x + s * 0.20, y + s * 0.75),
         (x + s * 0.40, y + s * 0.55),
@@ -681,7 +693,6 @@ def drunkards_path(x, y, size, n_colors):
     Approximates the curve with a polygon. When tiled with rotational symmetry,
     adjacent blocks' curves connect to form flowing rivers and waves.
     """
-    import math  # pylint: disable=import-outside-toplevel
 
     n_seg = 12  # segments to approximate the quarter-circle
     # quarter-circle arc from (x, y+size) to (x+size, y), centered at (x, y)
@@ -710,7 +721,6 @@ def cathedral_windows(x, y, size, n_colors):  # pylint: disable=too-many-locals
     Background in color 0 (folded fabric), windows in color 1 (contrast),
     curved folds in color 2.
     """
-    import math  # pylint: disable=import-outside-toplevel
 
     cx, cy = x + size / 2, y + size / 2
     n_seg = 16
@@ -771,23 +781,9 @@ def cathedral_windows(x, y, size, n_colors):  # pylint: disable=too-many-locals
         (cx, y + size),
         (x, cy),
     ]
-    edge_diamonds = []
-    # each half-diamond points inward
+    # each half-diamond points inward, drawn as a triangle at the edge midpoint
     edge_inward = [(0, 1), (-1, 0), (0, -1), (1, 0)]
     edge_perp = [(1, 0), (0, 1), (1, 0), (0, 1)]
-    for i in range(4):
-        emx, emy = edge_midpoints[i]
-        dx, dy = edge_inward[i]
-        px, py = edge_perp[i]
-        edge_diamonds.append(
-            [
-                (emx, emy),
-                (emx + dx * em, emy + dy * em),
-                (emx + dx * em * 2, emy + dy * em * 2),  # tip not needed, use 3-point
-            ]
-        )
-
-    # build simpler edge diamonds as triangles pointing inward
     edge_patches = []
     for i in range(4):
         emx, emy = edge_midpoints[i]
@@ -816,7 +812,6 @@ def applique(x, y, size, n_colors):  # pylint: disable=too-many-locals
     shapes in color 2 (or 1 if only 2 colors). Shapes are approximated with
     many-sided polygons.
     """
-    import math  # pylint: disable=import-outside-toplevel
 
     cx, cy = x + size / 2, y + size / 2
 

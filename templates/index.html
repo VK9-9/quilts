@@ -91,6 +91,14 @@
     border-radius: 2px;
   }
   .shortcut { font-size: 0.75em; color: #555; }
+  .gen-link {
+    font-size: 0.85em;
+    color: #6a9ec6;
+    text-decoration: none;
+    margin-bottom: 12px;
+    display: none;
+  }
+  .gen-link:hover { text-decoration: underline; }
   .round-btn {
     font-size: 0.75em;
     padding: 4px 12px;
@@ -120,6 +128,7 @@
   </div>
 
   <div class="shortcut">Y / N / S &nbsp; or &nbsp; ← / →</div>
+  <a class="gen-link" id="gen-link" href="#" target="_blank" rel="noopener">Open in generator &#8599;</a>
   <div class="params" id="params"></div>
   <div class="importance" id="importance"></div>
 
@@ -150,6 +159,14 @@ async function loadNext() {
       .filter(([k]) => k !== 'seed')
       .map(([k, v]) => `${k}=${v}`)
       .join('  ');
+
+  const genLink = document.getElementById('gen-link');
+  if (data.generator_url) {
+    genLink.href = data.generator_url;
+    genLink.style.display = 'inline-block';
+  } else {
+    genLink.style.display = 'none';
+  }
 
   updateStats(data.stats);
   updateImportance(data.importance);

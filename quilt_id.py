@@ -206,10 +206,17 @@ _V3_LEN = 14  # ceil(81 / log2(58)) = 14 chars
 
 
 def _pack(schema_values):
-    """Pack list of (value, nbits) tuples into a single int, MSB first."""
+    """Pack list of (value, nbits) tuples into a single int, MSB first.
+
+    Values are saturated to each field's [0, 2**nbits - 1] range. Masking
+    instead would silently wrap an out-of-range value to an unrelated one
+    (e.g. n_colors=7 -> 0 -> decodes as 3); saturation keeps the decoded
+    value as close as the field allows.
+    """
     n = 0
     for val, nbits in schema_values:
-        n = (n << nbits) | (val & ((1 << nbits) - 1))
+        hi = (1 << nbits) - 1
+        n = (n << nbits) | max(0, min(int(val), hi))
     return n
 
 

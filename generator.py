@@ -225,6 +225,25 @@ QUILT_SIZES = {
 }
 
 
+# Hard server-side bounds on numeric render params. The HTML controls cap these
+# client-side, but the endpoints are public so the raw query string is untrusted:
+# an unbounded rows/tile_size/strippy inflates the cairo surface to gigapixels
+# and OOMs the worker. (lo, hi) per key; values are clamped, not rejected.
+_PARAM_BOUNDS = {
+    "rows": (4, 40),
+    "n_colors": (3, 6),
+    "tile_size": (0, 12),
+    "tile_variation": (0.0, 0.5),
+    "chaos": (0.0, 1.0),
+    "mega_frac": (0.0, 0.5),
+    "plain_frac": (0.0, 0.5),
+    "wonky": (0.0, 0.1),
+    "strippy": (0.0, 0.6),
+    "wash_alpha": (0.0, 0.3),
+    "seed": (0, 2**31 - 1),
+}
+
+
 def _params_from_request(defaults=None):
     """Parse quilt params from query string, falling back to defaults."""
     a = request.args
@@ -234,12 +253,21 @@ def _params_from_request(defaults=None):
         v = a.get(key)
         if v is not None:
             try:
-                return cast(v)
+                v = cast(v)
             except (ValueError, TypeError):
-                pass
-        return base.get(key, fallback)
+                v = base.get(key, fallback)
+        else:
+            v = base.get(key, fallback)
+        lo_hi = _PARAM_BOUNDS.get(key)
+        if lo_hi is not None and isinstance(v, (int, float)):
+            v = max(lo_hi[0], min(v, lo_hi[1]))
+        return v
 
-    stitch = a.get("quilt_stitch", base.get("quilt_stitch", "none"))
+    def _choice(key, valid, fallback):
+        v = a.get(key, base.get(key, fallback))
+        return v if v in valid else fallback
+
+    stitch = _choice("quilt_stitch", STITCH_STYLES, "none")
     if stitch == "none":
         stitch = None
 
@@ -248,8 +276,8 @@ def _params_from_request(defaults=None):
     size_w, size_h, _ = QUILT_SIZES.get(size_key, QUILT_SIZES["sq8"])
     cols = round(rows * size_w / size_h)
     return {
-        "palette": _get("palette", str, "lavender fields"),
-        "symmetry": _get("symmetry", str, "bargello"),
+        "palette": _choice("palette", PALETTE_NAMES, "lavender fields"),
+        "symmetry": _choice("symmetry", SYMMETRY_NAMES, "bargello"),
         "chaos": _get("chaos", float, 0.3),
         "rows": rows,
         "cols": cols,
@@ -257,7 +285,7 @@ def _params_from_request(defaults=None):
         "n_colors": _get("n_colors", int, 4),
         "tile_size": _get("tile_size", int, 6),
         "tile_variation": _get("tile_variation", float, 0.1),
-        "border_style": _get("border_style", str, "none"),
+        "border_style": _choice("border_style", BORDER_STYLES, "none"),
         "mega_frac": _get("mega_frac", float, 0.0),
         "plain_frac": _get("plain_frac", float, 0.0),
         "quilt_stitch": stitch,
@@ -388,4 +416,8 @@ def pattern():
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5001))
-    app.run(debug=True, port=port)
+    # Default debug off: this app is public, and the Werkzeug debugger exposes an
+    # RCE console. Opt in locally with FLASK_DEBUG=1. (Production runs gunicorn,
+    # which ignores this block, but never ship debug=True in source.)
+    debug = os.environ.get("FLASK_DEBUG") == "1"
+    app.run(debug=debug, port=port)

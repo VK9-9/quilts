@@ -26,6 +26,17 @@ from layout import SYMMETRY_MODES
 from quilt import BORDER_STYLES, QUILT_STITCH_STYLES, render_quilt
 from render_params import params_to_render_kwargs
 
+
+def _atomic_write_json(path, obj):
+    """Write JSON to a temp file then atomically replace, so an interrupted
+    write (or a concurrent reader) never leaves a truncated/corrupt file."""
+    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(obj, f, indent=2)
+    os.replace(tmp, path)
+
+
 _DROP_PALETTES = {
     "storm",
     "midnight moss",
@@ -188,10 +199,13 @@ def _render_small(params, block_size):
 class QuiltExplorer:  # pylint: disable=too-many-instance-attributes
     """Active learning explorer for quilt aesthetics."""
 
-    def __init__(self, data_path="ratings.json"):
+    def __init__(self, data_path="data/ratings.json"):
         self.data_path = data_path
-        self.embeddings_path = data_path.replace(".json", "_embeddings.npy")
-        self.rounds_path = data_path.replace(".json", "_rounds.json")
+        # Derive companion paths from the extension only — a plain .replace()
+        # would also rewrite a ".json" that appears earlier in the path.
+        root = os.path.splitext(data_path)[0]
+        self.embeddings_path = root + "_embeddings.npy"
+        self.rounds_path = root + "_rounds.json"
         self.ratings = []
         self.embeddings = np.zeros((0, 512), dtype=np.float32)
         self.rounds = []
@@ -206,19 +220,25 @@ class QuiltExplorer:  # pylint: disable=too-many-instance-attributes
                 self.ratings = json.load(f)
         if os.path.exists(self.embeddings_path):
             self.embeddings = np.load(self.embeddings_path)
+        # Embeddings align with ratings positionally: embeddings[i] is the CLIP
+        # vector for ratings[i]. More embeddings than ratings means the .npy is
+        # stale (truncated/edited ratings.json, diverged backfill) — the surplus
+        # rows would silently mis-pair labels, so drop them.
+        if len(self.embeddings) > len(self.ratings):
+            print(
+                f"WARNING: {len(self.embeddings)} embeddings > {len(self.ratings)} "
+                f"ratings; truncating embeddings to match."
+            )
+            self.embeddings = self.embeddings[: len(self.ratings)]
         if os.path.exists(self.rounds_path):
             with open(self.rounds_path, encoding="utf-8") as f:
                 self.rounds = json.load(f)
 
     def _save(self):
-        os.makedirs(os.path.dirname(self.data_path) or ".", exist_ok=True)
-        with open(self.data_path, "w", encoding="utf-8") as f:
-            json.dump(self.ratings, f, indent=2)
+        _atomic_write_json(self.data_path, self.ratings)
 
     def _save_rounds(self):
-        os.makedirs(os.path.dirname(self.rounds_path) or ".", exist_ok=True)
-        with open(self.rounds_path, "w", encoding="utf-8") as f:
-            json.dump(self.rounds, f, indent=2)
+        _atomic_write_json(self.rounds_path, self.rounds)
 
     def start_round(self, label=None):
         """Start a new scoring round. Returns the round number."""
@@ -235,7 +255,11 @@ class QuiltExplorer:  # pylint: disable=too-many-instance-attributes
         return num
 
     def _save_embeddings(self):
-        np.save(self.embeddings_path, self.embeddings)
+        # Write to a temp file then atomically replace, so an interrupted save
+        # (or a concurrent reader) never sees a half-written array.
+        tmp = self.embeddings_path + ".tmp.npy"
+        np.save(tmp, self.embeddings)
+        os.replace(tmp, self.embeddings_path)
 
     def add_rating(self, params, liked):
         """Record a rating (liked=True/False) for a param set and embed the image."""
@@ -273,12 +297,17 @@ class QuiltExplorer:  # pylint: disable=too-many-instance-attributes
         )
         self.model.fit(features, y)
 
-        # Train CLIP model on ratings that have valid (non-zero) embeddings
-        n_emb = len(self.embeddings)
+        # Train CLIP model on ratings that have valid (non-zero) embeddings.
+        # Reset first so a prior fit is dropped if the CLIP data no longer
+        # qualifies (otherwise suggest_params keeps using a stale model).
+        self.clip_model = None
+        # Clamp to the aligned prefix in case embeddings and ratings ever differ.
+        n_emb = min(len(self.embeddings), len(y))
         if n_emb >= 10:
+            emb = self.embeddings[:n_emb]
             y_emb = y[:n_emb]
-            valid = np.linalg.norm(self.embeddings, axis=1) > 0
-            x_valid = self.embeddings[valid]
+            valid = np.linalg.norm(emb, axis=1) > 0
+            x_valid = emb[valid]
             y_valid = y_emb[valid]
             if len(x_valid) >= 10 and len(set(y_valid)) >= 2:
                 self.clip_model = LogisticRegression(max_iter=1000, C=1.0, random_state=42)

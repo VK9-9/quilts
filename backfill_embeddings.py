@@ -6,8 +6,9 @@ Usage:
 Renders each rated quilt at block_size=16, embeds with CLIP, and saves
 to <ratings_stem>_embeddings.npy alongside the ratings file.
 
-Already-embedded ratings (rows up to existing embeddings count) are
-skipped so the script is safe to resume if interrupted.
+Rows that already have a non-zero embedding are skipped, so the script is safe
+to resume if interrupted. Rows left zero by an earlier render failure are
+retried on each run (in case the underlying issue has since been fixed).
 """
 
 import json
@@ -23,48 +24,53 @@ from quilt import render_quilt
 
 
 def backfill(ratings_path):
-    """Embed all ratings that don't yet have an embedding."""
-    embeddings_path = ratings_path.replace(".json", "_embeddings.npy")
+    """Embed every rating that lacks a (non-zero) embedding."""
+    # Derive the companion path from the extension only — see sampler.py.
+    embeddings_path = os.path.splitext(ratings_path)[0] + "_embeddings.npy"
 
     with open(ratings_path, encoding="utf-8") as f:
         ratings = json.load(f)
+    total = len(ratings)
 
     if os.path.exists(embeddings_path):
         embeddings = np.load(embeddings_path)
     else:
         embeddings = np.zeros((0, 512), dtype=np.float32)
 
-    start = len(embeddings)
-    total = len(ratings)
-    remaining = total - start
+    if len(embeddings) > total:
+        print(f"WARNING: {len(embeddings)} embeddings > {total} ratings; truncating.")
+        embeddings = embeddings[:total]
 
-    if remaining == 0:
+    # Positionally-aligned buffer: rows[i] is the embedding for ratings[i].
+    rows = np.zeros((total, 512), dtype=np.float32)
+    rows[: len(embeddings)] = embeddings
+
+    # (Re)embed new rows plus any left zero by an earlier failure.
+    todo = [i for i in range(total) if not np.any(rows[i])]
+    if not todo:
         print(f"All {total} ratings already embedded.")
         return
 
-    print(f"Embedding {remaining} ratings (skipping first {start})...")
+    print(f"Embedding {len(todo)} ratings ({total - len(todo)} already done)...")
 
-    rows = list(embeddings)
-    skipped = 0
-    for i, rec in enumerate(ratings[start:], start=start):
+    failed = 0
+    for n, i in enumerate(todo):
         try:
-            kwargs = params_to_render_kwargs(rec["params"], block_size=_CLIP_EMBED_BLOCK_SIZE)
+            kwargs = params_to_render_kwargs(
+                ratings[i]["params"], block_size=_CLIP_EMBED_BLOCK_SIZE
+            )
             png_bytes = render_quilt(**kwargs)
-            vec = embed_image(png_bytes)
-        except Exception:  # pylint: disable=broad-except
-            # retired palette or other render failure — store zero vector
-            vec = np.zeros(512, dtype=np.float32)
-            skipped += 1
-        rows.append(vec)
-        if (i + 1) % 50 == 0 or (i + 1) == total:
-            print(f"  {i + 1}/{total}  (skipped so far: {skipped})")
-            # save incrementally so interruption doesn't lose work
-            np.save(embeddings_path, np.array(rows, dtype=np.float32))
+            rows[i] = embed_image(png_bytes)
+        except Exception as exc:  # pylint: disable=broad-except
+            # retired palette or other render failure — leave a zero vector
+            print(f"  row {i} failed ({type(exc).__name__}: {exc}); zero-padded")
+            failed += 1
+        if (n + 1) % 50 == 0 or (n + 1) == len(todo):
+            print(f"  {n + 1}/{len(todo)}  (failed so far: {failed})")
+            np.save(embeddings_path, rows)  # save incrementally
 
-    print(
-        f"Saved {embeddings_path}  shape={np.array(rows).shape}  "
-        f"({skipped} zero-padded due to retired palettes)"
-    )
+    np.save(embeddings_path, rows)
+    print(f"Saved {embeddings_path}  shape={rows.shape}  ({failed} zero-padded due to failures)")
 
 
 if __name__ == "__main__":

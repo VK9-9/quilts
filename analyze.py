@@ -7,7 +7,7 @@ from collections import Counter, defaultdict
 import numpy as np
 
 
-def load_ratings(path="ratings.json"):
+def load_ratings(path="data/ratings.json"):
     """Load ratings JSON from disk."""
     with open(path, encoding="utf-8") as f:
         return json.load(f)
@@ -35,8 +35,10 @@ def analyze_categorical(ratings, param):
 
 def analyze_continuous(ratings, param):
     """Return (liked_mean, disliked_mean) for a continuous param."""
-    liked = [r["params"][param] for r in ratings if r["liked"]]
-    disliked = [r["params"][param] for r in ratings if not r["liked"]]
+    # Use .get(): some records (e.g. bargello/forced-solid or older schema) may
+    # lack a given continuous param, and direct indexing would KeyError.
+    liked = [v for r in ratings if r["liked"] and (v := r["params"].get(param)) is not None]
+    disliked = [v for r in ratings if not r["liked"] and (v := r["params"].get(param)) is not None]
     return (
         np.mean(liked) if liked else float("nan"),
         np.mean(disliked) if disliked else float("nan"),
@@ -55,10 +57,10 @@ def time_windows(ratings, window=25):
 
 def palette_frequency(ratings):
     """Return Counter of palette usage."""
-    return Counter(r["params"]["palette"] for r in ratings)
+    return Counter(p for r in ratings if (p := r["params"].get("palette")) is not None)
 
 
-def load_rounds(path="ratings_rounds.json"):
+def load_rounds(path="data/ratings_rounds.json"):
     """Load round boundaries."""
     with open(path, encoding="utf-8") as f:
         return json.load(f)
@@ -98,6 +100,9 @@ def round_summary(ratings, rounds):  # pylint: disable=too-many-locals
 def print_report(ratings, rounds=None):  # pylint: disable=too-many-locals
     """Print a full analysis report to stdout."""
     n = len(ratings)
+    if n == 0:
+        print("No ratings to report.")
+        return
     liked = sum(1 for r in ratings if r["liked"])
     print(f"Total: {n} ratings, {liked} liked ({liked / n * 100:.1f}%)\n")
 
@@ -138,7 +143,7 @@ def print_report(ratings, rounds=None):  # pylint: disable=too-many-locals
 if __name__ == "__main__":
     import os
 
-    _path = sys.argv[1] if len(sys.argv) > 1 else "ratings.json"
-    _rounds_path = os.path.join(os.path.dirname(_path), "ratings_rounds.json")
+    _path = sys.argv[1] if len(sys.argv) > 1 else "data/ratings.json"
+    _rounds_path = os.path.splitext(_path)[0] + "_rounds.json"
     _rounds = load_rounds(_rounds_path) if os.path.exists(_rounds_path) else None
     print_report(load_ratings(_path), rounds=_rounds)

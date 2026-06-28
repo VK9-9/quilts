@@ -43,7 +43,7 @@ def nearest_square(n):
 
 
 def _encodable(params):
-    """Return True if params can be rendered and encoded as a v2 quilt ID."""
+    """Return True if params can be rendered and encoded as a v3 quilt ID."""
     return params.get("palette") in _ENCODABLE_PALETTES and params.get("symmetry") in _V2_SYMMETRY
 
 
@@ -97,11 +97,21 @@ def load_clip_embeddings(ratings_path, indices):
     """Load CLIP embeddings for the given rating indices.
 
     Returns (embeddings, valid_mask) — valid_mask is False for zero-norm
-    rows (retired palettes that couldn't be rendered).
+    rows (retired palettes that couldn't be rendered) and for indices that
+    fall beyond a short/stale embeddings array.
     """
-    emb_path = ratings_path.replace(".json", "_embeddings.npy")
+    emb_path = os.path.splitext(ratings_path)[0] + "_embeddings.npy"
     all_emb = np.load(emb_path)
-    emb = all_emb[indices]
+    dim = all_emb.shape[1] if all_emb.ndim == 2 else 512
+    idx = np.asarray(indices, dtype=int)
+    in_range = idx < len(all_emb)
+    if not in_range.all():
+        print(
+            f"WARNING: {(~in_range).sum()} rating indices exceed "
+            f"{len(all_emb)} embeddings; treating them as missing."
+        )
+    emb = np.zeros((len(idx), dim), dtype=all_emb.dtype)
+    emb[in_range] = all_emb[idx[in_range]]
     valid = np.linalg.norm(emb, axis=1) > 0
     return emb, valid
 
@@ -271,7 +281,7 @@ def define_families(
     name_overrides=None,
     clip_embeddings=None,
 ):
-    """Group liked quilts by palette x symmetry and build families.
+    """Group liked quilts by symmetry x chaos band and build families.
 
     clip_embeddings is used for picking a better representative if available.
     """
@@ -308,13 +318,24 @@ def define_families(
 
         variations = generate_variations(sym, members, n_variations, rng)
 
+        # Dedup by quilt_id: two variations that encode identically would render
+        # to the same PNG and overwrite each other's HTML page (breaking prev/next).
+        seen_qids = set()
+        var_entries = []
+        for vp in variations:
+            qid = encode(vp)
+            if qid in seen_qids:
+                continue
+            seen_qids.add(qid)
+            var_entries.append({"params": vp, "qid": qid})
+
         families.append(
             {
                 "name": name,
                 "slug": slug,
                 "rep": rep,
                 "rep_id": encode(rep),
-                "variations": [{"params": vp, "qid": encode(vp)} for vp in variations],
+                "variations": var_entries,
                 "size": len(members),
             }
         )
@@ -336,7 +357,7 @@ def render_to_file(params, path, block_size):
     render_quilt(**kwargs)
 
 
-def render_images(families, out, _block_size_thumb, block_size_full):
+def render_images(families, out, block_size_full):
     """Render rep and variation PNGs for all families, skipping existing files."""
     n_total = len(families) + sum(len(f["variations"]) for f in families)
     done = 0
@@ -656,7 +677,7 @@ def main():  # pylint: disable=too-many-locals,too-many-statements,too-many-bran
         f"\nRendering images ({len(families)} reps + "
         f"{sum(len(f['variations']) for f in families)} variations)..."
     )
-    render_images(families, out, args.block_size, args.block_size)
+    render_images(families, out, args.block_size)
 
     print("\nRendering HTML...")
     render_html(families, out, n_families, n_variations)
