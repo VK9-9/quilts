@@ -15,7 +15,7 @@ import tempfile
 sys.path.insert(0, os.path.dirname(__file__))
 
 # pylint: disable=wrong-import-position
-from flask import Flask, render_template, request, Response
+from flask import Flask, render_template, request, Response, has_request_context
 from quilt import render_quilt, BORDER_STYLES as _QUILT_BORDER_STYLES
 from quilt_id import encode, decode, _V2_PALETTES, _V2_SYMMETRY, _V2_STITCH
 from render_params import params_to_render_kwargs
@@ -42,9 +42,31 @@ _BUILD_TIME = (
 )
 
 
+# Deployed instance, for the dev-only "view this page on prod" link.
+_PROD_BASE = "https://quilty.up.railway.app"
+_LOCAL_HOSTS = ("localhost", "127.0.0.1", "0.0.0.0")
+
+
+def _prod_equivalent_url():
+    """When served from a local host, the same path+query on the prod instance.
+
+    Returns None in prod (or outside a request) so the link only appears in dev.
+    """
+    if not has_request_context() or request.host.split(":")[0] not in _LOCAL_HOSTS:
+        return None
+    path = request.full_path
+    if path.endswith("?"):  # full_path appends a bare "?" when there's no query
+        path = path[:-1]
+    return _PROD_BASE + path
+
+
 @app.context_processor
 def _inject_build_info():
-    return {"build_commit": _COMMIT, "build_time": _BUILD_TIME}
+    return {
+        "build_commit": _COMMIT,
+        "build_time": _BUILD_TIME,
+        "prod_link": _prod_equivalent_url(),
+    }
 
 
 PALETTE_NAMES = _V2_PALETTES

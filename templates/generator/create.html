@@ -135,6 +135,8 @@
     .btn-secondary { background: #eceaf5; color: #6b5ea8; border: 1px solid #d5d0ea; }
     .btn-secondary:hover { background: #ddd8f0; }
     .build-info { font-size: 10px; color: #bbb; text-align: center; margin-top: 12px; }
+    .prod-link { font-size: 11px; color: #6b5ea8; text-align: center; text-decoration: none; display: block; margin-top: 6px; }
+    .prod-link:hover { text-decoration: underline; }
 
     /* Main preview area */
     #main {
@@ -339,6 +341,9 @@
   </div>
 
   <div class="build-info">{{ build_commit }} &middot; {{ build_time }}</div>
+  {% if prod_link %}
+  <a class="prod-link" href="{{ prod_link }}" target="_blank" rel="noopener">View this page on prod &#8599;</a>
+  {% endif %}
 </div>
 
 <div id="main">
