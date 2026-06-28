@@ -12,11 +12,31 @@ from flask import Flask, render_template, request, jsonify, Response
 from quilt import render_quilt
 from sampler import QuiltExplorer
 from render_params import params_to_render_kwargs
+from quilt_id import encode
 # pylint: enable=wrong-import-position
 
 app = Flask(__name__)
 _ratings_path = sys.argv[1] if len(sys.argv) > 1 else "data/ratings.json"
 explorer = QuiltExplorer(_ratings_path)
+
+# Base URL of the generator webapp, for "open this quilt in the generator" links.
+# Defaults to the deployed instance; override with GENERATOR_URL for local dev
+# (e.g. GENERATOR_URL=http://localhost:5001).
+GENERATOR_BASE = os.environ.get("GENERATOR_URL", "https://quilty.up.railway.app").rstrip("/")
+
+
+def _generator_link(params):
+    """Return a generator /create URL for these params, or None if not encodable.
+
+    Some sampled palettes/symmetries aren't in the quilt_id vocabulary; those
+    simply get no link rather than erroring.
+    """
+    try:
+        qid = encode(params)
+    except (ValueError, KeyError):
+        return None
+    return f"{GENERATOR_BASE}/create?id={qid}"
+
 
 # The Flask dev server is threaded, so two requests can mutate explorer state
 # (ratings list, embeddings array, model) concurrently. Serialize all mutations
@@ -39,6 +59,7 @@ def next_quilt():
             "params": params,
             "stats": explorer.stats(),
             "importance": explorer.feature_importance(),
+            "generator_url": _generator_link(params),
         }
     )
 
