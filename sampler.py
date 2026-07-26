@@ -159,35 +159,83 @@ def sample_random_params(rng=None, explore_only=False):
     }
 
 
-def params_to_features(params):
-    """Convert a param dict to a numeric feature vector for the model."""
-    features = []
-    # numeric params
-    features.append(params["rows"])
-    features.append(params["chaos"])
-    features.append(params["n_patterns"])
-    features.append(params["n_colors"])
-    features.append(params["tile_size"])
-    features.append(params["tile_variation"])
-    features.append(params.get("mega_frac", 0.0))
-    features.append(params.get("plain_frac", 0.0))
-    features.append(params.get("wash_alpha", 0.0))
-    features.append(1.0 if params.get("quilt_stitch") else 0.0)
-    features.append(1.0 if params.get("palette_2") else 0.0)
-    features.append(1.0 if params.get("palette_mix") else 0.0)
-    features.append(params.get("wonky", 0.0))
-    features.append(params.get("strippy", 0.0))
-    # one-hot border style (includes "none")
-    border_names = ["none"] + BORDER_STYLES
-    for b in border_names:
-        features.append(1.0 if params.get("border_style", "none") == b else 0.0)
-    # one-hot symmetry
-    for s in SYMMETRY_NAMES:
-        features.append(1.0 if params["symmetry"] == s else 0.0)
-    # one-hot palette
-    for p in PALETTE_NAMES:
-        features.append(1.0 if params["palette"] == p else 0.0)
+_NUMERIC_FEATURES = [
+    ("rows", 0),
+    ("chaos", 0.0),
+    ("n_patterns", 0),
+    ("n_colors", 0),
+    ("tile_size", 0),
+    ("tile_variation", 0.0),
+    ("mega_frac", 0.0),
+    ("plain_frac", 0.0),
+    ("wash_alpha", 0.0),
+    ("wonky", 0.0),
+    ("strippy", 0.0),
+]
+_FLAG_FEATURES = ["quilt_stitch", "palette_2", "palette_mix"]
+# Categorical params that get one-hot encoded, and the currently-samplable
+# values for each. build_feature_vocab widens these with whatever the ratings
+# history actually contains.
+_CATEGORICAL_BASE = {
+    "border_style": ["none"] + BORDER_STYLES,
+    "symmetry": list(SYMMETRY_MODES),
+    "palette": [p[0] for p in PALETTES],
+}
+
+
+def build_feature_vocab(ratings=()):
+    """Build the one-hot vocabulary, covering history as well as the live space.
+
+    _retrain fits on every rating ever recorded, so the encoder has to be able
+    to represent values that have since been retired from sampling — or deleted
+    from palettes.py outright, which is true of 25 palettes in the current
+    history. Encoding over only the samplable set collapsed all of them into a
+    single all-zero block: 27% of ratings landed there, and because values get
+    retired precisely for underperforming, that block carried a 27% like rate
+    against 65% for everything else. That taught the model a large, uniformly
+    negative bucket it can never meet again at prediction time, biased the base
+    rate the predicted probabilities are calibrated against, and made every
+    palette indicator partly encode "not retired" rather than "liked".
+
+    Values are sorted so the encoding depends only on the vocabulary's contents,
+    not on dict or file ordering.
+    """
+    vocab = {}
+    for key, base in _CATEGORICAL_BASE.items():
+        seen = {r["params"].get(key) for r in ratings}
+        vocab[key] = sorted(set(base) | {v for v in seen if v is not None})
+    return vocab
+
+
+def params_to_features(params, vocab=None):
+    """Convert a param dict to a numeric feature vector for the model.
+
+    `vocab` must be the same mapping used for every other row in a fit — pass
+    the one build_feature_vocab returned for the training set.
+    """
+    vocab = vocab if vocab is not None else build_feature_vocab()
+    features = [params.get(name, default) for name, default in _NUMERIC_FEATURES]
+    features += [1.0 if params.get(name) else 0.0 for name in _FLAG_FEATURES]
+    for key in _CATEGORICAL_BASE:
+        # border_style is the one categorical whose "off" state is a real value
+        # rather than an absent key, so normalise None to it.
+        actual = params.get(key)
+        if key == "border_style" and actual is None:
+            actual = "none"
+        features += [1.0 if actual == v else 0.0 for v in vocab[key]]
     return np.array(features, dtype=np.float64)
+
+
+_CATEGORICAL_PREFIXES = {"border_style": "brd", "symmetry": "sym", "palette": "pal"}
+
+
+def feature_names(vocab=None):
+    """Names matching params_to_features' output, for reporting importances."""
+    vocab = vocab if vocab is not None else build_feature_vocab()
+    names = [name for name, _default in _NUMERIC_FEATURES] + list(_FLAG_FEATURES)
+    for key in _CATEGORICAL_BASE:
+        names += [f"{_CATEGORICAL_PREFIXES[key]}_{v}" for v in vocab[key]]
+    return names
 
 
 def _render_small(params, block_size):
@@ -212,6 +260,10 @@ class QuiltExplorer:  # pylint: disable=too-many-instance-attributes
         self._load()
         self.model = None  # param model
         self.clip_model = None  # CLIP embedding model
+        # One-hot vocabulary for the current fit. Rebuilt on every retrain so a
+        # newly-seen palette widens it, and held on the instance so scoring a
+        # candidate encodes identically to how the training rows were encoded.
+        self.vocab = build_feature_vocab()
         self._retrain()
 
     def _load(self):
@@ -279,11 +331,12 @@ class QuiltExplorer:  # pylint: disable=too-many-instance-attributes
 
     def _retrain(self):
         """Retrain both preference models on all ratings so far."""
+        self.vocab = build_feature_vocab(self.ratings)
         if len(self.ratings) < 10:
             self.model = None
             self.clip_model = None
             return
-        features = np.array([params_to_features(r["params"]) for r in self.ratings])
+        features = np.array([params_to_features(r["params"], self.vocab) for r in self.ratings])
         y = np.array([1 if r["liked"] else 0 for r in self.ratings])
         if len(set(y)) < 2:
             self.model = None
@@ -343,7 +396,7 @@ class QuiltExplorer:  # pylint: disable=too-many-instance-attributes
         candidates = filtered if filtered else candidates
 
         # stage 1: param model scores all candidates
-        features = np.array([params_to_features(c) for c in candidates])
+        features = np.array([params_to_features(c, self.vocab) for c in candidates])
         param_probs = self.model.predict_proba(features)[:, 1]
 
         if self.clip_model is None:
@@ -394,28 +447,6 @@ class QuiltExplorer:  # pylint: disable=too-many-instance-attributes
         """Return feature importances if param model is trained."""
         if self.model is None:
             return None
-        border_names = ["none"] + BORDER_STYLES
-        names = (
-            [
-                "rows",
-                "chaos",
-                "n_patterns",
-                "n_colors",
-                "tile_size",
-                "tile_variation",
-                "mega_frac",
-                "plain_frac",
-                "wash_alpha",
-                "quilt_stitch",
-                "palette_2",
-                "palette_mix",
-                "wonky",
-                "strippy",
-            ]
-            + [f"brd_{b}" for b in border_names]
-            + [f"sym_{s}" for s in SYMMETRY_NAMES]
-            + [f"pal_{p}" for p in PALETTE_NAMES]
-        )
+        names = feature_names(self.vocab)
         importances = self.model.feature_importances_
-        pairs = sorted(zip(names, importances), key=lambda x: -x[1])
-        return pairs
+        return sorted(zip(names, importances), key=lambda x: -x[1])
