@@ -7,6 +7,7 @@ Routes:
     GET /download       Same as /render but as file download
 """
 
+import datetime
 import os
 import subprocess
 import sys
@@ -35,11 +36,7 @@ if not _COMMIT:
         ).strip()
     except (OSError, subprocess.SubprocessError):
         _COMMIT = "unknown"
-_BUILD_TIME = (
-    __import__("datetime")
-    .datetime.now(__import__("datetime").timezone.utc)
-    .strftime("%Y-%m-%d %H:%M UTC")
-)
+_BUILD_TIME = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
 
 
 # Deployed instance, for the dev-only "view this page on prod" link.
