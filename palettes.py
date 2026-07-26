@@ -298,3 +298,43 @@ def hex_to_rgb(h):
     """Convert hex color string to (r, g, b) float tuple (0-1)."""
     h = h.lstrip("#")
     return tuple(int(h[i : i + 2], 16) / 255.0 for i in (0, 2, 4))
+
+
+def luminance(color):
+    """Perceived brightness of a hex string or an (r, g, b) float tuple.
+
+    >>> luminance("#000000")
+    0.0
+    >>> luminance("#FFFFFF")
+    1.0
+    """
+    r, g, b = hex_to_rgb(color) if isinstance(color, str) else color
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+
+
+def subset_in_tonal_order(colors, k, rng):
+    """Pick k of `colors` at random, returned ordered dark to light.
+
+    Bargello reads consecutive palette indices as consecutive tones — the
+    undulating wave is only legible if stepping one index steps one shade.
+    Palettes are authored as a tonal ramp followed by accent colors, so
+    neither selection order (what rng.sample returns) nor palette order
+    gives that; a subset that picks up an accent puts a hue jump in the
+    middle of the ramp and the wave aliases into a checkerboard. Sorting by
+    luminance makes the invariant true by construction, whatever was drawn.
+
+    Every other symmetry reshuffles per cell via color_map, so the ordering
+    is a no-op for them.
+
+    >>> import random
+    >>> subset_in_tonal_order(["#FFFFFF", "#000000", "#808080"], 3, random.Random(0))
+    ['#000000', '#808080', '#FFFFFF']
+    >>> pal = ["#5B3A8C", "#9B72CF", "#C8A2E8", "#E8D5F5", "#3D6B4F", "#D4A060"]
+    >>> vals = [luminance(c) for c in subset_in_tonal_order(pal, 4, random.Random(1))]
+    >>> vals == sorted(vals)
+    True
+    """
+    # Leave the RNG untouched when no choice is actually being made — the PDF
+    # reconstruction replays this stream and must stay in step with the render.
+    chosen = list(colors) if k >= len(colors) else rng.sample(colors, k)
+    return sorted(chosen, key=luminance)

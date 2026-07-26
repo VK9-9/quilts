@@ -24,7 +24,7 @@ import random
 import cairo
 
 from blocks import BLOCK_PATTERNS
-from palettes import PALETTES, hex_to_rgb
+from palettes import PALETTES, hex_to_rgb, subset_in_tonal_order
 from layout import SYMMETRY_MODES
 
 
@@ -454,8 +454,8 @@ def build_layout(
     color_rng = random.Random(rng.randint(0, 2**31))
 
     palette_colors = pick_palettes(palette_name, 1, color_rng)
-    if max_colors is not None and max_colors < len(palette_colors):
-        palette_colors = color_rng.sample(palette_colors, max_colors)
+    if max_colors is not None:
+        palette_colors = subset_in_tonal_order(palette_colors, max_colors, color_rng)
     n_colors = len(palette_colors)
 
     grid, allowed = _build_grid(
@@ -503,8 +503,8 @@ def _resolve_palettes(palette_name, palette_mix, palette_name_2, max_colors, col
 
     def pick(name):
         colors = pick_palettes(name, 1, color_rng)
-        if max_colors is not None and max_colors < len(colors):
-            colors = color_rng.sample(colors, max_colors)
+        if max_colors is not None:
+            colors = subset_in_tonal_order(colors, max_colors, color_rng)
         return colors
 
     palette_colors = pick(palette_name)

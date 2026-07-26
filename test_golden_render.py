@@ -172,17 +172,21 @@ GOLDEN_CASES = {
 }
 
 # sha256 of decoded RGBA pixels, block_size=20. Regenerate via --regenerate.
+#
+# Regenerated deliberately: palette subsets are now ordered by luminance
+# (palettes.subset_in_tonal_order), which changes what is drawn for every quilt
+# that uses fewer colors than its palette holds.
 GOLDEN_HASHES = {
-    "bargello_basic": "7551c45c91c441234bb3293be595addb98a324efc99d368c8774969d10fb7f1a",
-    "partial_lively": "4a968b9b23d1d288948d477003f41145a60a3ba16f01f40afe4619497d4d6314",
-    "rotational_calm": "95c5f9e21a715a18f79c7a5faf56c4d2e3577db6b4fc8fb024864e8c255b9b58",
-    "stripe_serene": "bfb917e9da8ce866c631fbd52b1acc84ab8e4fc860455234b2b1ce41303cd30c",
-    "columns_mix": "8498c4a00c01a0777bf58c379a050d9a40d69b01d6e269175cba56217d1f3cc0",
-    "emergent_wild": "8306b96184570320f2f174346a447744c7cab4e19db12717368a11eaa70023d8",
-    "none_tiled": "dec32528d65a9963954ab53f98ddec0a8148971b1c80b4f5b50b573b22e3df45",
-    "palette_two": "a59186d3d820e868820d69340a2b27c85c81717bd18bdba8045af9e33b615da0",
-    "plain_and_wash": "815bd29a4cf170b365b7c32ba89143182d29ed06403ab249c67a3006d2f77ad9",
-    "strippy_wonky": "82f9570f141ec34ea64a52b1850b6dda7ff1355992e605cf93ef67b2fc937623",
+    "bargello_basic": "fbd93893b8f3d28499ed6f882a34f3f2fa2cea9498a151917143812e91448941",
+    "partial_lively": "680ce672adf4d68b7f0a35e6df95a9745e593a163d0ed3c6f67ad5a473921e50",
+    "rotational_calm": "636885ba05e57db9024ea94e0d0bb1334eaacc763582b23e64261a453d499d1b",
+    "stripe_serene": "2e14b67f2ec7b4e7ecbaafc6cd6c34dd3169fb1a7cc526060a2f2f8c8512aaae",
+    "columns_mix": "9cd21bef1fbfbb2b79ec31a70b6991defd9270d550e30f4d9459b083af2c932b",
+    "emergent_wild": "9fb968ac981908dd5b5466ad2d8c4604a2459a15981e791572494078d25e2084",
+    "none_tiled": "954eb001b125145723c2c8a18482752638524f11b8b7f529178eb2faece53e31",
+    "palette_two": "ef39ce00718e6cafb3c8064a737620809c86cf05d5a1e0c60b4340c53637451e",
+    "plain_and_wash": "211067e3a78620da5e9a7d983a8eef08bc32dafe81dc30b8875d8f4a8eb6edc8",
+    "strippy_wonky": "58d0d8b636ba1f2809472872b2f6a86328e94d14c72eed633b3cc078687bb3fe",
 }
 
 _BLOCK_SIZE = 20

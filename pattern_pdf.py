@@ -13,7 +13,7 @@ from reportlab.lib.units import inch
 from reportlab.pdfgen import canvas as rl_canvas
 
 from blocks import BLOCK_PATTERNS
-from palettes import PALETTES, hex_to_rgb
+from palettes import PALETTES, hex_to_rgb, subset_in_tonal_order
 from quilt import render_quilt, build_layout
 from quilt_id import encode
 
@@ -86,11 +86,15 @@ def _human_color_name(hex_color):  # pylint: disable=too-many-return-statements
 
 
 def _pick_palette_colors(palette_name, max_colors, rng):
-    """Resolve palette name to list of hex colors, sampled to max_colors."""
+    """Resolve palette name to list of hex colors, sampled to max_colors.
+
+    Must consume `rng` exactly as quilt._resolve_palettes does, or the pattern
+    won't describe the quilt the renderer draws.
+    """
     for name, colors in PALETTES:
         if name == palette_name:
-            if max_colors and max_colors < len(colors):
-                return rng.sample(colors, max_colors)
+            if max_colors:
+                return subset_in_tonal_order(colors, max_colors, rng)
             return list(colors)
     return ["#000000", "#FFFFFF", "#FF0000", "#0000FF"]
 
