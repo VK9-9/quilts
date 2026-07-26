@@ -169,7 +169,44 @@ GOLDEN_CASES = {
         "wonky": 0.04,
         "quilt_stitch": "grid",
     },
+    "flower_medallion": {
+        "rows": 16,
+        "cols": 16,
+        "symmetry": "flower",
+        "chaos": 0.4,
+        "palette": "cherry blossom",
+        "n_patterns": 2,
+        "n_colors": 4,
+        "tile_size": 6,
+        "tile_variation": 0.1,
+        "seed": 1006,
+        "quilt_stitch": "sashiko_asanoha",
+    },
+    "mirror_geometric": {
+        "rows": 16,
+        "cols": 16,
+        "symmetry": "mirror",
+        "chaos": 0.3,
+        "palette": "ocean breeze",
+        "n_patterns": 2,
+        "n_colors": 4,
+        "tile_size": 7,
+        "tile_variation": 0.1,
+        "seed": 1003,
+        "quilt_stitch": "sashiko_wave",
+    },
 }
+
+
+def test_every_symmetry_has_a_golden_case():
+    """flower and mirror had no case, so a change to layout_flower's cell
+    assignment slipped through the tripwire entirely."""
+    from layout import SYMMETRY_MODES  # pylint: disable=import-outside-toplevel
+
+    covered = {c["symmetry"] for c in GOLDEN_CASES.values()}
+    missing = set(SYMMETRY_MODES) - covered
+    assert not missing, f"symmetry modes with no golden case: {sorted(missing)}"
+
 
 # sha256 of decoded RGBA pixels, block_size=20. Regenerate via --regenerate.
 #
@@ -188,6 +225,8 @@ GOLDEN_HASHES = {
     "palette_two": "ef39ce00718e6cafb3c8064a737620809c86cf05d5a1e0c60b4340c53637451e",
     "plain_and_wash": "211067e3a78620da5e9a7d983a8eef08bc32dafe81dc30b8875d8f4a8eb6edc8",
     "strippy_wonky": "58d0d8b636ba1f2809472872b2f6a86328e94d14c72eed633b3cc078687bb3fe",
+    "flower_medallion": "ac1ccce4e9a23ab1e02c509539149b2d65b036adc07b7cad374e8cab88a5efa9",
+    "mirror_geometric": "5843fb79ec821c6a93bb8dd0a65d54d757dbdd07fa2ec74832e684eceaf77024",
 }
 
 _BLOCK_SIZE = 20
