@@ -1,5 +1,7 @@
 """Tests for generator.py — Flask webapp routes and param parsing."""
 
+import re
+
 import pytest
 from generator import app, PRESETS
 from render_params import params_to_render_kwargs
@@ -142,6 +144,74 @@ class TestCreateRoute:
         assert resp.status_code == 200  # falls back to defaults
 
 
+class TestCreateControlsAlwaysBound:
+    """Every control the editor renders must carry a real value on every entry path.
+
+    Jinja renders a missing key as "", and the HTML value-sanitization algorithm
+    resolves an empty <input type=range> value to the slider midpoint. Presets and
+    decoded quilt IDs both omit the advanced controls, so this used to silently open
+    every preset and shared-ID page at strippy=0.3 / wash_alpha=0.1.
+    """
+
+    def _entry_urls(self):
+        from quilt_id import encode
+
+        qid = encode(
+            {
+                "seed": 12345,
+                "palette": "ocean breeze",
+                "symmetry": "bargello",
+                "chaos": 0.3,
+                "rows": 16,
+                "cols": 16,
+                "n_patterns": 2,
+                "n_colors": 4,
+                "tile_size": 5,
+                "tile_variation": 0.1,
+                "border_style": "none",
+                "mega_frac": 0.0,
+                "plain_frac": 0.0,
+                "quilt_stitch": "grid",
+                "wonky": 0.0,
+            }
+        )
+        return ["/create", f"/create?id={qid}"] + [f"/create?preset={k}" for k in PRESETS]
+
+    @staticmethod
+    def _range_values(html):
+        return dict(re.findall(r'<input type="range" id="(\w+)"[^>]*?value="([^"]*)"', html, re.S))
+
+    def test_every_range_input_has_a_numeric_value(self, client):
+        for url in self._entry_urls():
+            html = client.get(url).data.decode()
+            values = self._range_values(html)
+            assert values, f"{url}: no range inputs found — did the template change?"
+            for name, raw in values.items():
+                assert raw != "", f"{url}: range input '{name}' rendered an empty value"
+                float(raw)  # raises if the browser would reject it
+
+    def test_advanced_controls_default_to_off(self, client):
+        """A preset or ID that says nothing about strippy/wash must open at zero."""
+        for url in self._entry_urls():
+            values = self._range_values(client.get(url).data.decode())
+            assert float(values["strippy"]) == 0.0, f"{url}: strippy defaulted on"
+            assert float(values["wash_alpha"]) == 0.0, f"{url}: wash_alpha defaulted on"
+
+    def test_quilt_size_selection_round_trips(self, client):
+        for size_key in ["throw", "queen", "sq10"]:
+            html = client.get(f"/create?quilt_size={size_key}").data.decode()
+            selected = re.findall(r'<option value="(\w+)" selected>', html)
+            assert size_key in selected, f"quilt_size={size_key} not selected in the editor"
+
+    def test_rows_slider_covers_the_encodable_range(self, client):
+        """Slider bounds, server clamp, and the quilt-ID field must agree."""
+        from generator import _PARAM_BOUNDS
+
+        html = client.get("/create").data.decode()
+        lo, hi = re.search(r'id="rows" min="(\d+)" max="(\d+)"', html).groups()
+        assert (int(lo), int(hi)) == _PARAM_BOUNDS["rows"]
+
+
 class TestRenderRoute:
     def test_render_returns_png(self, client):
         resp = client.get("/render?seed=42&symmetry=bargello&palette=ocean+breeze&rows=4")
@@ -231,7 +301,7 @@ class TestParamParsing:
 
         with app.test_request_context("/render?rows=100000&strippy=1e9&tile_size=99999"):
             params = _params_from_request()
-        assert params["rows"] <= 40
+        assert params["rows"] <= 21
         assert params["tile_size"] <= 12
         assert params["strippy"] <= 0.6
 

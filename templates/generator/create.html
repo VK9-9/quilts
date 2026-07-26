@@ -220,7 +220,7 @@
         <label>Quilt size</label>
         <select id="quilt_size">
           {% for key, (w, h, label) in quilt_sizes.items() %}
-          <option value="{{ key }}" {% if key == "sq8" %}selected{% endif %}>{{ label }}</option>
+          <option value="{{ key }}" {% if key == params.quilt_size %}selected{% endif %}>{{ label }}</option>
           {% endfor %}
         </select>
       </div>
@@ -231,7 +231,7 @@
       </div>
       <div class="control">
         <label>Grid size <span id="rows-val">{{ params.rows }}</span></label>
-        <input type="range" id="rows" min="14" max="20" step="1"
+        <input type="range" id="rows" min="14" max="21" step="1"
                value="{{ params.rows }}">
       </div>
       <div class="control tiling-control">
