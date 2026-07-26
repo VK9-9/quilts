@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches: [main, release]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      # pycairo and noise are C extensions built from sdist.
+      - name: Install cairo build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            gcc python3-dev libcairo2-dev pkg-config libxcb1-dev
+
+      - uses: extractions/setup-just@v3
+
+      # requirements.txt pulls open_clip_torch, so the default index would
+      # fetch the CUDA build of torch (~2.5 GB) onto a CPU-only runner.
+      - name: Cache pip downloads
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ runner.os }}-${{ hashFiles('requirements.txt') }}
+
+      - name: Cache CLIP weights
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: clip-vit-b-32-openai
+
+      - name: Set up venv
+        run: |
+          python3 -m venv venv
+          venv/bin/pip install --upgrade pip
+          venv/bin/pip install torch --index-url https://download.pytorch.org/whl/cpu
+          venv/bin/pip install -r requirements.txt
+
+      # Same gate as `just check`, except fmt only verifies rather than
+      # rewriting. Keep this recipe and the local one in step: the contract is
+      # that green from `just check` means green here.
+      - name: just ci
+        run: just ci

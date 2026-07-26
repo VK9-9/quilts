@@ -3,16 +3,15 @@ source = .
 omit =
     test_*.py
     venv/*
-    app.py
-    sampler.py
+    # Needs torch + a 350 MB weights download to import at all; its behaviour
+    # is covered by its own doctests in `just test`.
     clip_embed.py
-    build_site.py
-    analyze.py
-    backfill_embeddings.py
-    visualize_convergence.py
-    render_family_thumbnails.py
 
 [report]
+# Deliberately no other module omits. The list that used to live here hid
+# app.py, sampler.py, build_site.py, analyze.py and the one-shot scripts —
+# 733 statements at 6% — behind a headline figure of 97% measured on a
+# curated subset. An honest number is a backlog; a curated one is a blindfold.
 exclude_lines =
     if __name__ == .__main__
     def main\(
