@@ -37,15 +37,13 @@ def _atomic_write_json(path, obj):
     os.replace(tmp, path)
 
 
+# Palettes retired from sampling but still defined in palettes.py, so old
+# ratings that used them still render. Names already deleted from palettes.py
+# don't belong here — they can't be sampled either way, and listing them
+# implied they still existed. test_palette_consistency pins that.
 _DROP_PALETTES = {
     "storm",
     "midnight moss",
-    "terracotta",
-    "slate and rust",
-    "coral reef",
-    "autumn harvest",
-    "aurora",
-    "deep sea",
     "amber glow",
     "sage garden",
     "plum wine",
@@ -63,15 +61,14 @@ SYMMETRY_NAMES = [s for s in SYMMETRY_MODES if s not in _DROP_SYMMETRY]
 _PROVEN_SYMMETRIES = {"bargello": 0.50}
 _BASE_SYMMETRIES = [s for s in SYMMETRY_NAMES if s not in _PROVEN_SYMMETRIES]
 
-# parameter ranges
+# Numeric ranges sample_random_params draws from. Categorical choices are not
+# listed here: they moved to _EXPLORE_PALETTES / _BASE_SYMMETRIES / _STITCH_STYLES
+# when proven-winner handling landed, and leaving stale copies here described a
+# parameter space that wasn't the one being sampled.
 PARAM_SPACE = {
     "rows": (16, 21),
-    "cols": (16, 21),
-    "symmetry": SYMMETRY_NAMES,
     "chaos": (0.0, 0.8),
-    "palette": PALETTE_NAMES,
     "n_patterns": (2, 2),
-    "n_colors": (4, 6),
     "tile_size": (4, 10),  # small tiles (1-3) disliked
     "tile_variation": (0.0, 0.3),
 }
@@ -85,14 +82,6 @@ _CLIP_CANDIDATE_BLOCK_SIZE = 8
 _CLIP_EMBED_BLOCK_SIZE = 16
 # number of top param-scored candidates to render+embed for CLIP scoring
 _CLIP_TOP_N = 30
-
-
-def _random_wash_direction(rng):
-    """Pick a random unit-vector direction for color wash."""
-    import math  # pylint: disable=import-outside-toplevel
-
-    angle = rng.uniform(0, 2 * math.pi)
-    return (round(math.cos(angle), 3), round(math.sin(angle), 3))
 
 
 _DROP_STITCHES = {"crosshatch"}

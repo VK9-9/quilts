@@ -22,7 +22,7 @@ class TestPickPalettes:
     def test_named_palette(self):
         import random
 
-        colors = pick_palettes("ocean breeze", 1, random.Random(42))
+        colors = pick_palettes("ocean breeze", random.Random(42))
         assert len(colors) >= 2
         for r, g, b in colors:
             assert 0.0 <= r <= 1.0
@@ -32,14 +32,14 @@ class TestPickPalettes:
     def test_random_palette(self):
         import random
 
-        colors = pick_palettes("random", 1, random.Random(42))
+        colors = pick_palettes("random", random.Random(42))
         assert len(colors) >= 2
 
     def test_unknown_palette_raises(self):
         import random
 
         with pytest.raises(ValueError, match="Unknown palette"):
-            pick_palettes("nonexistent palette", 1, random.Random(42))
+            pick_palettes("nonexistent palette", random.Random(42))
 
 
 # --- rotate_patches ---

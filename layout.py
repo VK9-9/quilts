@@ -198,9 +198,10 @@ def layout_flower(rows, cols, n_patterns, n_palettes, rng):  # pylint: disable=t
     half_c = (cols + 1) // 2
     for r in range(half_r):
         for c in range(half_c):
-            # skip cells already assigned to center
-            if cr_start <= r < cr_end and cc_start <= c < cc_end:
-                continue
+            # No centre-region skip here: r/c index the top-left quadrant, not
+            # the grid, so comparing them against grid-space centre bounds tested
+            # the wrong thing. The `not in grid` guard below is what actually
+            # keeps the centre intact.
             cell = {
                 "pattern": border_pat,
                 "palette": border_pal,

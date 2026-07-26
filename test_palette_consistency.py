@@ -85,3 +85,12 @@ def test_encoding_lists_fit_bit_budget():
     assert len(_V1_PALETTES) <= 2**4
     assert len(_V2_PALETTES) <= 2**5
     assert len(_V2_SYMMETRY) <= 2**4
+
+
+def test_drop_palettes_all_still_exist():
+    """A drop-list entry names a palette retired from sampling but still
+    renderable. Names already deleted from palettes.py are inert here — they
+    can't be sampled either way — and listing them implies they still exist."""
+    defined = {name for name, _colors in PALETTES}
+    stale = sampler._DROP_PALETTES - defined
+    assert not stale, f"_DROP_PALETTES names palettes that no longer exist: {sorted(stale)}"

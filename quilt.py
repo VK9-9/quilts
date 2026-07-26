@@ -28,8 +28,8 @@ from palettes import PALETTES, hex_to_rgb, subset_in_tonal_order
 from layout import SYMMETRY_MODES
 
 
-def pick_palettes(palette_name, _n_needed, rng):
-    """Select palette colors. Returns a list of lists of (r,g,b) tuples."""
+def pick_palettes(palette_name, rng):
+    """Select palette colors. Returns a list of (r,g,b) tuples."""
     if palette_name == "random":
         chosen = rng.choice(PALETTES)
     else:
@@ -453,7 +453,7 @@ def build_layout(
     rng = random.Random(seed)
     color_rng = random.Random(rng.randint(0, 2**31))
 
-    palette_colors = pick_palettes(palette_name, 1, color_rng)
+    palette_colors = pick_palettes(palette_name, color_rng)
     if max_colors is not None:
         palette_colors = subset_in_tonal_order(palette_colors, max_colors, color_rng)
     n_colors = len(palette_colors)
@@ -502,7 +502,7 @@ def _resolve_palettes(palette_name, palette_mix, palette_name_2, max_colors, col
     known = {p[0] for p in PALETTES}
 
     def pick(name):
-        colors = pick_palettes(name, 1, color_rng)
+        colors = pick_palettes(name, color_rng)
         if max_colors is not None:
             colors = subset_in_tonal_order(colors, max_colors, color_rng)
         return colors
