@@ -1,6 +1,7 @@
 venv/
 data/
 docs/
+docs-notes/
 __pycache__/
 *.pyc
 .git/
