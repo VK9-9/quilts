@@ -175,9 +175,10 @@ GOLDEN_CASES = {
 #
 # Regenerated deliberately: palette subsets are now ordered by luminance
 # (palettes.subset_in_tonal_order), which changes what is drawn for every quilt
-# that uses fewer colors than its palette holds.
+# that uses fewer colors than its palette holds; and the bargello wave's
+# amplitude is now derived from its period, which changes every bargello quilt.
 GOLDEN_HASHES = {
-    "bargello_basic": "fbd93893b8f3d28499ed6f882a34f3f2fa2cea9498a151917143812e91448941",
+    "bargello_basic": "b22010cac8b047779d71dcfa7e5247f07827ad274548283aa23d4f1284555001",
     "partial_lively": "680ce672adf4d68b7f0a35e6df95a9745e593a163d0ed3c6f67ad5a473921e50",
     "rotational_calm": "636885ba05e57db9024ea94e0d0bb1334eaacc763582b23e64261a453d499d1b",
     "stripe_serene": "2e14b67f2ec7b4e7ecbaafc6cd6c34dd3169fb1a7cc526060a2f2f8c8512aaae",

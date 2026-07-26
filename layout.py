@@ -291,23 +291,43 @@ def layout_emergent(rows, cols, n_patterns, _n_palettes, rng):  # pylint: disabl
     return grid
 
 
+# Steepest the bargello wave may climb, in colour strips per column. The wave
+# is sampled once per column, so beyond ~1 strip/column consecutive columns land
+# on unrelated colours and the band aliases into a checkerboard instead of
+# reading as a wave.
+_BARGELLO_MAX_SLOPE = 0.8
+
+
 def layout_bargello(rows, cols, _n_patterns, _n_palettes, rng):
     """Bargello: vertical strips with undulating color waves.
 
     Each column has the same repeating color sequence, shifted up/down
     by a wave function to create the characteristic bargello undulation.
     Cells store a _bargello_color index used by the renderer.
+
+    Amplitude is derived from the period rather than drawn independently:
+    the two together set how fast the wave climbs, and an unconstrained pair
+    can produce a wave far too steep to resolve at one sample per column.
     """
     grid = {}
-    amplitude = rng.uniform(2.0, min(rows * 0.3, 6))
-    period = rng.uniform(cols * 0.3, cols * 0.8)
-    phase = rng.random() * 2 * math.pi
+    # One to ~1.6 wave cycles across the quilt — the sweep of a real bargello.
+    period = rng.uniform(cols * 0.7, cols * 1.6)
     strip_h = rng.choice([1, 1, 2])  # height of each color strip
+    # A sine of amplitude A and this period peaks at slope A*2*pi/period, so
+    # invert that for the tallest amplitude the slope budget allows. Nothing
+    # may raise this ceiling — a floor() of a slope above 1 steps two strips
+    # at once, which is the aliasing this is here to prevent.
+    amp_max = min(rows * 0.35, _BARGELLO_MAX_SLOPE * strip_h * period / (2 * math.pi))
+    amplitude = rng.uniform(amp_max * 0.6, amp_max)
+    phase = rng.random() * 2 * math.pi
 
     for r in range(rows):
         for c in range(cols):
             shift = amplitude * math.sin(2 * math.pi * c / period + phase)
-            color_row = int((r + shift) / max(strip_h, 1))
+            # floor, not int(): shift goes negative, and int() truncates toward
+            # zero, so the bands either side of the wave's zero crossing both
+            # land on index 0 and render as one double-height band.
+            color_row = math.floor((r + shift) / max(strip_h, 1))
             grid[(r, c)] = {
                 "pattern": 0,
                 "palette": 0,

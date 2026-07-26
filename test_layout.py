@@ -215,6 +215,49 @@ class TestBargello:
         unique = {tuple(v) for v in col_colors.values()}
         assert len(unique) > 1
 
+    def test_wave_is_not_aliased(self):
+        """The band must never climb more than ~1 strip between adjacent columns.
+
+        The wave is sampled once per column; steeper than that and neighbouring
+        columns land on unrelated colours, so the band reads as a checkerboard
+        rather than an undulation. Amplitude used to be drawn independently of
+        period, which allowed slopes above 2 strips per column.
+        """
+        rows = cols = 16
+        for seed in range(200):
+            grid = layout_bargello(rows, cols, 2, 1, random.Random(seed))
+            for r in range(rows):
+                band = [grid[(r, c)]["_bargello_color"] for c in range(cols)]
+                steps = [abs(b - a) for a, b in zip(band, band[1:])]
+                assert max(steps) <= 1, (
+                    f"seed {seed} row {r}: wave jumps {max(steps)} strips between adjacent columns"
+                )
+
+    def test_wave_actually_undulates(self):
+        """Capping the slope must not flatten the wave into plain stripes."""
+        rows = cols = 16
+        undulating = 0
+        for seed in range(50):
+            grid = layout_bargello(rows, cols, 2, 1, random.Random(seed))
+            top_row = [grid[(0, c)]["_bargello_color"] for c in range(cols)]
+            if len(set(top_row)) > 1:
+                undulating += 1
+        assert undulating >= 45, f"only {undulating}/50 seeds produced a wave"
+
+    def test_bands_are_contiguous_downward(self):
+        """Within a column, consecutive rows step one strip at a time.
+
+        int() truncates toward zero, so a negative wave shift used to fold the
+        two bands either side of the zero crossing onto index 0.
+        """
+        rows = cols = 16
+        for seed in range(100):
+            grid = layout_bargello(rows, cols, 2, 1, random.Random(seed))
+            for c in range(cols):
+                col = [grid[(r, c)]["_bargello_color"] for r in range(rows)]
+                steps = {b - a for a, b in zip(col, col[1:])}
+                assert steps <= {0, 1}, f"seed {seed} col {c}: non-monotonic steps {steps}"
+
 
 class TestSymmetryModeRegistry:
     def test_all_modes_present(self):
