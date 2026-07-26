@@ -21,8 +21,10 @@ lint:
     {{python}} -m pylint --ignore-patterns='test_.*\.py' *.py
 
 # Tests only (doctests + pytest). Extra pytest args pass through: `just test -k name`
+# Every other module's doctests run inside pytest via test_doctests.py, which
+# discovers them by scanning; clip_embed needs torch so it stays out here.
 test *args:
-    {{python}} -m doctest quilt_id.py clip_embed.py
+    {{python}} -m doctest clip_embed.py
     {{python}} -m pytest {{args}}
 
 # Dependency vulnerability scan.

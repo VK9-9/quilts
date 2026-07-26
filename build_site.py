@@ -34,7 +34,7 @@ def nearest_square(n):
     >>> nearest_square(18)
     16
     >>> nearest_square(20)
-    25
+    16
     >>> nearest_square(25)
     25
     """
