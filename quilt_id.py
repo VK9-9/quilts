@@ -235,6 +235,12 @@ _V4_SCHEMA = _V3_SCHEMA + [
 _V4_TOTAL_BITS = sum(bits for _, bits in _V4_SCHEMA)  # 102
 _V4_LEN = 18  # ceil(102 / log2(58)) = 18 chars
 
+# rows is a 3-bit field stored as rows-14, and _pack saturates rather than
+# raising — so anything generating params outside this range gets an ID that
+# silently describes a different quilt. generator._PARAM_BOUNDS and
+# build_site.generate_variations both derive their limits from this.
+ROWS_RANGE = (14, 14 + 7)
+
 
 def _pack(schema_values):
     """Pack list of (value, nbits) tuples into a single int, MSB first.

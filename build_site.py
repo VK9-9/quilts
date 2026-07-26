@@ -20,7 +20,7 @@ from jinja2 import Environment, BaseLoader
 from sampler import sample_random_params, SYMMETRY_NAMES
 from render_params import params_to_render_kwargs
 from quilt import render_quilt
-from quilt_id import encode, _V2_PALETTES, _V2_SYMMETRY
+from quilt_id import encode, decode, ROWS_RANGE, _V2_PALETTES, _V2_SYMMETRY
 
 from palettes import PALETTES as _ALL_PALETTES
 
@@ -42,9 +42,36 @@ def nearest_square(n):
     return root * root
 
 
+# Fields encode() reads, with the default it applies when the key is absent.
+# Every one is compared after a round trip.
+_ENCODED_FIELDS = {
+    "seed": None,
+    "palette": None,
+    "symmetry": None,
+    "rows": None,
+    "n_patterns": 2,
+    "n_colors": 4,
+    "tile_size": 0,
+}
+
+
 def _encodable(params):
-    """Return True if params can be rendered and encoded as a v3 quilt ID."""
-    return params.get("palette") in _ENCODABLE_PALETTES and params.get("symmetry") in _V2_SYMMETRY
+    """Return True if params survive encode -> decode unchanged.
+
+    Checking the palette and symmetry vocabularies isn't enough on its own:
+    _pack saturates out-of-range fields rather than raising, so params with
+    e.g. rows outside the encodable range produce an ID that decodes to a
+    different quilt than the PNG filed under it.
+    """
+    if params.get("palette") not in _ENCODABLE_PALETTES:
+        return False
+    if params.get("symmetry") not in _V2_SYMMETRY:
+        return False
+    try:
+        decoded = decode(encode(params))
+    except (ValueError, KeyError, IndexError):
+        return False
+    return all(decoded.get(f) == params.get(f, d) for f, d in _ENCODED_FIELDS.items())
 
 
 # ---------------------------------------------------------------------------
@@ -169,19 +196,20 @@ def representative(members, clip_embeddings=None):
     return members[int(np.argmin(dists))]
 
 
-_CHAOS_ADJ = [
-    (0.25, "Calm"),
-    (0.50, "Steady"),
-    (0.70, "Lively"),
-    (1.00, "Wild"),
-]
-
+# One noun per symmetry mode. Every mode in SYMMETRY_MODES needs an entry:
+# a missing one fell through to the generic "Quilt", which is what all four
+# bargello families were called — the project's best-performing symmetry, and
+# the only one with no name of its own.
 _SYM_NOUN = {
     "rotational": "Spiral",
     "mirror": "Crystal",
     "stripe": "Ribbons",
     "partial": "Mosaic",
     "none": "Garden",
+    "bargello": "Waves",
+    "flower": "Medallion",
+    "emergent": "Lattice",
+    "columns": "Strips",
 }
 
 _SECONDARY = [
@@ -191,12 +219,14 @@ _SECONDARY = [
 ]
 
 
-def family_name(members):
-    """Derive an evocative name from a cluster's dominant chaos, symmetry, and traits."""
-    avg_chaos = sum(p["chaos"] for p in members) / len(members)
-    dominant_sym = Counter(p["symmetry"] for p in members).most_common(1)[0][0]
+def family_name(band, members):
+    """Derive an evocative name from a cluster's chaos band, symmetry, and traits.
 
-    adj = next(word for threshold, word in _CHAOS_ADJ if avg_chaos <= threshold)
+    `band` is the bucket's own chaos band rather than one re-derived from the
+    members' mean — the thresholds only need to live in _chaos_band.
+    """
+    dominant_sym = Counter(p["symmetry"] for p in members).most_common(1)[0][0]
+    adj = band.capitalize()
     noun = _SYM_NOUN.get(dominant_sym, "Quilt")
 
     # pick first matching secondary modifier, if any
@@ -252,8 +282,11 @@ def generate_variations(symmetry, members, n, rng):
     chaos_hi = min(1.0, max(p["chaos"] for p in members) + 0.05)
     tile_lo = max(2, min(p.get("tile_size", 4) for p in members))  # pylint: disable=nested-min-max
     tile_hi = max(2, max(p.get("tile_size", 4) for p in members))  # pylint: disable=nested-min-max
-    row_lo = max(8, min(p["rows"] for p in members))  # pylint: disable=nested-min-max
-    row_hi = max(8, max(p["rows"] for p in members))  # pylint: disable=nested-min-max
+    # Clamp into the range the quilt ID can actually represent. _pack saturates
+    # rather than raising, so a variation generated outside it would get an ID
+    # that renders as a different quilt than the PNG filed under that ID.
+    row_lo = min(max(ROWS_RANGE[0], min(p["rows"] for p in members)), ROWS_RANGE[1])  # pylint: disable=nested-min-max
+    row_hi = min(max(ROWS_RANGE[0], max(p["rows"] for p in members)), ROWS_RANGE[1])  # pylint: disable=nested-min-max
     encodable_palettes = list(_ENCODABLE_PALETTES)
 
     variations = []
@@ -293,7 +326,7 @@ def define_families(
     n_clip = len(clip_embeddings) if clip_embeddings is not None else 0
 
     for sym, _band, members in buckets:
-        auto = unique_name(family_name(members), names_used)
+        auto = unique_name(family_name(_band, members), names_used)
         names_used.add(auto)
         slug = unique_slug(auto, slugs_used)
         slugs_used.add(slug)

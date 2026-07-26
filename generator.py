@@ -17,7 +17,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 # pylint: disable=wrong-import-position
 from flask import Flask, render_template, request, Response, has_request_context
 from quilt import render_quilt, BORDER_STYLES as _QUILT_BORDER_STYLES
-from quilt_id import encode, decode, _V2_PALETTES, _V2_SYMMETRY, _V2_STITCH
+from quilt_id import encode, decode, ROWS_RANGE, _V2_PALETTES, _V2_SYMMETRY, _V2_STITCH
 from render_params import params_to_render_kwargs
 # pylint: enable=wrong-import-position
 
@@ -252,7 +252,7 @@ QUILT_SIZES = {
 # an unbounded rows/tile_size/strippy inflates the cairo surface to gigapixels
 # and OOMs the worker. (lo, hi) per key; values are clamped, not rejected.
 _PARAM_BOUNDS = {
-    "rows": (14, 21),
+    "rows": ROWS_RANGE,
     "n_colors": (3, 6),
     "tile_size": (0, 12),
     "tile_variation": (0.0, 0.5),
