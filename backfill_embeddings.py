@@ -23,6 +23,18 @@ from sampler import _CLIP_EMBED_BLOCK_SIZE
 from quilt import render_quilt
 
 
+def _save_atomic(dest, arr):
+    """Write to a temp file then rename, matching sampler._save_embeddings.
+
+    This runs every 50 rows over a multi-thousand-row array; a plain np.save
+    interrupted mid-write leaves a truncated .npy that the next run loads as
+    the resume point.
+    """
+    tmp = dest + ".tmp.npy"
+    np.save(tmp, arr)
+    os.replace(tmp, dest)
+
+
 def backfill(ratings_path):
     """Embed every rating that lacks a (non-zero) embedding."""
     # Derive the companion path from the extension only — see sampler.py.
@@ -67,9 +79,9 @@ def backfill(ratings_path):
             failed += 1
         if (n + 1) % 50 == 0 or (n + 1) == len(todo):
             print(f"  {n + 1}/{len(todo)}  (failed so far: {failed})")
-            np.save(embeddings_path, rows)  # save incrementally
+            _save_atomic(embeddings_path, rows)  # save incrementally
 
-    np.save(embeddings_path, rows)
+    _save_atomic(embeddings_path, rows)
     print(f"Saved {embeddings_path}  shape={rows.shape}  ({failed} zero-padded due to failures)")
 
 
