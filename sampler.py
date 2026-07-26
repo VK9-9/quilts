@@ -76,6 +76,35 @@ PARAM_SPACE = {
 # max fraction of candidates that can use any single palette value
 MAX_PALETTE_FRAC = 0.10
 
+# Train both models on ratings from this round onward, not on all history.
+#
+# Rounds 1-13 come from a different generative space and a differently
+# calibrated rater: quilt stitching did not exist until R7, so R1-R6 (1914
+# ratings, 35% of history at R22) have none, and they are the untuned rounds
+# with 20-38% like rates against 75% for the stitch era. That makes
+# "quilt_stitch == 0" a near-perfect proxy for "rated before R7" rather than a
+# statement about stitching, and it took 0.70 of the param model's feature
+# importance — in a feature that is constant at prediction time, since the
+# sampler now stitches 98% of candidates, and so cannot rank two live
+# candidates against each other at all.
+#
+# Walk-forward validation over R18-R22 (train on everything before a round,
+# predict that round), mean AUC:
+#
+#   train from   param model   CLIP model
+#   all history      0.554        0.598
+#   R7+              0.570        0.601
+#   R11+             0.577        0.606
+#   R14+             0.605        0.620   <- best for both
+#   R17+             0.603        0.580
+#
+# Re-derive this as rounds accumulate: the floor trades era-consistency against
+# sample size, and R17+ already loses to R14+ on CLIP for want of data.
+_TRAIN_FROM_ROUND = 14
+# Below this, the window is worse than the confound it removes — fall back to
+# everything rather than fit on a handful of rows.
+_MIN_TRAINING_RATINGS = 200
+
 # block_size used when rendering candidates for CLIP scoring
 _CLIP_CANDIDATE_BLOCK_SIZE = 8
 # block_size used when embedding a rated quilt
@@ -318,15 +347,33 @@ class QuiltExplorer:  # pylint: disable=too-many-instance-attributes
         self.embeddings = np.vstack([self.embeddings, vec[np.newaxis, :]])
         self._save_embeddings()
 
+    def training_start(self):
+        """First rating index to train on — see _TRAIN_FROM_ROUND.
+
+        Falls back to 0 when the round log doesn't reach that far or the window
+        would leave too little to fit on, so a fresh install still trains.
+        """
+        start = next(
+            (r["start_index"] for r in self.rounds if r.get("round") == _TRAIN_FROM_ROUND),
+            0,
+        )
+        if len(self.ratings) - start < _MIN_TRAINING_RATINGS:
+            return 0
+        return start
+
     def _retrain(self):
-        """Retrain both preference models on all ratings so far."""
-        self.vocab = build_feature_vocab(self.ratings)
-        if len(self.ratings) < 10:
+        """Retrain both preference models on the current training window."""
+        start = self.training_start()
+        window = self.ratings[start:]
+        # Vocabulary describes the training distribution, so values that only
+        # appear before the window don't occupy permanently-zero columns.
+        self.vocab = build_feature_vocab(window)
+        if len(window) < 10:
             self.model = None
             self.clip_model = None
             return
-        features = np.array([params_to_features(r["params"], self.vocab) for r in self.ratings])
-        y = np.array([1 if r["liked"] else 0 for r in self.ratings])
+        features = np.array([params_to_features(r["params"], self.vocab) for r in window])
+        y = np.array([1 if r["liked"] else 0 for r in window])
         if len(set(y)) < 2:
             self.model = None
             self.clip_model = None
@@ -344,9 +391,9 @@ class QuiltExplorer:  # pylint: disable=too-many-instance-attributes
         # qualifies (otherwise suggest_params keeps using a stale model).
         self.clip_model = None
         # Clamp to the aligned prefix in case embeddings and ratings ever differ.
-        n_emb = min(len(self.embeddings), len(y))
+        n_emb = min(len(self.embeddings) - start, len(y))
         if n_emb >= 10:
-            emb = self.embeddings[:n_emb]
+            emb = self.embeddings[start : start + n_emb]
             y_emb = y[:n_emb]
             valid = np.linalg.norm(emb, axis=1) > 0
             x_valid = emb[valid]
@@ -411,6 +458,7 @@ class QuiltExplorer:  # pylint: disable=too-many-instance-attributes
         if not self.ratings:
             return {"total": 0, "liked": 0, "disliked": 0, "round": None}
         liked = sum(1 for r in self.ratings if r["liked"])
+        start = self.training_start()
         result = {
             "total": len(self.ratings),
             "liked": liked,
@@ -418,6 +466,8 @@ class QuiltExplorer:  # pylint: disable=too-many-instance-attributes
             "model_active": self.model is not None,
             "clip_model_active": self.clip_model is not None,
             "embeddings_count": len(self.embeddings),
+            "trained_on": len(self.ratings) - start,
+            "train_from_round": _TRAIN_FROM_ROUND if start else 1,
         }
         if self.rounds:
             cur = self.rounds[-1]

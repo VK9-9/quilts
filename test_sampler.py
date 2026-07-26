@@ -8,7 +8,9 @@ import pytest
 from layout import SYMMETRY_MODES
 from palettes import PALETTES
 from sampler import (
+    QuiltExplorer,
     _DROP_PALETTES,
+    _TRAIN_FROM_ROUND,
     _DROP_STITCHES,
     _DROP_SYMMETRY,
     PALETTE_NAMES,
@@ -167,3 +169,78 @@ class TestSampling:
     def test_drop_lists_are_consistent_with_exported_names(self):
         assert not set(PALETTE_NAMES) & _DROP_PALETTES
         assert not set(SYMMETRY_NAMES) & _DROP_SYMMETRY
+
+
+class TestTrainingWindow:
+    """Both models train on a recent-rounds window, not all history.
+
+    Rounds 1-13 predate quilt stitching and the sampler's tuning, so
+    "quilt_stitch == 0" acted as a proxy for "rated before R7" and took 0.70 of
+    the param model's importance while being constant at prediction time.
+    Walk-forward AUC over R18-R22: 0.554 on all history vs 0.605 from R14.
+    """
+
+    def _explorer(self, tmp_path, n_ratings, rounds):
+        import json
+
+        data = tmp_path / "r.json"
+        data.write_text(
+            json.dumps(
+                [
+                    {"params": sample_random_params(random.Random(i)), "liked": i % 3 != 0}
+                    for i in range(n_ratings)
+                ]
+            )
+        )
+        (tmp_path / "r_rounds.json").write_text(json.dumps(rounds))
+        return QuiltExplorer(str(data))
+
+    @staticmethod
+    def _rounds(boundaries):
+        return [
+            {"round": i + 1, "label": f"R{i + 1}", "start_index": b, "ts": 0}
+            for i, b in enumerate(boundaries)
+        ]
+
+    def test_window_starts_at_the_configured_round(self, tmp_path):
+        rounds = self._rounds([i * 100 for i in range(20)])
+        ex = self._explorer(tmp_path, 2000, rounds)
+        assert ex.training_start() == rounds[_TRAIN_FROM_ROUND - 1]["start_index"]
+        assert ex.stats()["train_from_round"] == _TRAIN_FROM_ROUND
+
+    def test_falls_back_to_everything_when_the_window_is_too_small(self, tmp_path):
+        """A fresh install has no R14, and a short window must not starve the fit."""
+        ex = self._explorer(tmp_path, 300, self._rounds([0, 150]))
+        assert ex.training_start() == 0
+        assert ex.stats()["train_from_round"] == 1
+        assert ex.model is not None, "fallback must still produce a usable model"
+
+    def test_window_excludes_earlier_ratings_from_the_fit(self, tmp_path):
+        rounds = self._rounds([i * 100 for i in range(20)])
+        ex = self._explorer(tmp_path, 2000, rounds)
+        assert ex.stats()["trained_on"] == 2000 - ex.training_start()
+        assert ex.stats()["trained_on"] < ex.stats()["total"]
+
+    def test_vocab_describes_the_window_not_all_history(self, tmp_path):
+        """Values only seen before the window shouldn't hold all-zero columns."""
+        import json
+
+        data = tmp_path / "r.json"
+        rows = [
+            {"params": sample_random_params(random.Random(i)), "liked": i % 3 != 0}
+            for i in range(2000)
+        ]
+        rows[0]["params"]["palette"] = "a palette only in the early history"
+        data.write_text(json.dumps(rows))
+        (tmp_path / "r_rounds.json").write_text(
+            json.dumps(self._rounds([i * 100 for i in range(20)]))
+        )
+        ex = QuiltExplorer(str(data))
+        assert "a palette only in the early history" not in ex.vocab["palette"]
+
+    def test_clip_and_param_windows_agree(self, tmp_path):
+        """Both models must slice at the same index or labels mis-pair."""
+        rounds = self._rounds([i * 100 for i in range(20)])
+        ex = self._explorer(tmp_path, 2000, rounds)
+        start = ex.training_start()
+        assert len(ex.ratings[start:]) == ex.stats()["trained_on"]
