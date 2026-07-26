@@ -66,9 +66,15 @@ deploy-static *args:
 build-site:
     {{python}} build_site.py --ratings {{ratings}} --out docs/ --families 18 --variations 18
 
-# Backfill CLIP embeddings for existing ratings
+# Backfill CLIP embeddings for ratings that lack one
 backfill:
     {{python}} backfill_embeddings.py {{ratings}}
+
+# Re-embed every rating. Run after a change to the renderer, or the stored
+# vectors describe images the current code no longer draws. Stop the scorer
+# first — it holds the array in memory and rewrites it on every rating.
+backfill-refresh:
+    {{python}} backfill_embeddings.py {{ratings}} --refresh
 
 # Round analysis of the ratings data
 analyze:

@@ -1,14 +1,21 @@
-"""One-time script to backfill CLIP embeddings for all existing ratings.
+"""Backfill CLIP embeddings for existing ratings.
 
 Usage:
-    python backfill_embeddings.py [ratings.json]
+    python backfill_embeddings.py [ratings.json] [--refresh]
 
 Renders each rated quilt at block_size=16, embeds with CLIP, and saves
 to <ratings_stem>_embeddings.npy alongside the ratings file.
 
-Rows that already have a non-zero embedding are skipped, so the script is safe
-to resume if interrupted. Rows left zero by an earlier render failure are
-retried on each run (in case the underlying issue has since been fixed).
+By default only rows with no embedding are done, so the script is safe to
+resume if interrupted, and rows left zero by an earlier render failure are
+retried each run in case the cause has since been fixed.
+
+--refresh additionally re-embeds rows that already have one, for when the
+renderer itself has changed and the stored vectors no longer describe what the
+current code draws. It re-embeds in place and only overwrites a row once the
+new render succeeds, so rows whose palette has since been deleted from
+palettes.py keep their existing vector instead of being zeroed — those can
+never be regenerated, and they are still valid preference data.
 """
 
 import json
@@ -35,8 +42,11 @@ def _save_atomic(dest, arr):
     os.replace(tmp, dest)
 
 
-def backfill(ratings_path):
-    """Embed every rating that lacks a (non-zero) embedding."""
+def backfill(ratings_path, refresh=False):
+    """Embed every rating that lacks a (non-zero) embedding.
+
+    With refresh=True, re-embed rows that already have one as well.
+    """
     # Derive the companion path from the extension only — see sampler.py.
     embeddings_path = os.path.splitext(ratings_path)[0] + "_embeddings.npy"
 
@@ -57,34 +67,50 @@ def backfill(ratings_path):
     rows = np.zeros((total, 512), dtype=np.float32)
     rows[: len(embeddings)] = embeddings
 
-    # (Re)embed new rows plus any left zero by an earlier failure.
-    todo = [i for i in range(total) if not np.any(rows[i])]
+    # (Re)embed new rows plus any left zero by an earlier failure. With
+    # --refresh, every row is a candidate.
+    if refresh:
+        todo = list(range(total))
+    else:
+        todo = [i for i in range(total) if not np.any(rows[i])]
     if not todo:
         print(f"All {total} ratings already embedded.")
         return
 
-    print(f"Embedding {len(todo)} ratings ({total - len(todo)} already done)...")
+    print(f"Embedding {len(todo)} ratings ({total - len(todo)} skipped)...")
 
     failed = 0
+    kept = 0
     for n, i in enumerate(todo):
+        had_one = bool(np.any(rows[i]))
         try:
             kwargs = params_to_render_kwargs(
                 ratings[i]["params"], block_size=_CLIP_EMBED_BLOCK_SIZE
             )
             png_bytes = render_quilt(**kwargs)
+            # Assign only on success, so a refresh can't destroy a usable vector.
             rows[i] = embed_image(png_bytes)
         except Exception as exc:  # pylint: disable=broad-except
-            # retired palette or other render failure — leave a zero vector
-            print(f"  row {i} failed ({type(exc).__name__}: {exc}); zero-padded")
-            failed += 1
+            # Deleted palette or other render failure. If this row already had
+            # an embedding it stays: it can never be regenerated, and it is
+            # still a valid (image, label) pair for the CLIP model.
+            if had_one:
+                kept += 1
+            else:
+                print(f"  row {i} failed ({type(exc).__name__}: {exc}); zero-padded")
+                failed += 1
         if (n + 1) % 50 == 0 or (n + 1) == len(todo):
-            print(f"  {n + 1}/{len(todo)}  (failed so far: {failed})")
+            print(f"  {n + 1}/{len(todo)}  (unrenderable: {failed} zeroed, {kept} kept as-is)")
             _save_atomic(embeddings_path, rows)  # save incrementally
 
     _save_atomic(embeddings_path, rows)
-    print(f"Saved {embeddings_path}  shape={rows.shape}  ({failed} zero-padded due to failures)")
+    print(
+        f"Saved {embeddings_path}  shape={rows.shape}  "
+        f"({failed} zero-padded, {kept} kept from the previous run)"
+    )
 
 
 if __name__ == "__main__":
-    path = sys.argv[1] if len(sys.argv) > 1 else "data/ratings.json"
-    backfill(path)
+    args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    path = args[0] if args else "data/ratings.json"
+    backfill(path, refresh="--refresh" in sys.argv[1:])
