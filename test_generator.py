@@ -4,6 +4,7 @@ import re
 
 import pytest
 from generator import app, PRESETS
+from quilt import render_quilt
 from render_params import params_to_render_kwargs
 
 
@@ -342,3 +343,33 @@ class TestPresets:
             resp = client.get(f"/render?{qs}")
             assert resp.status_code == 200, f"Preset {key} failed to render"
             assert resp.data[:8] == b"\x89PNG\r\n\x1a\n"
+
+    def test_presets_render_through_the_thumbnail_path(self):
+        """render_family_thumbnails.py must be able to rebuild every card.
+
+        It renders preset params directly rather than via the request parser, so
+        a preset missing a key params_to_render_kwargs requires (cols, n_patterns)
+        broke the script silently — the committed PNGs simply went stale.
+        """
+        from generator import complete_params
+
+        for key, preset in PRESETS.items():
+            kwargs = params_to_render_kwargs(complete_params(preset["params"]), 8)
+            assert kwargs["cols"] > 0, f"Preset {key} produced no cols"
+            assert render_quilt(**kwargs)[:8] == b"\x89PNG\r\n\x1a\n"
+
+    def test_thumbnail_matches_the_create_page(self, client):
+        """A card's image and the page it links to must be the same quilt."""
+        from generator import complete_params
+
+        for key, preset in PRESETS.items():
+            landed = client.get(f"/create?preset={key}").data.decode()
+            values = dict(
+                re.findall(r'<input type="range" id="(\w+)"[^>]*?value="([^"]*)"', landed, re.S)
+            )
+            thumb_params = complete_params(preset["params"])
+            for control, raw in values.items():
+                assert float(raw) == pytest.approx(float(thumb_params[control])), (
+                    f"Preset {key}: card renders {control}="
+                    f"{thumb_params[control]} but /create opens at {raw}"
+                )

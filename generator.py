@@ -266,7 +266,7 @@ _PARAM_BOUNDS = {
 }
 
 # Default value for every control the /create UI binds. This is the single
-# source of truth: the query-string parser falls back to it, and _complete()
+# source of truth: the query-string parser falls back to it, and complete_params()
 # fills it in for callers whose param dict has holes.
 _DEFAULTS = {
     "palette": "lavender fields",
@@ -297,7 +297,7 @@ def _cols_for(rows, size_key):
     return round(rows * size_w / size_h)
 
 
-def _complete(params):
+def complete_params(params):
     """Fill in any control missing from `params` and derive cols.
 
     Presets omit the advanced controls, and decode() can only return what the
@@ -383,18 +383,18 @@ def _create_params():
 
     Three sources, in priority order: an explicit quilt ID, a named preset,
     then the query string. The first two are partial — neither carries every
-    control — so both go through _complete().
+    control — so both go through complete_params().
     """
     qid = request.args.get("id")
     if qid:
         try:
-            return _complete(decode(qid))
+            return complete_params(decode(qid))
         except (ValueError, KeyError, IndexError):
             pass
 
     preset_key = request.args.get("preset")
     if preset_key in PRESETS:
-        return _complete(PRESETS[preset_key]["params"])
+        return complete_params(PRESETS[preset_key]["params"])
 
     return _params_from_request()
 

@@ -2,10 +2,14 @@
 
 Run locally and commit the output:
     python render_family_thumbnails.py
+
+Params go through generator.complete_params() — the same filling the /create
+page does — so a card's thumbnail always matches the quilt you land on when
+you click it.
 """
 
 from pathlib import Path
-from generator import PRESETS
+from generator import PRESETS, complete_params
 from render_params import params_to_render_kwargs
 from quilt import render_quilt
 
@@ -18,7 +22,7 @@ def main():
     _OUT.mkdir(parents=True, exist_ok=True)
     for key, preset in PRESETS.items():
         out_path = _OUT / f"{key}.png"
-        kwargs = params_to_render_kwargs(preset["params"], block_size=_BLOCK_SIZE)
+        kwargs = params_to_render_kwargs(complete_params(preset["params"]), _BLOCK_SIZE)
         png_bytes = render_quilt(**kwargs)
         out_path.write_bytes(png_bytes)
         print(f"  {out_path}")
