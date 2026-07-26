@@ -46,8 +46,9 @@ the model learns your preferences and biases future suggestions.
 
 ## Quilt ID tool
 
-Each quilt is fully described by a 14-character base58 ID (V2 encoding). The ID is
-self-contained — no database needed to reproduce the image.
+Each quilt is fully described by an 18-character base58 ID (V4 encoding). The ID is
+self-contained — no database needed to reproduce the image. Older 13- and
+14-character IDs (V1–V3) still decode.
 
 ```bash
 # Decode an ID → params JSON
@@ -66,8 +67,10 @@ the design.
 
 ## Build and deploy the static gallery
 
-**Build** — groups liked quilts into families by palette × symmetry,
-renders variation images, writes HTML to `docs/`:
+**Build** — groups liked quilts into families by symmetry × chaos band
+(calm/steady/lively/wild), renders variation images, writes HTML to `docs/`.
+Palette is deliberately not part of the grouping, so a family's variations
+show a range of colours:
 
 ```bash
 just build-site

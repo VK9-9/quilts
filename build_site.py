@@ -638,7 +638,12 @@ def main():  # pylint: disable=too-many-locals,too-many-statements,too-many-bran
         help="Write auto-generated names to --names file and exit",
     )
     parser.add_argument(
-        "--clip", action="store_true", help="Cluster by CLIP visual embeddings instead of params"
+        "--clip",
+        action="store_true",
+        help=(
+            "Use CLIP embeddings to pick each family's representative image. "
+            "Grouping is always by symmetry x chaos band; this does not cluster."
+        ),
     )
     args = parser.parse_args()
 
