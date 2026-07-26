@@ -785,8 +785,10 @@ def render_quilt(
             return buf.getvalue()
         os.makedirs(os.path.dirname(output) or ".", exist_ok=True)
         surface.write_to_png(output)
-        print(f"Saved to {output} ({width}x{height})")
-        return None
+        # No print here: this is the library path. /pattern renders to a temp
+        # file per request, so a print would put a line of noise (and a temp
+        # path) into the production log on every download. main() prints.
+        return (width, height)
     finally:
         surface.finish()
 
@@ -835,7 +837,7 @@ def main():
     )
     args = parser.parse_args()
 
-    render_quilt(
+    width, height = render_quilt(
         rows=args.rows,
         cols=args.cols,
         block_size=args.block_size,
@@ -853,6 +855,7 @@ def main():
         mega_frac=args.mega_frac,
         plain_frac=args.plain_frac,
     )
+    print(f"Saved to {args.output} ({width}x{height})")
 
 
 if __name__ == "__main__":

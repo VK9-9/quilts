@@ -252,7 +252,7 @@ class TestRenderQuilt:
                 output=path,
                 border=5,
             )
-            assert result is None
+            assert result == (90, 90)  # (width, height), for main()'s summary line
             assert os.path.exists(path)
             with open(path, "rb") as f:
                 assert f.read(4) == b"\x89PNG"

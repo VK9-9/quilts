@@ -6,6 +6,7 @@ multi-page PDF with cover, assembly diagram, and per-block cutting patterns.
 
 # pylint: disable=too-many-lines
 import math
+import os
 import tempfile
 
 from reportlab.lib.pagesizes import letter
@@ -1431,7 +1432,9 @@ def generate_pattern_pdf(
     for i, blk in enumerate(unique_blocks):
         blk["_design_num"] = i + 1
 
-    # render quilt image for cover
+    # Render the quilt image for the cover. delete=False means nothing reclaims
+    # it unless we do, and /pattern calls this once per request on a long-lived
+    # worker — so it is removed in the finally below.
     quilt_image = _render_quilt_image(params)
 
     # encode quilt ID for footer
@@ -1443,38 +1446,51 @@ def generate_pattern_pdf(
     # build PDF
     c = _FooterCanvas(output_path, pagesize=letter, quilt_id=qid)
 
-    _draw_cover_page(
-        c, params, quilt_image, palette_colors, quilt_w, quilt_h, block_w_in, block_h_in
-    )
-
-    if params["symmetry"] != "bargello":
-        _draw_assembly_page(
-            c, grid, unique_blocks, params, quilt_w, quilt_h, block_w_in, block_h_in
-        )
-        _draw_rotation_summary(c, unique_blocks, palette_colors, n_colors)
-
-    if params["symmetry"] == "bargello":
-        _draw_bargello_pages(
-            c,
-            grid,
-            palette_colors,
-            params,
-            quilt_w,
-            quilt_h,
-            block_w_in,
-            block_h_in,
-            seam_allowance,
-        )
-    else:
-        for blk in unique_blocks:
-            _draw_block_page(c, blk, palette_colors, block_w_in, block_h_in, seam_allowance)
-
-    if params["symmetry"] != "bargello":
-        _draw_cutting_summary(
-            c, unique_blocks, palette_colors, grid, block_w_in, block_h_in, seam_allowance, params
+    try:
+        _draw_cover_page(
+            c, params, quilt_image, palette_colors, quilt_w, quilt_h, block_w_in, block_h_in
         )
 
-    c.save()
+        if params["symmetry"] != "bargello":
+            _draw_assembly_page(
+                c, grid, unique_blocks, params, quilt_w, quilt_h, block_w_in, block_h_in
+            )
+            _draw_rotation_summary(c, unique_blocks, palette_colors, n_colors)
+
+        if params["symmetry"] == "bargello":
+            _draw_bargello_pages(
+                c,
+                grid,
+                palette_colors,
+                params,
+                quilt_w,
+                quilt_h,
+                block_w_in,
+                block_h_in,
+                seam_allowance,
+            )
+        else:
+            for blk in unique_blocks:
+                _draw_block_page(c, blk, palette_colors, block_w_in, block_h_in, seam_allowance)
+
+        if params["symmetry"] != "bargello":
+            _draw_cutting_summary(
+                c,
+                unique_blocks,
+                palette_colors,
+                grid,
+                block_w_in,
+                block_h_in,
+                seam_allowance,
+                params,
+            )
+
+        c.save()
+    finally:
+        try:
+            os.unlink(quilt_image)
+        except OSError:
+            pass
     return output_path
 
 

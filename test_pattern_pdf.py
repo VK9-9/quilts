@@ -384,3 +384,41 @@ class TestGeneratePatternPdf:
 
     def test_border_style_solid(self):
         self._gen(_base_params(border_style="solid"))
+
+
+def test_generate_leaves_no_temp_files(tmp_path):
+    """The cover render goes to a NamedTemporaryFile(delete=False).
+
+    Nothing reclaimed it, so /pattern leaked one PNG per request on a
+    long-lived worker.
+    """
+    import glob
+    import tempfile
+
+    params = {
+        "seed": 42,
+        "rows": 6,
+        "cols": 6,
+        "symmetry": "rotational",
+        "chaos": 0.3,
+        "palette": "ocean breeze",
+        "n_patterns": 2,
+        "n_colors": 4,
+        "tile_size": 6,
+        "quilt_stitch": "grid",
+    }
+    pattern = os.path.join(tempfile.gettempdir(), "*.png")
+    before = set(glob.glob(pattern))
+    generate_pattern_pdf(params, str(tmp_path / "out.pdf"))
+    assert not set(glob.glob(pattern)) - before, "generate_pattern_pdf leaked a temp PNG"
+
+
+def test_generate_cleans_up_even_on_failure(tmp_path):
+    import glob
+    import tempfile
+
+    pattern = os.path.join(tempfile.gettempdir(), "*.png")
+    before = set(glob.glob(pattern))
+    with pytest.raises((KeyError, TypeError, ValueError)):
+        generate_pattern_pdf({"seed": 1, "rows": 6, "palette": "ocean breeze"}, str(tmp_path / "x"))
+    assert not set(glob.glob(pattern)) - before
