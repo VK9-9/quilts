@@ -20,12 +20,21 @@ Version 2: 80 bits → 14 base58 characters (FROZEN)
     Adds: all symmetry modes (bargello, flower, emergent), all current palettes,
           quilt_stitch, wonky
 
-Version 3: 81 bits → 14 base58 characters (current)
+Version 3: 81 bits → 14 base58 characters (FROZEN)
     Same as V2 but n_colors expanded from 1 bit to 2 bits (supports 3-6 colors).
+
+Version 4: 102 bits → 18 base58 characters (current)
+    Same as V3 plus strippy(4) wash_alpha(4) palette_2(5) palette_mix(5)
+    quilt_size(3).
+    Those five are exposed as controls in the generator UI and all change what
+    is rendered, but no earlier version carried any of them — so two visibly
+    different quilts could share one ID, and the scorer's "open in generator"
+    link resolved to a different quilt than the one being rated. Versions are
+    told apart by length (13/14/18), so V4 needs no probe.
 
 Usage:
     from quilt_id import encode, decode
-    qid = encode(params)          # e.g. "3xKm7pRt2nWqA4"
+    qid = encode(params)          # e.g. "3xKm7pRt2nWqA4Bc9d"
     params = decode(qid)
 """
 
@@ -205,6 +214,28 @@ _V3_TOTAL_BITS = sum(bits for _, bits in _V3_SCHEMA)  # 81
 _V3_LEN = 14  # ceil(81 / log2(58)) = 14 chars
 
 
+# ---------------------------------------------------------------------------
+# Version 4 schema — current. Adds the five render-affecting controls the
+# generator UI exposes but no earlier version encoded.
+# ---------------------------------------------------------------------------
+
+# Quilt aspect-ratio presets, in generator.QUILT_SIZES order. 3 bits → max 7.
+# test_quilt_id asserts the two stay in step.
+_V4_QUILT_SIZES = ["throw", "twin", "queen", "king", "sq6", "sq8", "sq10"]
+_V4_DEFAULT_QUILT_SIZE = "sq8"
+
+_V4_SCHEMA = _V3_SCHEMA + [
+    ("strippy", 4),  # 0=off, 1–12 → 0.05–0.60 in steps of 0.05
+    ("wash_alpha", 4),  # 0=off, 1–10 → 0.02–0.20 in steps of 0.02
+    ("palette_2", 5),  # 0=none, else _V2_PALETTES index + 1
+    ("palette_mix", 5),  # 0=none, else _V2_PALETTES index + 1
+    ("quilt_size", 3),  # index into _V4_QUILT_SIZES
+]
+
+_V4_TOTAL_BITS = sum(bits for _, bits in _V4_SCHEMA)  # 102
+_V4_LEN = 18  # ceil(102 / log2(58)) = 18 chars
+
+
 def _pack(schema_values):
     """Pack list of (value, nbits) tuples into a single int, MSB first.
 
@@ -250,8 +281,13 @@ def _encode_wonky(val):
     return min(3, max(1, round(val / 0.02)))
 
 
+def _palette_ref(name):
+    """Encode an optional secondary palette: 0 = none, else index + 1."""
+    return (_V2_PALETTES.index(name) + 1) if name in _V2_PALETTES else 0
+
+
 def encode(params):
-    """Encode a params dict to a 14-character quilt ID string (version 3).
+    """Encode a params dict to an 18-character quilt ID string (version 4).
 
     >>> p = {'seed': 12345, 'palette': 'ocean breeze', 'symmetry': 'bargello',
     ...      'chaos': 0.3, 'rows': 16, 'cols': 16, 'n_patterns': 2,
@@ -260,7 +296,7 @@ def encode(params):
     ...      'quilt_stitch': 'sashiko_wave', 'wonky': 0.04}
     >>> qid = encode(p)
     >>> len(qid)
-    14
+    18
     >>> decode(qid)['seed']
     12345
     >>> decode(qid)['symmetry']
@@ -269,21 +305,31 @@ def encode(params):
     'sashiko_wave'
     >>> abs(decode(qid)['wonky'] - 0.04) < 0.01
     True
-    >>> encode({'seed': 1, 'palette': 'handloom', 'symmetry': 'partial',
-    ...         'chaos': 0.5, 'rows': 18, 'cols': 18, 'n_patterns': 2,
-    ...         'n_colors': 5, 'tile_size': 6, 'tile_variation': 0.1,
-    ...         'border_style': 'solid', 'mega_frac': 0.0, 'plain_frac': 0.0,
-    ...         'quilt_stitch': 'grid', 'wonky': 0.0})
-    '6PpafDL86tkRBR'
+
+    The controls V3 dropped now survive the round trip:
+
+    >>> q = dict(p, strippy=0.35, wash_alpha=0.18, palette_2='thistle',
+    ...          palette_mix='bluebell', quilt_size='queen')
+    >>> back = decode(encode(q))
+    >>> back['strippy'], back['wash_alpha']
+    (0.35, 0.18)
+    >>> back['palette_2'], back['palette_mix'], back['quilt_size']
+    ('thistle', 'bluebell', 'queen')
+
+    Older IDs still decode:
+
     >>> decode('6PpafDL86tkRBR')['n_colors']
     5
     """
     border = params.get("border_style", "none") or "none"
     stitch = params.get("quilt_stitch") or None
     stitch_idx = (_V2_STITCH.index(stitch) + 1) if stitch in _V2_STITCH else 0
+    size = params.get("quilt_size") or _V4_DEFAULT_QUILT_SIZE
+    if size not in _V4_QUILT_SIZES:
+        size = _V4_DEFAULT_QUILT_SIZE
 
     fields = [
-        (3, 4),  # version
+        (4, 4),  # version
         (params["seed"] & ((1 << 31) - 1), 31),
         (_V2_PALETTES.index(params["palette"]), 5),
         (_V2_SYMMETRY.index(params["symmetry"]), 4),
@@ -298,12 +344,21 @@ def encode(params):
         (_quantize(params.get("plain_frac", 0.0), 0.10, 0.02, 15), 4),
         (stitch_idx, 3),
         (_encode_wonky(params.get("wonky", 0.0)), 2),
+        (_quantize(params.get("strippy", 0.0), 0.05, 0.05, 12), 4),
+        (_quantize(params.get("wash_alpha", 0.0), 0.02, 0.02, 10), 4),
+        (_palette_ref(params.get("palette_2")), 5),
+        (_palette_ref(params.get("palette_mix")), 5),
+        (_V4_QUILT_SIZES.index(size), 3),
     ]
-    return _b58enc(_pack(fields), _V3_LEN)
+    return _b58enc(_pack(fields), _V4_LEN)
 
 
-def _decode_v2_v3(n, schema, _total_bits):
-    """Shared decoder for V2 and V3 schemas (identical except n_colors width)."""
+def _decode_v2_v3_v4(n, schema):
+    """Shared decoder for the V2/V3/V4 schemas, which share a common prefix.
+
+    V4-only fields fall back to their "off" values for V2/V3 IDs, so callers
+    always get the same dict shape regardless of which version they were handed.
+    """
     raw = _unpack(n, schema)
     stitch_idx = raw["quilt_stitch"]
     return {
@@ -325,6 +380,13 @@ def _decode_v2_v3(n, schema, _total_bits):
         "plain_frac": _dequantize(raw["plain_frac"], 0.10, 0.02),
         "quilt_stitch": _V2_STITCH[stitch_idx - 1] if stitch_idx else None,
         "wonky": _V2_WONKY[raw["wonky"]],
+        "strippy": _dequantize(raw.get("strippy", 0), 0.05, 0.05),
+        "wash_alpha": _dequantize(raw.get("wash_alpha", 0), 0.02, 0.02),
+        "palette_2": _V2_PALETTES[raw["palette_2"] - 1] if raw.get("palette_2") else None,
+        "palette_mix": _V2_PALETTES[raw["palette_mix"] - 1] if raw.get("palette_mix") else None,
+        "quilt_size": _V4_QUILT_SIZES[
+            raw.get("quilt_size", _V4_QUILT_SIZES.index(_V4_DEFAULT_QUILT_SIZE))
+        ],
     }
 
 
@@ -379,10 +441,14 @@ def decode(qid):
         # Try V3 first (81 bits), then V2 (80 bits)
         version = n >> (_V3_TOTAL_BITS - 4)
         if version == 3:
-            return _decode_v2_v3(n, _V3_SCHEMA, _V3_TOTAL_BITS)
+            return _decode_v2_v3_v4(n, _V3_SCHEMA)
         version = n >> (_V2_TOTAL_BITS - 4)
         if version == 2:
-            return _decode_v2_v3(n, _V2_SCHEMA, _V2_TOTAL_BITS)
+            return _decode_v2_v3_v4(n, _V2_SCHEMA)
+
+    if len(qid) == _V4_LEN:
+        if n >> (_V4_TOTAL_BITS - 4) == 4:
+            return _decode_v2_v3_v4(n, _V4_SCHEMA)
 
     raise ValueError(f"Unknown quilt ID version (len={len(qid)})")
 

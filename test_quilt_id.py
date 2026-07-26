@@ -21,6 +21,8 @@ from quilt_id import (
     _V2_LEN,
     _V2_SCHEMA,
     _V3_LEN,
+    _V4_LEN,
+    _V4_QUILT_SIZES,
 )
 
 
@@ -130,8 +132,103 @@ _BASE_PARAMS = {
 }
 
 
-def test_v3_encode_length():
-    assert len(encode(_BASE_PARAMS)) == _V3_LEN
+def test_v4_encode_length():
+    assert len(encode(_BASE_PARAMS)) == _V4_LEN
+
+
+class TestV4RoundTrip:
+    """Every control the generator exposes must survive encode -> decode.
+
+    V3 carried none of strippy/wash_alpha/palette_2/palette_mix/quilt_size even
+    though all five change the render, so visibly different quilts collided on
+    one ID and the scorer's generator link opened a different quilt.
+    """
+
+    @pytest.mark.parametrize("strippy", [0.0, 0.05, 0.2, 0.35, 0.6])
+    def test_strippy(self, strippy):
+        assert decode(encode({**_BASE_PARAMS, "strippy": strippy}))["strippy"] == strippy
+
+    @pytest.mark.parametrize("wash", [0.0, 0.02, 0.1, 0.18, 0.2])
+    def test_wash_alpha(self, wash):
+        assert decode(encode({**_BASE_PARAMS, "wash_alpha": wash}))["wash_alpha"] == wash
+
+    @pytest.mark.parametrize("name", _V2_PALETTES)
+    def test_secondary_palettes(self, name):
+        d = decode(encode({**_BASE_PARAMS, "palette_2": name, "palette_mix": name}))
+        assert d["palette_2"] == name
+        assert d["palette_mix"] == name
+
+    def test_secondary_palettes_default_to_none(self):
+        d = decode(encode(_BASE_PARAMS))
+        assert d["palette_2"] is None
+        assert d["palette_mix"] is None
+
+    @pytest.mark.parametrize("size", _V4_QUILT_SIZES)
+    def test_quilt_size(self, size):
+        assert decode(encode({**_BASE_PARAMS, "quilt_size": size}))["quilt_size"] == size
+
+    def test_quilt_size_vocabulary_matches_the_generator(self):
+        """quilt_id owns the wire order; generator owns the labels."""
+        from generator import QUILT_SIZES
+
+        assert list(QUILT_SIZES) == _V4_QUILT_SIZES
+
+    def test_nothing_the_ui_can_produce_is_lossy(self):
+        """Sweep every slider position and categorical the editor allows."""
+        from generator import _DEFAULTS, _PARAM_BOUNDS, complete_params
+
+        encoded_fields = [
+            "seed",
+            "palette",
+            "symmetry",
+            "rows",
+            "n_colors",
+            "tile_size",
+            "border_style",
+            "quilt_stitch",
+            "strippy",
+            "wash_alpha",
+            "palette_2",
+            "palette_mix",
+            "quilt_size",
+        ]
+        cases = []
+        for name in _V2_PALETTES:
+            cases.append({"palette": name})
+        for name in _V2_SYMMETRY:
+            cases.append({"symmetry": name})
+        for name in _V2_STITCH + [None]:
+            cases.append({"quilt_stitch": name})
+        for rows in range(_PARAM_BOUNDS["rows"][0], _PARAM_BOUNDS["rows"][1] + 1):
+            cases.append({"rows": rows})
+        for n_colors in range(_PARAM_BOUNDS["n_colors"][0], _PARAM_BOUNDS["n_colors"][1] + 1):
+            cases.append({"n_colors": n_colors})
+        for step in range(13):  # strippy slider: 0 to 0.60 in steps of 0.05
+            cases.append({"strippy": round(step * 0.05, 2)})
+        for step in range(11):  # wash slider: 0 to 0.20 in steps of 0.02
+            cases.append({"wash_alpha": round(step * 0.02, 2)})
+        for size in _V4_QUILT_SIZES:
+            cases.append({"quilt_size": size})
+
+        for overrides in cases:
+            params = complete_params({**_DEFAULTS, **overrides})
+            decoded = decode(encode(params))
+            for field in encoded_fields:
+                assert decoded[field] == params[field], (
+                    f"{overrides}: {field} encoded as {decoded[field]!r}, "
+                    f"expected {params[field]!r}"
+                )
+
+
+def test_older_versions_still_decode():
+    """V1/V2/V3 IDs predate the V4 fields and must report them as off."""
+    d = decode("6PpafDL86tkRBR")  # V3
+    assert d["n_colors"] == 5
+    assert d["strippy"] == 0.0
+    assert d["wash_alpha"] == 0.0
+    assert d["palette_2"] is None
+    assert d["palette_mix"] is None
+    assert d["quilt_size"] == "sq8"
 
 
 def test_v2_roundtrip_exact_fields():
