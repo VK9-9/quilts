@@ -2293,3 +2293,148 @@ chaos 0-0.8, 18 palettes, n_patterns 2, n_colors weighted 40% four / 45% five / 
 - Reduced palette_2 probability: 10% → 5%. Negative signal (70% vs 88% off).
 - Reverted wash_alpha probability: 25% → 15%. R19 positive signal didn't hold
   (R20: 83% vs 87% off).
+
+---
+
+## Round 21 — ratings 5124-5217
+
+**Records:** 5124-5217 (94 ratings)
+**Overall:** 82/94 liked (87%) | explore 19/23 (83%) | exploit_clip 63/71 (89%)
+
+**Round abandoned mid-way — do not use for tuning.** A code audit landed while
+this round was in progress. 60 of the 94 ratings judged quilts drawn by the old
+renderer and 34 by the new one, so the round is not internally comparable. The
+ratings themselves are valid preference data and are retained; only the
+round-level statistics are unusable.
+
+Two changes altered what gets drawn:
+
+- Palette subsets are now ordered by luminance (`subset_in_tonal_order`),
+  changing every quilt that uses fewer colours than its palette holds.
+- The bargello wave's amplitude is now derived from its period, fixing an
+  aliasing bug where slopes up to 6.3 colour-strips per column made the band
+  render as a checkerboard rather than an undulation.
+
+A third change altered how the model sees history: `params_to_features`
+one-hot encoded palette and symmetry over the *currently samplable* set while
+`_retrain` fits on *all* ratings, so every retired value collapsed to a single
+all-zero block — 1393 of 5183 ratings (27%) for palette, 1019 (20%) for
+symmetry. Because values are retired for underperforming, that block carried a
+26.8% like rate against 65.2% for the rest. **Every feature importance recorded
+in rounds before R22 was computed on those corrupted features.**
+
+CLIP embeddings were rebuilt against the new renderer before R22
+(`just backfill-refresh`): 4037 refreshed, 464 preserved (palettes since
+deleted, unregenerable), 716 still zero. Mean cosine between stored and
+freshly-rendered embeddings went from 0.889 to 1.000.
+
+---
+
+## Round 22 — ratings 5218-5421
+
+**Records:** 5218-5421 (204 ratings)
+**Overall:** 176/204 liked (86.3%)
+**Params:** unchanged from R21's sampler settings — this round deliberately
+re-measures the existing configuration against a fixed renderer and a fixed
+feature encoder.
+
+**This is the new baseline.** It is the first round in which the renderer, the
+CLIP embeddings, and the model's feature encoding are all mutually consistent.
+Comparisons of `exploit_clip` against R17-R21 are not meaningful.
+
+### Explore vs exploit
+
+| round | explore | exploit_clip | gap |
+|-------|---------|--------------|-----|
+| R18 | 58/68 (85%) | 184/207 (89%) | +3.6pp |
+| R19 | 56/65 (86%) | 125/139 (90%) | +3.8pp |
+| R20 | 48/59 (81%) | 132/150 (88%) | +6.6pp |
+| R21 | 19/23 (83%) | 63/71 (89%) | +6.1pp |
+| **R22** | **44/51 (86%)** | **132/153 (86%)** | **+0.0pp** |
+
+The gap closed. Explore is at its joint-highest (86%) and exploit at its lowest
+since R17. Treat as a flag, not a finding: explore n=51 gives a 95% CI of
+74-93%, which comfortably contains the pooled R18-R21 explore rate of 84%.
+
+### Key findings
+
+- **n_colors is strongly monotonic** — 4 colours 50/52 (96%), 5 colours
+  104/121 (86%), 6 colours 22/31 (71%). p=0.0011 for 4 vs 6, p=0.049 for
+  4 vs 5. This reproduces the R19 signal (95%/88%/68%) that R20 and R21 did
+  not show. Two of four rounds now agree strongly and none contradict.
+- **plain_frac is negative** — 29/39 (74%) vs 147/165 (89%), -14.7pp, p=0.016.
+  Third consecutive round with a negative reading.
+- **Larger grids are better** — rows ≥19 scored 93/102 (91%) vs 83/102 (81%)
+  for rows 16-18. +9.8pp, p=0.042.
+- **Borders are positive** — any border 106/118 (90%) vs none 70/86 (81%),
+  +8.4pp, p=0.084. Currently only applied at 35% probability.
+- Suggestive negatives, all small-n: strippy 76% (n=25, p=0.11), mega_frac 70%
+  (n=10, p=0.13), wonky 67% (n=9, p=0.08), palette_mix 50% (n=6, p=0.009 but
+  the sample is far too small to trust that figure).
+- wash_alpha and palette_2 are indistinguishable from noise (p=0.57, p=0.81).
+
+*Nine two-proportion tests were run. At α=0.05 roughly one false positive is
+expected, and under Bonferroni correction none of the nine individually
+survive. n_colors 4 vs 6 (p=0.0011) is the only result that clears correction.*
+
+### quilt_stitch's 0.70 importance is a time confound, not a preference
+
+`quilt_stitch` has dominated the feature importances for many rounds (0.6893 in
+R20, 0.7052 now). It is not measuring whether stitching looks good.
+
+Quilt stitching did not exist until R7. Rounds R1-R6 — 1914 ratings, 35% of all
+history — have no stitch at all, and they are the untuned early rounds with
+20-38% like rates:
+
+```
+  all history  no_stitch :  622/2177  29%
+  all history  has_stitch: 2428/3244  75%
+```
+
+So `quilt_stitch = 0` is a near-perfect proxy for *"rated before R7"*. It is the
+single best discriminator in the dataset because it separates the bad early era
+from the tuned later era. And since the sampler now sets a stitch on 98% of
+candidates, the feature is effectively constant at prediction time — meaning
+**70% of the model's explanatory power sits in a feature that cannot rank two
+live candidates against each other.**
+
+### The early history actively harms prediction
+
+Walk-forward validation — train on everything before a round, predict that
+round:
+
+| train from | R18 | R19 | R20 | R21 | R22 | mean |
+|-----------|-----|-----|-----|-----|-----|------|
+| all history | 0.617 | 0.508 | 0.628 | 0.530 | 0.485 | 0.554 |
+| R7+ | 0.590 | 0.615 | 0.636 | 0.544 | 0.464 | 0.570 |
+| R11+ | 0.626 | 0.631 | 0.647 | 0.456 | 0.526 | 0.577 |
+| **R14+** | 0.657 | 0.700 | 0.672 | 0.434 | 0.561 | **0.605** |
+| R17+ | 0.619 | 0.649 | 0.646 | 0.479 | 0.622 | 0.603 |
+| R19+ | -- | -- | 0.626 | 0.328 | 0.585 | 0.513 |
+
+(AUC 0.5 = coin flip. R21 is the contaminated round; excluding that column,
+all-history scores 0.560 against R14+'s 0.648.)
+
+Training on the full history is close to worthless — 0.554, and 0.485 on R22
+itself, i.e. slightly worse than chance. Restricting to R14+ is the best
+setting tested. This is consistent with the `quilt_stitch` finding: the early
+rounds come from a different generative space *and* a differently-calibrated
+rater, and the model spends its capacity separating eras instead of designs.
+
+Note that even the best setting is a weak ranker at AUC ~0.6. The CLIP stage is
+doing most of the real work in `suggest_params`.
+
+### Recommended changes after Round 22
+
+Not yet applied — pending review.
+
+1. **Add a training window to the param model** (R14+, ~1800 ratings). Largest
+   available improvement: mean AUC 0.554 → 0.605. Prefer a round-based cutoff
+   over a fixed row count so it stays meaningful as data grows.
+2. **Shift n_colors hard toward 4** — currently 40/45/15 for 4/5/6. Something
+   like 65/30/5 follows the evidence.
+3. **Drop plain_frac to 0-5%** from 15%. Negative in R19, R20 and R22.
+4. **Raise rows to 18-21** from 16-21.
+5. **Raise border_style probability** from 35% to ~55%.
+6. Leave strippy, wonky, mega_frac and palette_mix alone this round and
+   re-measure; all four look negative but none has the sample size to act on.
