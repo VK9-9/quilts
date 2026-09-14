@@ -3,6 +3,22 @@
 ** Value contrast control
 *** Deliberately bias light colors to one region and dark colors to another (top/bottom, center/edge). Currently palette colors are assigned randomly — intentional value distribution could improve composition.
 * Designs
+** Spectre-monotile quilt (2026-09-14)
+   The aperiodic monotile (hat / spectre), rendered through the quilt
+   pipeline and exported via pattern_pdf.py into fabric templates with seam
+   allowances. As far as known nobody has sewn one: novel, physically
+   makeable, and exactly where aperiodic tiling, quilts and the pen-plotter
+   interest overlap. Needs: the tile geometry + a substitution/inflation
+   step to fill the quilt rectangle (polyomino_tiling has the orientation
+   and board-mask primitives, in Rust); pattern_pdf already does piece
+   outlines + seam allowance for arbitrary polygons.
+** Reaction-diffusion as a piecing pattern (2026-09-14)
+   Run generative_art's Gray-Scott to steady state on a torus or Klein
+   bottle, quantise the concentration field to one of the ~50 palettes,
+   emit a sewing pattern. A physical object whose design came from a PDE on
+   a non-orientable surface. Both halves exist; only the quantiser (field →
+   palette index per cell, with a minimum-region-size cleanup so pieces stay
+   sewable) is new.
 * Sampler / Preference Model
 ** The seed problem
    Observation: with fixed params (symmetry, palette, stitch, etc.), changing
