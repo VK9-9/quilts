@@ -17,6 +17,7 @@ from blocks import BLOCK_PATTERNS
 from palettes import PALETTES, hex_to_rgb, subset_in_tonal_order
 from quilt import render_quilt, build_layout
 from quilt_id import encode
+from render_params import params_to_render_kwargs
 
 # Page layout constants
 PAGE_W, PAGE_H = letter  # 8.5 x 11 inches in points
@@ -261,26 +262,31 @@ def _rotate_polygons(polygons, rotation, size):
 
 
 def _render_quilt_image(params):
-    """Render the quilt to a temp PNG file, return the path."""
+    """Render the quilt to a temp PNG file, return the path.
+
+    Routes through params_to_render_kwargs — the same funnel the webapps use —
+    so the cover shows every param the renderer honors (border_style, wash,
+    palette_2, ...). A hand-picked kwarg subset here is how the cover drifted
+    from the preview. The defaults mirror _reconstruct_layout's, so partial
+    param dicts keep working, and tile_size resolves falsy -> no tiling exactly
+    as the reconstruction does — else the cover thumbnail tiles while the
+    cutting diagrams don't (or vice versa).
+    """
     tmp = tempfile.NamedTemporaryFile(suffix=".png", delete=False)  # pylint: disable=consider-using-with
     tmp.close()
-    render_quilt(
-        seed=params["seed"],
-        rows=params["rows"],
-        cols=params.get("cols", params["rows"]),
-        symmetry=params["symmetry"],
-        chaos=params.get("chaos", 0.3),
-        palette_name=params["palette"],
-        max_patterns=params.get("n_patterns", 2),
-        max_colors=params.get("n_colors", 4),
-        # Match _reconstruct_layout's resolution exactly (falsy -> None), else the
-        # cover thumbnail tiles while the cutting diagrams don't (or vice versa).
-        tile_size=params.get("tile_size") or None,
-        block_size=40,
-        output=tmp.name,
-        border=0,
-        quilt_stitch=params.get("quilt_stitch"),
-    )
+    full = {
+        "cols": params.get("cols", params["rows"]),
+        "chaos": 0.3,
+        "n_patterns": 2,
+        "n_colors": 4,
+        "tile_variation": 0.05,
+        **params,
+    }
+    full["tile_size"] = full.get("tile_size") or 0
+    kwargs = params_to_render_kwargs(full, block_size=40)
+    kwargs["output"] = tmp.name
+    kwargs["border"] = 0
+    render_quilt(**kwargs)
     return tmp.name
 
 

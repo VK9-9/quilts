@@ -422,3 +422,28 @@ def test_generate_cleans_up_even_on_failure(tmp_path):
     with pytest.raises((KeyError, TypeError, ValueError)):
         generate_pattern_pdf({"seed": 1, "rows": 6, "palette": "ocean breeze"}, str(tmp_path / "x"))
     assert not set(glob.glob(pattern)) - before
+
+
+def test_cover_image_renders_full_params(monkeypatch):
+    """The cover must go through params_to_render_kwargs so it honors every
+    render param (border_style, wash, palette_2, stitch). A hand-picked kwarg
+    subset is how the cover drifted from the preview the user downloaded from."""
+    import pattern_pdf
+
+    captured = {}
+
+    def fake_render(**kwargs):
+        captured.update(kwargs)
+        return (1, 1)
+
+    monkeypatch.setattr(pattern_pdf, "render_quilt", fake_render)
+    params = _base_params(border_style="solid", wash_alpha=0.1, palette_2="wildflower", tile_size=0)
+    path = pattern_pdf._render_quilt_image(params)  # pylint: disable=protected-access
+    os.unlink(path)
+    assert captured["border_style"] == "solid"
+    assert captured["wash_alpha"] == 0.1
+    assert captured["palette_name_2"] == "wildflower"
+    assert captured["quilt_stitch"] == "grid"
+    assert captured["tile_size"] is None  # falsy -> no tiling, matching reconstruction
+    assert captured["output"] == path
+    assert captured["border"] == 0
