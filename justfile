@@ -79,3 +79,18 @@ backfill-refresh:
 # Round analysis of the ratings data
 analyze:
     {{python}} analyze.py {{ratings}}
+
+# Snapshot data/ (ratings, rounds, embeddings) to iCloud as a timestamped
+# tarball; keeps the newest 30. ratings.json is hand-rated and irreplaceable —
+# run this after every scoring round. Restore: tar xzf <snapshot> in the repo root.
+backup:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    dest="$HOME/Library/Mobile Documents/com~apple~CloudDocs/backups/quilts"
+    mkdir -p "$dest"
+    stamp=$(date +%Y%m%d-%H%M%S)
+    tar czf "$dest/quilts-data-$stamp.tar.gz" data
+    cd "$dest"
+    ls -t quilts-data-*.tar.gz | tail -n +31 | while read -r f; do rm -- "$f"; done
+    echo "Backed up data/ -> $dest/quilts-data-$stamp.tar.gz"
+    echo "Snapshots kept: $(ls quilts-data-*.tar.gz | wc -l | tr -d ' ')"
