@@ -7,6 +7,7 @@ multi-page PDF with cover, assembly diagram, and per-block cutting patterns.
 # pylint: disable=too-many-lines
 import math
 import os
+import random
 import tempfile
 
 from reportlab.lib.pagesizes import letter
@@ -108,8 +109,6 @@ def _reconstruct_layout(params):
     where grid is {(r,c): cell_dict} matching what render_quilt builds
     and palette colors are hex strings (for PDF drawing).
     """
-    import random  # pylint: disable=import-outside-toplevel
-
     # Match render_quilt's grid inputs: two valid palettes split the layout,
     # and "none" symmetry tiles a template. Passing these wrong silently
     # desyncs the cutting diagrams from the rendered image.
@@ -204,7 +203,11 @@ def _extract_unique_blocks(grid, n_colors):
             combos[key]["count"] += 1
         else:
             pat_fn = BLOCK_PATTERNS[cell["pattern"]]
-            polygons = pat_fn(0, 0, 100, n_colors)
+            # Fixed-seed rng: blocks with internal randomness (HST diagonal,
+            # cherry blossom) vary per cell in the render, which a per-design
+            # diagram can't enumerate — draw one stable representative instead
+            # of whatever the ambient RNG state happened to be.
+            polygons = pat_fn(0, 0, 100, n_colors, random.Random(0))
             rotated = _rotate_polygons(polygons, cell["rotation"], 100)
             # remap raw color indices through cell's color_map
             color_map = cell.get("color_map")
@@ -858,7 +861,9 @@ def _draw_rotation_summary(c, unique_blocks, palette_colors, n_colors):  # pylin
         name = blk["pattern_name"].replace("_", " ")
         pat_idx = blk["pattern_idx"]
         pat_fn = BLOCK_PATTERNS[pat_idx]
-        base_polygons = pat_fn(0, 0, 100, n_colors)
+        # Same fixed-seed representative as _extract_unique_blocks, so the
+        # rotation page shows the same geometry the block pages do.
+        base_polygons = pat_fn(0, 0, 100, n_colors, random.Random(0))
         color_map = blk.get("color_map")
         if color_map:
             base_polygons = [

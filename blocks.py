@@ -5,23 +5,25 @@ a list of patches. Each patch is (polygon, color_index) where polygon is a list
 of (px, py) points and color_index selects from the block's assigned palette.
 
 Blocks are always invoked with x=y=0 (patches are normalized and translated at
-draw time). Patterns that need per-cell variation must draw from the module RNG,
-which the renderer seeds per cell before each call (see quilt._block_patches);
-they must NOT derive randomness from x/y, which carry no positional information.
+draw time). Patterns that need per-cell variation must draw from the `rng`
+argument, a per-cell-seeded random.Random the renderer passes in (see
+quilt._block_patches); they must NOT derive randomness from x/y, which carry no
+positional information, nor from the module RNG — global state would let two
+concurrent renders (gunicorn runs threaded) interleave their draws and make the
+same quilt ID render differently under load.
 """
 
 import math
-import random
 
 
-def half_square_triangle(x, y, size, _n_colors):
+def half_square_triangle(x, y, size, _n_colors, rng):
     """Two triangles split along the diagonal.
 
-    The diagonal direction is drawn from the module RNG, which the renderer
-    seeds per cell (see quilt._block_patches) — x/y always arrive as 0, so
-    position can't drive the variation.
+    The diagonal direction is drawn from the per-cell rng (see
+    quilt._block_patches) — x/y always arrive as 0, so position can't drive
+    the variation.
     """
-    direction = random.randint(0, 1)
+    direction = rng.randint(0, 1)
     if direction == 0:
         # top-left to bottom-right diagonal
         return [
@@ -35,7 +37,7 @@ def half_square_triangle(x, y, size, _n_colors):
     ]
 
 
-def nine_patch(x, y, size, _n_colors):
+def nine_patch(x, y, size, _n_colors, _rng):
     """3x3 grid of squares, alternating two colors (checkerboard)."""
     s = size / 3
     patches = []
@@ -52,7 +54,7 @@ def nine_patch(x, y, size, _n_colors):
     return patches
 
 
-def log_cabin(x, y, size, n_colors):  # pylint: disable=too-many-locals
+def log_cabin(x, y, size, n_colors, _rng):  # pylint: disable=too-many-locals
     """Concentric rectangular strips around a center square.
 
     Builds outward by adding one strip per side in order: top, right, bottom,
@@ -120,7 +122,7 @@ def log_cabin(x, y, size, n_colors):  # pylint: disable=too-many-locals
     return patches
 
 
-def pinwheel(x, y, size, _n_colors):
+def pinwheel(x, y, size, _n_colors, _rng):
     """Four triangles arranged in a pinwheel rotation."""
     cx, cy = x + size / 2, y + size / 2
     corners = [
@@ -140,7 +142,7 @@ def pinwheel(x, y, size, _n_colors):
     return patches
 
 
-def flying_geese(x, y, size, _n_colors):
+def flying_geese(x, y, size, _n_colors, _rng):
     """Row of triangles pointing upward with background triangles."""
     n = 3
     w = size / n
@@ -172,7 +174,7 @@ def flying_geese(x, y, size, _n_colors):
     return patches
 
 
-def hourglass(x, y, size, _n_colors):
+def hourglass(x, y, size, _n_colors, _rng):
     """Two triangles forming an hourglass shape with background."""
     cx, cy = x + size / 2, y + size / 2
     # top triangle
@@ -185,7 +187,7 @@ def hourglass(x, y, size, _n_colors):
     return patches
 
 
-def chevron(x, y, size, n_colors):
+def chevron(x, y, size, n_colors, _rng):
     """Horizontal V-shaped stripes (chevron / arrow pattern)."""
     patches = []
     n = 4
@@ -213,7 +215,7 @@ def chevron(x, y, size, n_colors):
     return patches
 
 
-def star(x, y, size, n_colors):  # pylint: disable=too-many-locals
+def star(x, y, size, n_colors, _rng):  # pylint: disable=too-many-locals
     """Eight-pointed star — center diamond, 4 point triangles, 4 corner quads."""
     cx, cy = x + size / 2, y + size / 2
     m = size * 0.25
@@ -241,7 +243,7 @@ def star(x, y, size, n_colors):  # pylint: disable=too-many-locals
     return patches
 
 
-def windmill(x, y, size, n_colors):
+def windmill(x, y, size, n_colors, _rng):
     """Four paired triangles creating a spinning windmill effect."""
     cx, cy = x + size / 2, y + size / 2
     mx, my = x + size, y + size
@@ -262,7 +264,7 @@ def windmill(x, y, size, n_colors):
     return patches
 
 
-def diamond_in_square(x, y, size, n_colors):
+def diamond_in_square(x, y, size, n_colors, _rng):
     """Diamond (rotated square) centered inside a square."""
     cx, cy = x + size / 2, y + size / 2
     # diamond vertices at edge midpoints
@@ -280,7 +282,7 @@ def diamond_in_square(x, y, size, n_colors):
     return patches
 
 
-def cross(x, y, size, n_colors):
+def cross(x, y, size, n_colors, _rng):
     """Plus/cross shape with colored corners."""
     s3 = size / 3
     x0, x1, x2, x3 = x, x + s3, x + 2 * s3, x + size
@@ -298,7 +300,7 @@ def cross(x, y, size, n_colors):
     return patches
 
 
-def bow_tie(x, y, size, n_colors):
+def bow_tie(x, y, size, n_colors, _rng):
     """Two triangles meeting at center, forming a bow-tie shape."""
     cx, cy = x + size / 2, y + size / 2
     # left triangle
@@ -312,7 +314,7 @@ def bow_tie(x, y, size, n_colors):
     return patches
 
 
-def ohio_star(x, y, size, n_colors):
+def ohio_star(x, y, size, n_colors, _rng):
     """Ohio Star — 3x3 grid with center square, corner squares, and side triangles.
 
     Uses 3 colors: corners, center, and star points.
@@ -360,7 +362,7 @@ def ohio_star(x, y, size, n_colors):
     return patches
 
 
-def courthouse_steps(x, y, size, n_colors):  # pylint: disable=too-many-locals
+def courthouse_steps(x, y, size, n_colors, _rng):  # pylint: disable=too-many-locals
     """Courthouse Steps — log cabin variant with symmetric strips on opposite sides.
 
     Alternates two colors in concentric rectangular frames around a center.
@@ -420,7 +422,7 @@ def courthouse_steps(x, y, size, n_colors):  # pylint: disable=too-many-locals
     return patches
 
 
-def checkerboard_4x4(x, y, size, n_colors):
+def checkerboard_4x4(x, y, size, n_colors, _rng):
     """4x4 checkerboard with diagonal splits in alternating cells.
 
     Half the cells are solid squares, half are split diagonally into two colors.
@@ -456,7 +458,7 @@ def checkerboard_4x4(x, y, size, n_colors):
     return patches
 
 
-def card_trick(x, y, size, n_colors):
+def card_trick(x, y, size, n_colors, _rng):
     """Card Trick — overlapping rotated squares creating an interlocking pattern.
 
     Four overlapping triangles that create the illusion of layered cards.
@@ -504,7 +506,7 @@ def card_trick(x, y, size, n_colors):
     return patches
 
 
-def double_pinwheel(x, y, size, n_colors):
+def double_pinwheel(x, y, size, n_colors, _rng):
     """Double Pinwheel — nested pinwheels at two scales.
 
     Outer quadrants each contain a smaller pinwheel, creating fractal-like depth.
@@ -549,7 +551,7 @@ def double_pinwheel(x, y, size, n_colors):
     return patches
 
 
-def diagonal(x, y, size, n_colors):
+def diagonal(x, y, size, n_colors, _rng):
     """Deterministic diagonal split — always TL-BR direction.
 
     Unlike half_square_triangle, has no internal randomness so rotation
@@ -562,7 +564,7 @@ def diagonal(x, y, size, n_colors):
     ]
 
 
-def path_tile(x, y, size, n_colors):
+def path_tile(x, y, size, n_colors, _rng):
     """Truchet-style path tile — two diagonal bands connecting edge midpoint pairs.
 
     Band 1 connects top midpoint to right midpoint (through upper-right).
@@ -601,7 +603,7 @@ _PETAL_COLORS = [
 ]
 
 
-def cherry_blossom(x, y, size, n_colors):  # pylint: disable=too-many-locals,unused-argument
+def cherry_blossom(x, y, size, n_colors, rng):  # pylint: disable=too-many-locals,unused-argument
     """Cherry blossom branch with generative blossoms and leaves.
 
     Uses hardcoded brown branches and pink/white petals (RGB tuples) so the
@@ -635,10 +637,9 @@ def cherry_blossom(x, y, size, n_colors):  # pylint: disable=too-many-locals,unu
         )
     )
 
-    # generate blossoms at several points along and near the branch. The module
-    # RNG is seeded per cell by the renderer (quilt._block_patches); x/y always
+    # generate blossoms at several points along and near the branch. `rng` is
+    # seeded per cell by the renderer (quilt._block_patches); x/y always
     # arrive as 0, so position can't drive the variation.
-    rng = random
     blossom_centers = [
         (x + s * 0.20, y + s * 0.75),
         (x + s * 0.40, y + s * 0.55),
@@ -687,7 +688,7 @@ def cherry_blossom(x, y, size, n_colors):  # pylint: disable=too-many-locals,unu
     return bg + patches
 
 
-def drunkards_path(x, y, size, n_colors):
+def drunkards_path(x, y, size, n_colors, _rng):
     """Drunkard's Path — quarter-circle curve dividing block into two regions.
 
     Approximates the curve with a polygon. When tiled with rotational symmetry,
@@ -713,7 +714,7 @@ def drunkards_path(x, y, size, n_colors):
     ]
 
 
-def cathedral_windows(x, y, size, n_colors):  # pylint: disable=too-many-locals
+def cathedral_windows(x, y, size, n_colors, _rng):  # pylint: disable=too-many-locals
     """Cathedral Windows — overlapping folded circles with diamond-shaped reveals.
 
     Four quarter-circle folds from each corner create curved "frames" around
@@ -805,7 +806,7 @@ def cathedral_windows(x, y, size, n_colors):  # pylint: disable=too-many-locals
     return patches
 
 
-def applique(x, y, size, n_colors):  # pylint: disable=too-many-locals
+def applique(x, y, size, n_colors, _rng):  # pylint: disable=too-many-locals
     """Appliqué block — circle and leaf shapes layered on a background square.
 
     Background square in color 0, a large circle in color 1, and two leaf

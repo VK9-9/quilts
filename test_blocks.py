@@ -11,16 +11,20 @@ def pattern_fn(request):
     return request.param
 
 
+def _rng(seed=0):
+    return random.Random(seed)
+
+
 class TestAllPatterns:
     """Properties that must hold for every block pattern."""
 
     def test_returns_nonempty_list(self, pattern_fn):
-        patches = pattern_fn(0, 0, 100, 4)
+        patches = pattern_fn(0, 0, 100, 4, _rng())
         assert isinstance(patches, list)
         assert len(patches) > 0
 
     def test_patches_are_polygon_color_tuples(self, pattern_fn):
-        patches = pattern_fn(0, 0, 100, 4)
+        patches = pattern_fn(0, 0, 100, 4, _rng())
         for poly, color_idx in patches:
             assert isinstance(poly, list), f"polygon should be list, got {type(poly)}"
             assert len(poly) >= 3, f"polygon needs ≥3 points, got {len(poly)}"
@@ -29,7 +33,7 @@ class TestAllPatterns:
 
     def test_color_indices_valid(self, pattern_fn):
         n_colors = 4
-        patches = pattern_fn(0, 0, 100, n_colors)
+        patches = pattern_fn(0, 0, 100, n_colors, _rng())
         for _, color_idx in patches:
             if isinstance(color_idx, tuple):
                 # RGB tuple — each component in [0, 1]
@@ -41,17 +45,14 @@ class TestAllPatterns:
 
     def test_works_with_one_color(self, pattern_fn):
         # n_colors=1 shouldn't crash — renderer applies modulo when mapping
-        patches = pattern_fn(0, 0, 100, 1)
+        patches = pattern_fn(0, 0, 100, 1, _rng())
         assert len(patches) > 0
 
     def test_offset_shifts_coordinates(self, pattern_fn):
-        # Skip patterns with internal randomness that depends on coordinates
-        if pattern_fn.__name__ in ("cherry_blossom",):
-            pytest.skip("uses internal RNG affected by position")
-        random.seed(42)
-        patches_origin = pattern_fn(0, 0, 100, 4)
-        random.seed(42)
-        patches_offset = pattern_fn(50, 30, 100, 4)
+        # Same-seeded rng per call: identical draws, so offset is pure translation.
+        # (With the old module-RNG this needed a cherry_blossom skip; no longer.)
+        patches_origin = pattern_fn(0, 0, 100, 4, _rng(42))
+        patches_offset = pattern_fn(50, 30, 100, 4, _rng(42))
         # Every point should be shifted by (50, 30)
         for (p1, _), (p2, _) in zip(patches_origin, patches_offset):
             for (x1, y1), (x2, y2) in zip(p1, p2):
@@ -60,39 +61,43 @@ class TestAllPatterns:
 
     def test_different_sizes(self, pattern_fn):
         for size in [10, 50, 200]:
-            patches = pattern_fn(0, 0, size, 4)
+            patches = pattern_fn(0, 0, size, 4, _rng())
             assert len(patches) > 0
+
+    def test_does_not_touch_module_rng(self, pattern_fn):
+        """Blocks must draw only from the rng argument — module-global draws
+        would race between concurrent renders under a threaded server."""
+        random.seed(123)
+        before = random.getstate()
+        pattern_fn(0, 0, 100, 4, _rng())
+        assert random.getstate() == before, "block consumed the module RNG"
 
 
 class TestSeedVariation:
-    """Blocks that randomize must vary with the module RNG seed (per cell),
-    not with x/y, which always arrive as 0 (see blocks.py module docstring)."""
+    """Blocks that randomize must vary with the rng argument (seeded per cell
+    by the renderer), not with x/y, which always arrive as 0 (see blocks.py
+    module docstring)."""
 
     def test_half_square_triangle_varies_by_seed(self):
         from blocks import half_square_triangle
 
         seen = set()
         for s in range(20):
-            random.seed(s)
-            seen.add(tuple(tuple(p) for p, _ in half_square_triangle(0, 0, 100, 4)))
+            seen.add(tuple(tuple(p) for p, _ in half_square_triangle(0, 0, 100, 4, _rng(s))))
         assert len(seen) > 1, "diagonal direction never varies across seeds"
 
     def test_cherry_blossom_varies_by_seed(self):
         from blocks import cherry_blossom
 
-        random.seed(1)
-        a = cherry_blossom(0, 0, 100, 4)
-        random.seed(2)
-        b = cherry_blossom(0, 0, 100, 4)
+        a = cherry_blossom(0, 0, 100, 4, _rng(1))
+        b = cherry_blossom(0, 0, 100, 4, _rng(2))
         assert a != b, "blossom layout identical across seeds"
 
     def test_half_square_triangle_reproducible(self):
         from blocks import half_square_triangle
 
-        random.seed(7)
-        a = half_square_triangle(0, 0, 100, 4)
-        random.seed(7)
-        b = half_square_triangle(0, 0, 100, 4)
+        a = half_square_triangle(0, 0, 100, 4, _rng(7))
+        b = half_square_triangle(0, 0, 100, 4, _rng(7))
         assert a == b
 
 
@@ -102,52 +107,52 @@ class TestSpecificPatterns:
     def test_nine_patch_returns_9(self):
         from blocks import nine_patch
 
-        patches = nine_patch(0, 0, 90, 4)
+        patches = nine_patch(0, 0, 90, 4, _rng())
         assert len(patches) == 9
 
     def test_pinwheel_returns_4(self):
         from blocks import pinwheel
 
-        patches = pinwheel(0, 0, 100, 4)
+        patches = pinwheel(0, 0, 100, 4, _rng())
         assert len(patches) == 4
 
     def test_diagonal_is_deterministic(self):
         from blocks import diagonal
 
-        p1 = diagonal(0, 0, 100, 2)
-        p2 = diagonal(0, 0, 100, 2)
+        p1 = diagonal(0, 0, 100, 2, _rng(1))
+        p2 = diagonal(0, 0, 100, 2, _rng(2))
         assert p1 == p2
 
     def test_half_square_triangle_has_two_patches(self):
         from blocks import half_square_triangle
 
-        patches = half_square_triangle(0, 0, 100, 4)
+        patches = half_square_triangle(0, 0, 100, 4, _rng())
         assert len(patches) == 2
 
     def test_cherry_blossom_uses_rgb_tuples(self):
         from blocks import cherry_blossom
 
-        patches = cherry_blossom(0, 0, 100, 4)
+        patches = cherry_blossom(0, 0, 100, 4, _rng())
         rgb_patches = [(p, c) for p, c in patches if isinstance(c, tuple)]
         assert len(rgb_patches) > 0, "cherry_blossom should use RGB tuple colors"
 
     def test_flying_geese_geometry(self):
         from blocks import flying_geese
 
-        patches = flying_geese(0, 0, 90, 4)
+        patches = flying_geese(0, 0, 90, 4, _rng())
         # 3 geese × 3 patches each = 9
         assert len(patches) == 9
 
     def test_star_returns_9_patches(self):
         from blocks import star
 
-        patches = star(0, 0, 100, 4)
+        patches = star(0, 0, 100, 4, _rng())
         assert len(patches) == 9
 
     def test_checkerboard_4x4_returns_24(self):
         from blocks import checkerboard_4x4
 
-        patches = checkerboard_4x4(0, 0, 100, 4)
+        patches = checkerboard_4x4(0, 0, 100, 4, _rng())
         # 8 solid + 8×2 split = 24
         assert len(patches) == 24
 

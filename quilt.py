@@ -64,14 +64,19 @@ def rotate_patches(patches, cx, cy, rotation):
 def _block_patches(cell, size, n_colors, seed=0):
     """Build a cell's base patches in [0, size] coords: pattern → rotate.
 
-    Seeds the module RNG with `seed` first so patterns that randomize
-    (half_square_triangle, cherry_blossom) vary per cell yet stay reproducible;
-    blocks receive x=y=0 and cannot derive variation from position. No wonky
-    jitter here — the fill and seam-stroke passes share one base build per cell,
-    and seams trace the un-jittered outline (apply jitter via _jitter_patches).
+    Passes a `seed`-seeded Random instance into the pattern so blocks that
+    randomize (half_square_triangle, cherry_blossom) vary per cell yet stay
+    reproducible; blocks receive x=y=0 and cannot derive variation from
+    position. An instance, not the module RNG: seeding global state let two
+    concurrent renders (gunicorn runs threaded) interleave their draws between
+    seed() and use, making the same quilt ID render differently under load.
+    random.Random(seed) yields the exact sequence random.seed(seed) did, so
+    golden hashes are unchanged. No wonky jitter here — the fill and
+    seam-stroke passes share one base build per cell, and seams trace the
+    un-jittered outline (apply jitter via _jitter_patches).
     """
-    random.seed(seed)
-    patches = BLOCK_PATTERNS[cell["pattern"]](0, 0, size, n_colors)
+    rng = random.Random(seed)
+    patches = BLOCK_PATTERNS[cell["pattern"]](0, 0, size, n_colors, rng)
     return rotate_patches(patches, size / 2, size / 2, cell["rotation"])
 
 
