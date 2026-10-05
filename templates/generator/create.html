@@ -134,6 +134,8 @@
     .btn-primary:hover { background: #5a4e8e; }
     .btn-secondary { background: #eceaf5; color: #6b5ea8; border: 1px solid #d5d0ea; }
     .btn-secondary:hover { background: #ddd8f0; }
+    .btn.disabled { opacity: 0.45; pointer-events: none; }
+    #pattern-note { display: none; font-size: 11px; color: #999; text-align: center; line-height: 1.4; }
     .build-info { font-size: 10px; color: #bbb; text-align: center; margin-top: 12px; }
     .prod-link { font-size: 11px; color: #6b5ea8; text-align: center; text-decoration: none; display: block; margin-top: 6px; }
     .prod-link:hover { text-decoration: underline; }
@@ -328,6 +330,7 @@
   <div class="action-buttons">
     <a id="download-btn" class="btn btn-primary" href="#">Download PNG</a>
     <a id="pattern-btn" class="btn btn-secondary" href="#">Download Pattern (PDF)</a>
+    <div id="pattern-note"></div>
     <button id="share-btn" class="btn btn-secondary">Copy share link</button>
   </div>
 
@@ -406,6 +409,25 @@
     history.replaceState(null, "", "/create?" + qs);
     document.getElementById("download-btn").href = "/download?" + qs;
     document.getElementById("pattern-btn").href = "/pattern?" + qs;
+    updatePatternButton();
+  }
+
+  // Params the PDF reconstruction can't represent — /pattern refuses them
+  // (server-side PATTERN_UNSUPPORTED is the source of this list), so grey the
+  // button out at the point of intent instead of 400ing after the click.
+  const PATTERN_UNSUPPORTED = {{ pattern_unsupported|list|tojson }};
+
+  function updatePatternButton() {
+    const active = PATTERN_UNSUPPORTED.filter(id => {
+      const v = document.getElementById(id).value;
+      return v !== "" && parseFloat(v) !== 0;
+    });
+    document.getElementById("pattern-btn").classList.toggle("disabled", active.length > 0);
+    const note = document.getElementById("pattern-note");
+    note.style.display = active.length ? "block" : "none";
+    note.textContent = active.length
+      ? "Pattern PDF not available with " + active.join(", ") + " — set to zero/none"
+      : "";
   }
 
   function scheduleUpdate() {

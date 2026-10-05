@@ -262,6 +262,14 @@ _PARAM_BOUNDS = {
     "seed": (0, 2**31 - 1),
 }
 
+# Params the PDF pattern reconstruction cannot represent yet: strippy/wonky
+# change the geometry the templates describe, plain_frac/mega_frac select cells
+# the reconstruction never sees, and palette_mix hybridizes the colors the
+# color key is built from. Generating anyway emits a confidently wrong pattern
+# (wrong piece counts / colors), so /pattern refuses these and create.html
+# greys out the button — it reads this list via the template context.
+PATTERN_UNSUPPORTED = ("strippy", "wonky", "plain_frac", "mega_frac", "palette_mix")
+
 # Default value for every control the /create UI binds. This is the single
 # source of truth: the query-string parser falls back to it, and complete_params()
 # fills it in for callers whose param dict has holes.
@@ -407,6 +415,7 @@ def create():
         border_styles=BORDER_STYLES,
         stitch_styles=STITCH_STYLES,
         quilt_sizes=QUILT_SIZES,
+        pattern_unsupported=PATTERN_UNSUPPORTED,
     )
 
 
@@ -451,6 +460,15 @@ def pattern():
     from pattern_pdf import generate_pattern_pdf  # pylint: disable=import-outside-toplevel
 
     params = _params_from_request()
+    unsupported = [k for k in PATTERN_UNSUPPORTED if params.get(k)]
+    if unsupported:
+        return Response(
+            "Pattern PDFs are not available with: "
+            + ", ".join(unsupported)
+            + ". Set these to zero/none to download a pattern.",
+            status=400,
+            mimetype="text/plain",
+        )
     try:
         qid = encode(params)
     except (ValueError, KeyError):
