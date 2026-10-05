@@ -40,7 +40,9 @@ def _generator_link(params):
 
 # The Flask dev server is threaded, so two requests can mutate explorer state
 # (ratings list, embeddings array, model) concurrently. Serialize all mutations
-# so the non-atomic in-memory updates and file writes can't interleave/corrupt.
+# AND model reads: _retrain swaps self.vocab before fitting/swapping the models,
+# so an unlocked /next racing a /rate can encode candidates with the new vocab
+# against the old model — a feature-dimension mismatch that 500s predict_proba.
 _explorer_lock = threading.Lock()
 
 
@@ -53,15 +55,15 @@ def index():
 @app.route("/next")
 def next_quilt():
     """Return suggested quilt params plus model stats."""
-    params = explorer.suggest_params()
-    return jsonify(
-        {
+    with _explorer_lock:
+        params = explorer.suggest_params()
+        payload = {
             "params": params,
             "stats": explorer.stats(),
             "importance": explorer.feature_importance(),
             "generator_url": _generator_link(params),
         }
-    )
+    return jsonify(payload)
 
 
 @app.route("/render")
