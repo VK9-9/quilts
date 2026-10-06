@@ -2438,3 +2438,91 @@ Not yet applied — pending review.
 5. **Raise border_style probability** from 35% to ~55%.
 6. Leave strippy, wonky, mega_frac and palette_mix alone this round and
    re-measure; all four look negative but none has the sample size to act on.
+
+## Round 23 — ratings 5422-5528
+
+**Records:** 5422-5528 (107 ratings; index 5421 is a single rating from
+2026-07-25, 73 days before the rest — liked, and counted below)
+**Overall:** 95/107 liked (88.8%, 95% CI 81-93%) — the highest round to date
+**Params:** R22's sampler plus one change, the R14+ training window
+(`_TRAIN_FROM_ROUND`). The other four R22 recommendations were held back so
+this round measures the window in isolation. Renderer output was unchanged
+(golden hashes held through the plan/paint refactor), so R22 and R23 are
+directly comparable.
+
+### Explore vs exploit
+
+| round | explore | exploit_clip | gap |
+|-------|---------|--------------|-----|
+| R22 | 44/51 (86%) | 132/153 (86%) | +0.0pp |
+| **R23** | **26/31 (84%)** | **69/76 (91%)** | **+6.9pp (p=0.30)** |
+| pooled R22+R23 | 70/82 (85%) | 201/229 (88%) | +2.4pp (p=0.58) |
+
+The gap reopened, but not significantly, and pooled over the two consistent
+rounds the model's picks are indistinguishable from random ones.
+
+### The models did not predict R23
+
+Walk-forward AUC (train on everything before R23, score R23):
+
+| train from | param model | CLIP model |
+|-----------|-------------|------------|
+| all history | 0.322 | 0.444 |
+| **R14+ (live)** | **0.352** (95% CI 0.20-0.53) | **0.496** (95% CI 0.29-0.70) |
+
+R14+ still beats all-history on both models, so the window change was right on
+its own terms — but both models are at or below chance on this round. R23 has
+only 12 dislikes, so the intervals are wide: CLIP is consistent with anything
+from useless to decent. The param model's interval only just reaches 0.5, and
+on the 31 explore quilts (which the model did not select, so there is no
+selection bias) it scored 0.18. Together with R21 (0.434) and R22 (0.561), the
+param model has not been a reliable ranker for three rounds. This is the
+strongest argument yet for the planned no-prefilter A/B (review item 6).
+
+### Proven winners are fading
+
+| | R22 | R23 |
+|-|-----|-----|
+| bargello | 25/28 (89%) | 11/16 (69%) |
+| lavender fields | 23/26 (88%) | 15/19 (79%) |
+| bargello × lavender fields | — | 5/9 (56%) |
+
+9 of R23's 12 dislikes are proven-winner injections (both are explore-only).
+Bargello vs everything else in R23: 69% vs 92%, p=0.006. Pooled with R22 it is
+82% vs 88%, p=0.26, so this may be fatigue with a repeated look rather than a
+lasting preference change. Watch for one more round.
+
+### Exploitation collapses onto one palette per round
+
+tide pool was 27 of 76 exploit_clip picks (36%) and 28/28 liked. R22 did the
+same with wisteria (42/153) and thistle (39/153). `MAX_PALETTE_FRAC` caps each
+palette at 10% of the 200 *candidates*, but nothing limits how often the CLIP
+stage *picks* the same palette across a session. The picks are liked, so the
+cost is information: a 28th tide pool rating teaches the model very little.
+
+### Deferred R22 recommendations, re-checked
+
+| # | signal | R22 | R23 | pooled | verdict |
+|---|--------|-----|-----|--------|---------|
+| 2 | n_colors 4 vs 6 | 96% vs 71% | 86% vs 86% | 92% vs 77%, p=0.014 | **not reproduced** — pooled p rests on R22 alone |
+| 3 | plain_frac on vs off | -14.7pp | -8pp (p=0.44) | -13pp, p=0.010 | **reproduced in direction** — negative in R19, R20, R22, R23 |
+| 4 | rows ≥19 | +9.8pp | -5pp | +5pp, p=0.16 | reversed — drop |
+| 5 | any border | +8.4pp | -11pp | +2pp, p=0.60 | reversed — drop |
+
+Watch list, all fine in R23: strippy 8/8, palette_mix 5/5, mega 2/2, wonky 4/5,
+wash 8/9. Pooled with R22 the lowest is wonky (10/14, 71%, p=0.07).
+
+By symmetry: partial 22/22, stripe 16/17, columns 23/25 (recovered from its
+R20 slump), rotational 23/27, bargello 11/16.
+
+### Recommended changes after Round 23
+
+Not yet applied — pending review. One knob per round, per the R22 plan.
+
+1. **Drop plain_frac probability 15% → 5%.** The only deferred signal R23
+   reproduced, and now negative in four rounds.
+2. **Run the no-prefilter A/B** (review item 6): interleave an arm where CLIP
+   scores 30 random candidates, to measure whether the param model adds
+   anything. This is a within-round comparison, so it doesn't confound #1.
+3. Hold proven-winner injection and the palette-concentration question for
+   R24; both are leads, not conclusions.
