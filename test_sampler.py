@@ -13,9 +13,12 @@ from sampler import (
     _TRAIN_FROM_ROUND,
     _DROP_STITCHES,
     _DROP_SYMMETRY,
+    FEATURE_PROBS,
     PALETTE_NAMES,
+    PARAM_SPACE,
     SYMMETRY_NAMES,
     build_feature_vocab,
+    current_policy,
     feature_names,
     params_to_features,
     sample_random_params,
@@ -244,3 +247,53 @@ class TestTrainingWindow:
         ex = self._explorer(tmp_path, 2000, rounds)
         start = ex.training_start()
         assert len(ex.ratings[start:]) == ex.stats()["trained_on"]
+
+
+class TestPolicySnapshot:
+    """Each round records the policy that generated it, so confound analyses
+    (like R22's quilt_stitch-as-time-proxy) are a lookup, not git archaeology."""
+
+    def test_policy_is_plain_json(self):
+        import json
+
+        policy = current_policy()
+        assert json.loads(json.dumps(policy)) == policy
+
+    def test_policy_reflects_live_constants(self):
+        policy = current_policy()
+        assert policy["feature_probs"] == FEATURE_PROBS
+        assert policy["drop_palettes"] == sorted(_DROP_PALETTES)
+        assert policy["train_from_round"] == _TRAIN_FROM_ROUND
+        assert policy["param_space"]["rows"] == list(PARAM_SPACE["rows"])
+
+    def test_policy_covers_every_optional_feature(self):
+        """Every feature sample_random_params gates on must have a range or a
+        categorical draw — a probability with nothing to draw is a typo."""
+        for feature in FEATURE_PROBS:
+            assert feature in PARAM_SPACE or feature in (
+                "border_style",
+                "quilt_stitch",
+                "palette_2",
+                "palette_mix",
+            ), feature
+
+    def test_start_round_records_policy_and_commit(self, tmp_path):
+        import json
+
+        ex = QuiltExplorer(str(tmp_path / "r.json"))
+        ex.start_round()
+        saved = json.loads((tmp_path / "r_rounds.json").read_text())
+        assert saved[0]["policy"] == current_policy()
+        assert "commit" in saved[0]  # None outside a git checkout, else a sha
+
+    def test_rounds_without_policy_still_load(self, tmp_path):
+        """Pre-snapshot rounds have no policy key; they must keep working."""
+        import json
+
+        (tmp_path / "r_rounds.json").write_text(
+            json.dumps([{"round": 1, "label": "R1", "start_index": 0, "ts": 0}])
+        )
+        ex = QuiltExplorer(str(tmp_path / "r.json"))
+        assert ex.start_round() == 2
+        assert "policy" not in ex.rounds[0]
+        assert "policy" in ex.rounds[1]

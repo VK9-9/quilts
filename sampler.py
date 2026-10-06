@@ -15,6 +15,7 @@ suggest_params() uses a two-stage pipeline:
 import json
 import os
 import random
+import subprocess
 import time
 
 import numpy as np
@@ -306,6 +307,60 @@ def feature_names(vocab=None):
     return names
 
 
+def current_policy():
+    """Snapshot of everything that shapes what the scorer shows, as plain JSON.
+
+    start_round stores this on each round so "what distribution generated
+    round N" is a lookup rather than archaeology. The R22 post-mortem needed
+    that: quilt_stitch's 0.70 importance turned out to be a time confound
+    (stitching didn't exist before R7), and nothing recorded when the
+    generative space had changed.
+    """
+    return {
+        "param_space": {k: list(v) for k, v in PARAM_SPACE.items()},
+        "feature_probs": dict(FEATURE_PROBS),
+        "n_colors_weights": {str(k): v for k, v in N_COLORS_WEIGHTS.items()},
+        "border_weights": dict(_BORDER_WEIGHTS),
+        "stitch_weights": dict(_STITCH_WEIGHTS),
+        "drop_palettes": sorted(_DROP_PALETTES),
+        "drop_symmetry": sorted(_DROP_SYMMETRY),
+        "proven_palettes": dict(_PROVEN_PALETTES),
+        "proven_symmetries": dict(_PROVEN_SYMMETRIES),
+        "explore_prob": EXPLORE_PROB,
+        "n_candidates": _N_CANDIDATES,
+        "max_palette_frac": MAX_PALETTE_FRAC,
+        "clip_top_n": _CLIP_TOP_N,
+        "clip_candidate_block_size": _CLIP_CANDIDATE_BLOCK_SIZE,
+        "clip_embed_block_size": _CLIP_EMBED_BLOCK_SIZE,
+        "train_from_round": _TRAIN_FROM_ROUND,
+        "min_training_ratings": _MIN_TRAINING_RATINGS,
+        "param_model": dict(_PARAM_MODEL_KWARGS),
+        "clip_model": dict(_CLIP_MODEL_KWARGS),
+    }
+
+
+def _git_commit():
+    """Short HEAD sha, suffixed "-dirty" if the tree has uncommitted changes.
+
+    The policy dict can't capture renderer or layout changes, which shift what
+    a seed looks like just as much, so a round also records the code version.
+    None when git isn't available.
+    """
+    here = os.path.dirname(os.path.abspath(__file__))
+
+    def git(*args):
+        return subprocess.check_output(
+            ["git", *args], cwd=here, stderr=subprocess.DEVNULL, text=True
+        ).strip()
+
+    try:
+        sha = git("rev-parse", "--short", "HEAD")
+        dirty = git("status", "--porcelain", "--untracked-files=no")
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return sha + ("-dirty" if dirty else "")
+
+
 def _render_small(params, block_size):
     """Render params at the given block_size and return PNG bytes."""
     kwargs = params_to_render_kwargs(params, block_size=block_size)
@@ -361,7 +416,12 @@ class QuiltExplorer:  # pylint: disable=too-many-instance-attributes
         _atomic_write_json(self.rounds_path, self.rounds)
 
     def start_round(self, label=None):
-        """Start a new scoring round. Returns the round number."""
+        """Start a new scoring round. Returns the round number.
+
+        Records the sampling policy and code version alongside the boundary
+        (see current_policy). Rounds started before this was added have
+        neither key: absent means unknown, not "same as now".
+        """
         num = len(self.rounds) + 1
         self.rounds.append(
             {
@@ -369,6 +429,8 @@ class QuiltExplorer:  # pylint: disable=too-many-instance-attributes
                 "label": label or f"R{num}",
                 "start_index": len(self.ratings),
                 "ts": time.time(),
+                "commit": _git_commit(),
+                "policy": current_policy(),
             }
         )
         self._save_rounds()
