@@ -300,6 +300,17 @@ def hex_to_rgb(h):
     return tuple(int(h[i : i + 2], 16) / 255.0 for i in (0, 2, 4))
 
 
+def rgb_to_hex(rgb):
+    """Convert an (r, g, b) float tuple (0-1) to an uppercase hex string.
+
+    Inverse of hex_to_rgb, so palette colors round-trip exactly.
+
+    >>> rgb_to_hex(hex_to_rgb("#1B3A5C"))
+    '#1B3A5C'
+    """
+    return "#" + "".join(f"{round(c * 255):02X}" for c in rgb)
+
+
 def luminance(color):
     """Perceived brightness of a hex string or an (r, g, b) float tuple.
 

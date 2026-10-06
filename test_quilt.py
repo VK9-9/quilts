@@ -8,7 +8,7 @@ from quilt import (
     render_quilt,
     pick_palettes,
     rotate_patches,
-    build_layout,
+    plan_quilt,
     BORDER_STYLES,
     QUILT_STITCH_STYLES,
 )
@@ -91,98 +91,76 @@ class TestRotatePatches:
         assert result[0][1] == 7
 
 
-# --- build_layout ---
+# --- plan_quilt ---
 
 
-class TestBuildLayout:
+def _plan(**overrides):
+    kwargs = {
+        "seed": 42,
+        "rows": 4,
+        "cols": 4,
+        "symmetry": "none",
+        "chaos": 0.3,
+        "palette_name": "ocean breeze",
+    }
+    kwargs.update(overrides)
+    return plan_quilt(**kwargs)
+
+
+class TestPlanQuilt:
     def test_returns_grid_and_palette(self):
-        grid, allowed, palette, rng = build_layout(
-            seed=42,
-            rows=4,
-            cols=4,
-            symmetry="none",
-            chaos=0.3,
-            palette_name="ocean breeze",
-            max_patterns=2,
-            max_colors=4,
-        )
-        assert len(grid) == 16  # 4x4
-        assert len(palette) == 4
-        assert allowed is not None
-        assert len(allowed) == 2
+        design = _plan(max_patterns=2, max_colors=4)
+        assert len(design.grid) == 16  # 4x4
+        assert design.n_colors == 4
+        assert design.allowed_patterns is not None
+        assert len(design.allowed_patterns) == 2
 
     def test_no_max_patterns(self):
-        grid, allowed, palette, rng = build_layout(
-            seed=42,
-            rows=4,
-            cols=4,
-            symmetry="none",
-            chaos=0.3,
-            palette_name="ocean breeze",
-        )
-        assert allowed is None
-        assert len(grid) == 16
+        design = _plan()
+        assert design.allowed_patterns is None
+        assert len(design.grid) == 16
 
     def test_bargello_forces_color_maps(self):
-        grid, _, palette, _ = build_layout(
-            seed=42,
-            rows=4,
-            cols=4,
-            symmetry="bargello",
-            chaos=0.3,
-            palette_name="ocean breeze",
-            max_colors=4,
-        )
-        for cell in grid.values():
-            cm = cell["color_map"]
-            assert len(set(cm)) == 1  # all same color
+        design = _plan(symmetry="bargello", max_colors=4)
+        for cell in design.grid.values():
+            assert len(set(cell["color_map"])) == 1  # all same color
+        assert len(design.plain_cells) == 16, "bargello cells are all solid"
 
     def test_partial_symmetry_uses_chaos(self):
-        grid, _, _, _ = build_layout(
-            seed=42,
-            rows=4,
-            cols=4,
-            symmetry="partial",
-            chaos=0.5,
-            palette_name="ocean breeze",
-            max_patterns=2,
-            max_colors=4,
-        )
-        assert len(grid) == 16
+        design = _plan(symmetry="partial", chaos=0.5, max_patterns=2, max_colors=4)
+        assert len(design.grid) == 16
 
     def test_seed_reproducibility(self):
-        r1 = build_layout(
-            seed=99,
-            rows=4,
-            cols=4,
-            symmetry="mirror",
-            chaos=0.3,
-            palette_name="ocean breeze",
-            max_colors=4,
-        )
-        r2 = build_layout(
-            seed=99,
-            rows=4,
-            cols=4,
-            symmetry="mirror",
-            chaos=0.3,
-            palette_name="ocean breeze",
-            max_colors=4,
-        )
-        assert r1[0] == r2[0]  # same grid
-        assert r1[2] == r2[2]  # same palette
+        """Same inputs, same design — every field, not just the grid."""
+        a = _plan(seed=99, symmetry="mirror", max_colors=4, mega_frac=0.3, plain_frac=0.2)
+        b = _plan(seed=99, symmetry="mirror", max_colors=4, mega_frac=0.3, plain_frac=0.2)
+        assert a == b
 
     def test_max_colors_trims_palette(self):
-        _, _, palette, _ = build_layout(
-            seed=42,
-            rows=4,
-            cols=4,
-            symmetry="none",
-            chaos=0.3,
-            palette_name="ocean breeze",
-            max_colors=3,
-        )
-        assert len(palette) == 3
+        assert _plan(max_colors=3).n_colors == 3
+
+    def test_none_seed_is_resolved(self):
+        """A random seed is chosen up front and recorded, so the design can be
+        painted (and the cell seeds derived) without knowing it was random."""
+        assert isinstance(_plan(seed=None).seed, int)
+
+    def test_mega_blocks_do_not_overlap(self):
+        design = _plan(rows=8, cols=8, mega_frac=0.5)
+        assert design.mega_tl, "mega_frac=0.5 on 8x8 should place some"
+        assert len(design.mega_covered) == 4 * len(design.mega_tl)
+
+    def test_strip_factors_off_and_on(self):
+        assert set(_plan().col_factors) == {1.0}
+        design = _plan(strippy=0.3)
+        assert all(0.7 <= f <= 1.3 for f in design.col_factors + design.row_factors)
+        assert len(set(design.col_factors)) > 1
+
+    def test_border_and_wash_colors_come_from_the_palette(self):
+        design = _plan(max_colors=4, border_style="solid", wash_alpha=0.1)
+        assert all(c in design.palette_colors for c in design.border_colors)
+        assert design.wash_color in design.palette_colors
+        plain = _plan(max_colors=4)
+        assert plain.border_colors is None and plain.wash_color is None
 
 
 # --- render_quilt ---

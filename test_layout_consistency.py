@@ -1,13 +1,11 @@
-"""The PDF cutting diagrams must be built from the same grid the image is.
+"""The PDF must describe the same design the image paints.
 
-pattern_pdf rebuilds the layout via build_layout to draw per-block cutting
-patterns. If that reconstruction differs from the grid render_quilt actually
-draws, the printed pattern tells the quilter to cut pieces that don't match the
-picture. These tests pin the two together.
-
-Before build_layout learned about n_palettes and tiling, the 'palette_two' and
-'none_tiled' cases below produced mismatched grids — exactly the silent
-wrong-pattern bug this guards against.
+If pattern_pdf's design differs from the one render_quilt paints, the printed
+pattern tells the quilter to cut pieces that don't match the picture. The PDF
+used to *replay* the render's RNG stream, and the replay silently missed
+two-palette splits and tiling (later fixed), then plain cells, mega-blocks and
+mixed palettes. Both now plan through render_params.plan_from_params; these
+tests pin that they get equal QuiltDesigns — every decision, not just the grid.
 """
 
 import pytest
@@ -69,28 +67,46 @@ CASES = {
         "tile_variation": 0.15,
         "seed": 2004,
     },
+    "plain_mega_mix_strippy": {
+        "rows": 16,
+        "cols": 16,
+        "symmetry": "partial",
+        "chaos": 0.4,
+        "palette": "tide pool",
+        "palette_mix": "honey oak",
+        "n_patterns": 2,
+        "n_colors": 4,
+        "tile_size": 0,
+        "tile_variation": 0.1,
+        "plain_frac": 0.2,
+        "mega_frac": 0.2,
+        "strippy": 0.3,
+        "wonky": 0.04,
+        "border_style": "checkerboard",
+        "wash_alpha": 0.1,
+        "seed": 2005,
+    },
 }
 
 
-def _render_grid(params, monkeypatch):
-    """Render the quilt, capturing the grid render_quilt actually draws."""
+def _painted_design(params, monkeypatch):
+    """Render the quilt, capturing the QuiltDesign render_quilt actually paints."""
     captured = {}
-    orig = quilt._build_grid  # pylint: disable=protected-access
+    orig = quilt.paint
 
-    def spy(*args, **kwargs):
-        grid, allowed = orig(*args, **kwargs)
-        captured["grid"] = grid
-        return grid, allowed
+    def spy(design, *args, **kwargs):
+        captured["design"] = design
+        return orig(design, *args, **kwargs)
 
-    monkeypatch.setattr(quilt, "_build_grid", spy)
+    monkeypatch.setattr(quilt, "paint", spy)
     render_quilt(**params_to_render_kwargs(params, block_size=10))
-    return captured["grid"]
+    return captured["design"]
 
 
 @pytest.mark.parametrize("name", sorted(CASES))
-def test_pdf_reconstruction_matches_render(name, monkeypatch):
-    """pattern_pdf's reconstructed grid equals the grid render_quilt draws."""
+def test_pdf_describes_the_painted_design(name, monkeypatch):
+    """pattern_pdf's design equals the design render_quilt paints."""
     params = CASES[name]
-    render_grid = _render_grid(params, monkeypatch)
-    pdf_grid, _allowed, _palette = pattern_pdf._reconstruct_layout(params)  # pylint: disable=protected-access
-    assert pdf_grid == render_grid
+    painted = _painted_design(params, monkeypatch)
+    described = pattern_pdf._design_for(params)  # pylint: disable=protected-access
+    assert described == painted

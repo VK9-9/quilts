@@ -15,10 +15,10 @@ from reportlab.lib.units import inch
 from reportlab.pdfgen import canvas as rl_canvas
 
 from blocks import BLOCK_PATTERNS
-from palettes import PALETTES, hex_to_rgb, subset_in_tonal_order
-from quilt import render_quilt, build_layout
+from palettes import hex_to_rgb, rgb_to_hex
+from quilt import paint
 from quilt_id import encode
-from render_params import params_to_render_kwargs
+from render_params import plan_from_params
 
 # Page layout constants
 PAGE_W, PAGE_H = letter  # 8.5 x 11 inches in points
@@ -88,51 +88,30 @@ def _human_color_name(hex_color):  # pylint: disable=too-many-return-statements
     return prefix + "blue"
 
 
-def _pick_palette_colors(palette_name, max_colors, rng):
-    """Resolve palette name to list of hex colors, sampled to max_colors.
+def _design_for(params):
+    """The QuiltDesign this pattern describes — the same one the renderer paints.
 
-    Must consume `rng` exactly as quilt._resolve_palettes does, or the pattern
-    won't describe the quilt the renderer draws.
+    Planned through render_params' funnel rather than by replaying the RNG
+    stream: a replay covers only what it was written to cover, and the
+    previous one silently missed plain cells, mega-blocks and mixed palettes.
+    Partial param dicts (tests, the CLI) get the defaults below; tile_size
+    resolves falsy → no tiling, as the renderer does.
     """
-    for name, colors in PALETTES:
-        if name == palette_name:
-            if max_colors:
-                return subset_in_tonal_order(colors, max_colors, rng)
-            return list(colors)
-    return ["#000000", "#FFFFFF", "#FF0000", "#0000FF"]
+    full = {
+        "cols": params.get("cols", params["rows"]),
+        "chaos": 0.3,
+        "n_patterns": 2,
+        "n_colors": 4,
+        "tile_variation": 0.05,
+        **params,
+    }
+    full["tile_size"] = full.get("tile_size") or 0
+    return plan_from_params(full)
 
 
-def _reconstruct_layout(params):
-    """Rebuild the layout grid and block info from quilt params.
-
-    Returns (grid, allowed_patterns, palette_hex_colors)
-    where grid is {(r,c): cell_dict} matching what render_quilt builds
-    and palette colors are hex strings (for PDF drawing).
-    """
-    # Match render_quilt's grid inputs: two valid palettes split the layout,
-    # and "none" symmetry tiles a template. Passing these wrong silently
-    # desyncs the cutting diagrams from the rendered image.
-    palette_2 = params.get("palette_2")
-    known_palettes = {p[0] for p in PALETTES}
-    n_palettes = 2 if palette_2 in known_palettes else 1
-    grid, allowed, _rgb_palette, _rng = build_layout(
-        seed=params["seed"],
-        rows=params["rows"],
-        cols=params.get("cols", params["rows"]),
-        symmetry=params["symmetry"],
-        chaos=params.get("chaos", 0.3),
-        palette_name=params["palette"],
-        max_patterns=params.get("n_patterns", 2),
-        max_colors=params.get("n_colors", 4),
-        n_palettes=n_palettes,
-        tile_size=params.get("tile_size") or None,
-        tile_variation=params.get("tile_variation", 0.05),
-    )
-    # Re-derive hex palette (build_layout returns RGB tuples, PDF needs hex)
-    rng = random.Random(params["seed"])
-    color_rng = random.Random(rng.randint(0, 2**31))
-    palette_colors = _pick_palette_colors(params["palette"], params.get("n_colors", 4), color_rng)
-    return grid, allowed, palette_colors
+def _hex_palette(design):
+    """The primary palette as hex strings — the PDF labels colors by hex."""
+    return [rgb_to_hex(c) for c in design.palette_colors]
 
 
 def _canonicalize_polygon(pts):
@@ -264,32 +243,15 @@ def _rotate_polygons(polygons, rotation, size):
     return result
 
 
-def _render_quilt_image(params):
-    """Render the quilt to a temp PNG file, return the path.
+def _render_quilt_image(design):
+    """Paint the design to a temp PNG file for the cover, return the path.
 
-    Routes through params_to_render_kwargs — the same funnel the webapps use —
-    so the cover shows every param the renderer honors (border_style, wash,
-    palette_2, ...). A hand-picked kwarg subset here is how the cover drifted
-    from the preview. The defaults mirror _reconstruct_layout's, so partial
-    param dicts keep working, and tile_size resolves falsy -> no tiling exactly
-    as the reconstruction does — else the cover thumbnail tiles while the
-    cutting diagrams don't (or vice versa).
+    Paints the very design the cutting pages describe, so the cover can't show
+    a different quilt than the instructions build.
     """
     tmp = tempfile.NamedTemporaryFile(suffix=".png", delete=False)  # pylint: disable=consider-using-with
     tmp.close()
-    full = {
-        "cols": params.get("cols", params["rows"]),
-        "chaos": 0.3,
-        "n_patterns": 2,
-        "n_colors": 4,
-        "tile_variation": 0.05,
-        **params,
-    }
-    full["tile_size"] = full.get("tile_size") or 0
-    kwargs = params_to_render_kwargs(full, block_size=40)
-    kwargs["output"] = tmp.name
-    kwargs["border"] = 0
-    render_quilt(**kwargs)
+    paint(design, block_size=40, border=0, output=tmp.name)
     return tmp.name
 
 
@@ -1434,8 +1396,9 @@ def generate_pattern_pdf(
     block_w_in = quilt_w / cols
     block_h_in = quilt_h / rows
 
-    # reconstruct layout
-    grid, _allowed, palette_colors = _reconstruct_layout(params)
+    design = _design_for(params)
+    grid = design.grid
+    palette_colors = _hex_palette(design)
     n_colors = len(palette_colors)
 
     # find unique blocks
@@ -1446,7 +1409,7 @@ def generate_pattern_pdf(
     # Render the quilt image for the cover. delete=False means nothing reclaims
     # it unless we do, and /pattern calls this once per request on a long-lived
     # worker — so it is removed in the finally below.
-    quilt_image = _render_quilt_image(params)
+    quilt_image = _render_quilt_image(design)
 
     # encode quilt ID for footer
     try:

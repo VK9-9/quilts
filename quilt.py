@@ -434,51 +434,6 @@ def _build_grid(
     return grid, allowed
 
 
-def build_layout(
-    seed,
-    rows,
-    cols,
-    symmetry,
-    chaos,
-    palette_name,  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals
-    max_patterns=None,
-    max_colors=None,
-    n_palettes=1,
-    tile_size=None,
-    tile_variation=0.05,
-):
-    """Reconstruct layout grid and palette from quilt params.
-
-    Returns (grid, allowed_patterns, palette_colors, rng) where rng is the
-    main RNG after layout construction (callers may need it for further steps).
-
-    n_palettes and tile_size/tile_variation must match what render_quilt was
-    given (n_palettes=2 for two-palette quilts, tile_size for "none" symmetry),
-    otherwise the reconstructed grid will not match the rendered image.
-    """
-    rng = random.Random(seed)
-    color_rng = random.Random(rng.randint(0, 2**31))
-
-    palette_colors = pick_palettes(palette_name, color_rng)
-    if max_colors is not None:
-        palette_colors = subset_in_tonal_order(palette_colors, max_colors, color_rng)
-    n_colors = len(palette_colors)
-
-    grid, allowed = _build_grid(
-        rng,
-        rows,
-        cols,
-        symmetry,
-        chaos,
-        max_patterns,
-        n_colors,
-        n_palettes,
-        tile_size,
-        tile_variation,
-    )
-    return grid, allowed, palette_colors, rng
-
-
 def _strip_factors(n, variation, rng):
     """Relative widths of n strips, each 1 ± variation (all 1.0 when off).
 

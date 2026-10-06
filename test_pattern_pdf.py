@@ -9,8 +9,8 @@ import pytest
 from pattern_pdf import (
     _color_label,
     _human_color_name,
-    _pick_palette_colors,
-    _reconstruct_layout,
+    _design_for,
+    _hex_palette,
     _canonicalize_polygon,
     _shape_signature,
     _extract_unique_blocks,
@@ -111,33 +111,18 @@ class TestHumanColorName:
         assert "light" in name or "white" in name
 
 
-class TestPickPaletteColors:
-    def test_known_palette(self):
-        import random
-
-        colors = _pick_palette_colors("ocean breeze", 4, random.Random(42))
-        assert len(colors) == 4
-        assert all(c.startswith("#") for c in colors)
-
-    def test_full_palette(self):
-        import random
-
-        colors = _pick_palette_colors("ocean breeze", None, random.Random(42))
-        assert len(colors) >= 4
-
-    def test_unknown_palette_fallback(self):
-        import random
-
-        colors = _pick_palette_colors("nonexistent", 4, random.Random(42))
-        assert len(colors) == 4
-
-
-class TestReconstructLayout:
+class TestDesignFor:
     def test_returns_grid_and_palette(self):
-        grid, allowed, palette = _reconstruct_layout(_base_params())
-        assert len(grid) == 16  # 4×4
-        assert isinstance(palette, list)
+        design = _design_for(_base_params())
+        assert len(design.grid) == 16  # 4×4
+        palette = _hex_palette(design)
         assert len(palette) == 4
+        assert all(c.startswith("#") for c in palette)
+
+    def test_fills_defaults_for_partial_params(self):
+        design = _design_for({"seed": 1, "rows": 4, "symmetry": "mirror", "palette": "thistle"})
+        assert design.cols == 4
+        assert design.n_colors == 4
 
 
 class TestCanonicalizePolygon:
@@ -185,9 +170,8 @@ class TestRotatePolygons:
 
 class TestExtractUniqueBlocks:
     def test_groups_by_shape(self):
-        params = _base_params()
-        grid, _, palette = _reconstruct_layout(params)
-        blocks = _extract_unique_blocks(grid, len(palette))
+        design = _design_for(_base_params())
+        blocks = _extract_unique_blocks(design.grid, design.n_colors)
         assert len(blocks) >= 1
         total = sum(b["count"] for b in blocks)
         assert total == 16  # 4×4
@@ -424,26 +408,28 @@ def test_generate_cleans_up_even_on_failure(tmp_path):
     assert not set(glob.glob(pattern)) - before
 
 
-def test_cover_image_renders_full_params(monkeypatch):
-    """The cover must go through params_to_render_kwargs so it honors every
-    render param (border_style, wash, palette_2, stitch). A hand-picked kwarg
-    subset is how the cover drifted from the preview the user downloaded from."""
+def test_cover_image_paints_the_described_design(monkeypatch):
+    """The cover paints the same QuiltDesign the cutting pages describe, so it
+    can't show a different quilt (it once rendered from a hand-picked kwarg
+    subset that dropped border, wash and the second palette)."""
     import pattern_pdf
 
-    captured = {}
-
-    def fake_render(**kwargs):
-        captured.update(kwargs)
-        return (1, 1)
-
-    monkeypatch.setattr(pattern_pdf, "render_quilt", fake_render)
-    params = _base_params(border_style="solid", wash_alpha=0.1, palette_2="wildflower", tile_size=0)
-    path = pattern_pdf._render_quilt_image(params)  # pylint: disable=protected-access
-    os.unlink(path)
-    assert captured["border_style"] == "solid"
-    assert captured["wash_alpha"] == 0.1
-    assert captured["palette_name_2"] == "wildflower"
-    assert captured["quilt_stitch"] == "grid"
-    assert captured["tile_size"] is None  # falsy -> no tiling, matching reconstruction
-    assert captured["output"] == path
-    assert captured["border"] == 0
+    painted = []
+    real_paint = pattern_pdf.paint
+    monkeypatch.setattr(
+        pattern_pdf,
+        "paint",
+        lambda design, **kw: painted.append(design) or real_paint(design, **kw),
+    )
+    params = _base_params(border_style="solid", wash_alpha=0.1, palette_2="wildflower")
+    described = []
+    real_design_for = pattern_pdf._design_for  # pylint: disable=protected-access
+    monkeypatch.setattr(
+        pattern_pdf, "_design_for", lambda p: described.append(real_design_for(p)) or described[-1]
+    )
+    with tempfile.TemporaryDirectory() as d:
+        generate_pattern_pdf(params, os.path.join(d, "p.pdf"))
+    assert painted == described
+    assert painted[0].border_style == "solid"
+    assert painted[0].wash_alpha == 0.1
+    assert len(painted[0].palettes) == 2

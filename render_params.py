@@ -5,9 +5,13 @@ so both always pass the same set of params to render_quilt.
 """
 
 from palettes import PALETTES
+from quilt import plan_quilt
 
 PALETTE_NAMES = [p[0] for p in PALETTES]
 _ACTIVE_PALETTES = set(PALETTE_NAMES)
+
+# render_quilt kwargs that describe the output (pixels, file), not the design.
+_PAINT_ONLY_KWARGS = ("block_size", "output", "border")
 
 
 def params_to_render_kwargs(params, block_size=40):
@@ -44,3 +48,13 @@ def params_to_render_kwargs(params, block_size=40):
     if kwargs["border_style"] == "none":
         kwargs["border_style"] = None
     return kwargs
+
+
+def plan_from_params(params):
+    """The QuiltDesign for a param dict, through the same funnel as rendering.
+
+    Anything that describes a quilt rather than drawing it (the sewing pattern)
+    starts here, so it sees exactly the decisions the renderer paints.
+    """
+    kwargs = params_to_render_kwargs(params)
+    return plan_quilt(**{k: v for k, v in kwargs.items() if k not in _PAINT_ONLY_KWARGS})
