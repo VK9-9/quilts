@@ -710,13 +710,280 @@ def plan_quilt(
     )
 
 
+def _cell_seed(design, r, c, mega=False):
+    """Per-cell seed for block randomness and wonky jitter.
+
+    Mega-blocks offset by 500 so a mega-block anchored at (r, c) draws
+    differently from the ordinary cell it displaced.
+    """
+    return design.seed * 10000 + r * 1000 + c + (500 if mega else 0)
+
+
+def cell_patches(design, r, c, size, mega=False):
+    """Base (un-jittered) patches for the block anchored at (r, c).
+
+    In square [0, size] coords: pattern → rotate, seeded per cell. With
+    mega=True, size is the 2x2 mega-block's square. The single source of block
+    geometry for both the painter and the sewing pattern.
+    """
+    seed = _cell_seed(design, r, c, mega)
+    return _block_patches(design.grid[(r, c)], size, design.n_colors, seed)
+
+
+def _cell_palette(design, cell):
+    """The palette a cell draws from — the second one on two-palette quilts."""
+    return design.palettes[cell.get("palette", 0) % len(design.palettes)]
+
+
+@dataclass(frozen=True)
+class _Canvas:  # pylint: disable=too-many-instance-attributes
+    """Pixel geometry of one paint: where every strip lands at a block size."""
+
+    block_size: int
+    border: int
+    col_sizes: list
+    col_pos: list
+    row_sizes: list
+    row_pos: list
+
+    @property
+    def quilt_w(self):
+        """Width of the pieced area, excluding the border."""
+        return self.col_pos[-1]
+
+    @property
+    def quilt_h(self):
+        """Height of the pieced area, excluding the border."""
+        return self.row_pos[-1]
+
+    def cell_rect(self, r, c, span=1):
+        """(x, y, w, h) of the span x span block whose top-left cell is (r, c)."""
+        x = self.border + self.col_pos[c]
+        y = self.border + self.row_pos[r]
+        w = sum(self.col_sizes[c : c + span])
+        h = sum(self.row_sizes[r : r + span])
+        return x, y, w, h
+
+
+def _paint_cells(ctx, design, canvas):
+    """Fill every non-mega cell; returns each patterned cell's base patches.
+
+    The base (un-jittered) patches are returned so the seam pass reuses them
+    instead of rebuilding every block's geometry a second time.
+    """
+    size = canvas.block_size
+    base_patches = {}
+    for r in range(design.rows):
+        for c in range(design.cols):
+            if (r, c) in design.mega_covered:
+                continue
+            cell = design.grid[(r, c)]
+            bx, by, cw, ch = canvas.cell_rect(r, c)
+            palette = _cell_palette(design, cell)
+
+            if (r, c) in design.plain_cells:
+                ctx.set_source_rgb(*palette[cell["color_map"][0]])
+                ctx.rectangle(bx, by, cw, ch)
+                ctx.fill()
+                continue
+
+            # pattern in square coords (block_size), scaled to the cell (cw × ch)
+            base = cell_patches(design, r, c, size)
+            base_patches[(r, c)] = base
+            patches = base
+            if design.wonky > 0:
+                patches = _jitter_patches(base, size, design.wonky, _cell_seed(design, r, c))
+            _fill_patches(
+                ctx,
+                patches,
+                bx,
+                by,
+                cw / size,
+                ch / size,
+                cell["color_map"],
+                palette,
+                design.n_colors,
+            )
+    return base_patches
+
+
+def _paint_grid_lines(ctx, design, canvas):
+    """Seam lines between blocks, skipping the interior seams of mega-blocks."""
+    border = canvas.border
+    mega_skip_rows = {r + 1 for r, _ in design.mega_tl}
+    mega_skip_cols = {c + 1 for _, c in design.mega_tl}
+    ctx.set_source_rgba(0, 0, 0, 0.15)
+    ctx.set_line_width(1.0)
+    for r in range(design.rows + 1):
+        if r in mega_skip_rows:
+            continue
+        y = border + canvas.row_pos[r]
+        ctx.move_to(border, y)
+        ctx.line_to(border + canvas.quilt_w, y)
+        ctx.stroke()
+    for c in range(design.cols + 1):
+        if c in mega_skip_cols:
+            continue
+        x = border + canvas.col_pos[c]
+        ctx.move_to(x, border)
+        ctx.line_to(x, border + canvas.quilt_h)
+        ctx.stroke()
+
+
+def _paint_tile_lines(ctx, design, canvas):
+    """Heavier seams between tiles, for tiled ("none" symmetry) quilts."""
+    tile_size = design.tile_size
+    if tile_size is None:
+        return
+    border = canvas.border
+    ctx.set_source_rgba(0, 0, 0, 0.4)
+    ctx.set_line_width(2.5)
+    for tr in range(math.ceil(design.rows / tile_size) + 1):
+        y = border + canvas.row_pos[min(tr * tile_size, design.rows)]
+        ctx.move_to(border, y)
+        ctx.line_to(border + canvas.quilt_w, y)
+        ctx.stroke()
+    for tc in range(math.ceil(design.cols / tile_size) + 1):
+        x = border + canvas.col_pos[min(tc * tile_size, design.cols)]
+        ctx.move_to(x, border)
+        ctx.line_to(x, border + canvas.quilt_h)
+        ctx.stroke()
+
+
+def _paint_mega_blocks(ctx, design, canvas):
+    """Fill each 2x2 mega-block; returns their base patches for the seam pass.
+
+    Painted after the grid lines so they cover the interior seams.
+    """
+    mega_sq = 2 * canvas.block_size  # square coord size for the pattern
+    mega_base = {}
+    for mr, mc in design.mega_tl:
+        cell = design.grid[(mr, mc)]
+        bx, by, mw, mh = canvas.cell_rect(mr, mc, span=2)
+        base = cell_patches(design, mr, mc, mega_sq, mega=True)
+        mega_base[(mr, mc)] = base
+        patches = base
+        if design.wonky > 0:
+            seed = _cell_seed(design, mr, mc, mega=True)
+            patches = _jitter_patches(base, mega_sq, design.wonky, seed)
+        _fill_patches(
+            ctx,
+            patches,
+            bx,
+            by,
+            mw / mega_sq,
+            mh / mega_sq,
+            cell["color_map"],
+            _cell_palette(design, cell),
+            design.n_colors,
+        )
+    return mega_base
+
+
+def _paint_patch_seams(ctx, design, canvas, base_patches, mega_base):
+    """Seam lines within blocks — ordinary cells first, then mega-blocks.
+
+    Seams trace the un-jittered base outline, reusing the fill passes' builds.
+    """
+    size = canvas.block_size
+    ctx.set_source_rgba(0, 0, 0, 0.08)
+    ctx.set_line_width(0.5)
+    for r in range(design.rows):
+        for c in range(design.cols):
+            if (r, c) in design.mega_covered or (r, c) in design.plain_cells:
+                continue
+            bx, by, cw, ch = canvas.cell_rect(r, c)
+            _stroke_patches(ctx, base_patches[(r, c)], bx, by, cw / size, ch / size)
+
+    mega_sq = 2 * size
+    for mr, mc in design.mega_tl:
+        bx, by, mw, mh = canvas.cell_rect(mr, mc, span=2)
+        _stroke_patches(ctx, mega_base[(mr, mc)], bx, by, mw / mega_sq, mh / mega_sq)
+
+
+def paint(design, block_size, border, output=None):
+    """Draw a QuiltDesign. No randomness: every decision is already on the design.
+
+    output=None returns PNG bytes; otherwise writes the file and returns
+    (width, height).
+    """
+    # widen border when decorative style is active
+    if design.border_style is not None:
+        border = max(border, int(block_size * 0.75))
+
+    col_sizes, col_pos = _strip_pixels(design.col_factors, block_size)
+    row_sizes, row_pos = _strip_pixels(design.row_factors, block_size)
+    canvas = _Canvas(block_size, border, col_sizes, col_pos, row_sizes, row_pos)
+    quilt_w, quilt_h = canvas.quilt_w, canvas.quilt_h
+    width = quilt_w + 2 * border
+    height = quilt_h + 2 * border
+
+    surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, width, height)
+    ctx = cairo.Context(surface)
+
+    # background
+    ctx.set_source_rgb(0.95, 0.93, 0.90)  # off-white linen background
+    ctx.rectangle(0, 0, width, height)
+    ctx.fill()
+
+    if design.border_style is not None:
+        _draw_border(
+            ctx,
+            width,
+            height,
+            border,
+            border,
+            border,
+            quilt_w,
+            quilt_h,
+            design.border_style,
+            design.border_colors,
+            block_size,
+        )
+
+    base_patches = _paint_cells(ctx, design, canvas)
+    _paint_grid_lines(ctx, design, canvas)
+    _paint_tile_lines(ctx, design, canvas)
+    mega_base = _paint_mega_blocks(ctx, design, canvas)
+    _paint_patch_seams(ctx, design, canvas, base_patches, mega_base)
+
+    # color wash — semi-transparent tint over entire quilt area
+    if design.wash_alpha > 0:
+        ctx.set_source_rgba(*design.wash_color, design.wash_alpha)
+        ctx.rectangle(border, border, quilt_w, quilt_h)
+        ctx.fill()
+
+    # thread quilting overlay
+    if design.quilt_stitch is not None:
+        _draw_quilt_stitching(
+            ctx, border, border, quilt_w, quilt_h, design.quilt_stitch, block_size
+        )
+
+    # save or return bytes. Finish the surface promptly so the underlying
+    # cairo C buffer is released rather than lingering until GC — under a
+    # long-lived web worker these large transient buffers ratchet RSS upward.
+    try:
+        if output is None:
+            buf = io.BytesIO()
+            surface.write_to_png(buf)
+            return buf.getvalue()
+        os.makedirs(os.path.dirname(output) or ".", exist_ok=True)
+        surface.write_to_png(output)
+        # No print here: this is the library path. /pattern renders to a temp
+        # file per request, so a print would put a line of noise (and a temp
+        # path) into the production log on every download. main() prints.
+        return (width, height)
+    finally:
+        surface.finish()
+
+
 def render_quilt(
     rows,
     cols,
     block_size,
     symmetry,
     chaos,
-    palette_name,  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals,too-many-branches,too-many-statements
+    palette_name,
     seed,
     output,
     border,
@@ -734,7 +1001,12 @@ def render_quilt(
     wonky=0.0,
     strippy=0.0,
 ):
-    """Generate and render a quilt to an image file."""
+    """Plan and paint a quilt: paint(plan_quilt(...)).
+
+    Kept as the one-call entry point every caller uses (render_params, the
+    sampler, both webapps, build_site); the work lives in plan_quilt (every
+    random decision) and paint (pixels).
+    """
     design = plan_quilt(
         rows=rows,
         cols=cols,
@@ -756,194 +1028,7 @@ def render_quilt(
         wonky=wonky,
         strippy=strippy,
     )
-    seed = design.seed
-    all_palettes = design.palettes
-    n_colors = design.n_colors
-    tile_size = design.tile_size
-    grid = design.grid
-    plain_cells = design.plain_cells
-    mega_tl = design.mega_tl
-    mega_covered = design.mega_covered
-
-    # widen border when decorative style is active
-    if border_style is not None:
-        border = max(border, int(block_size * 0.75))
-
-    # strippy grid: varying row heights and column widths
-    col_sizes, col_pos = _strip_pixels(design.col_factors, block_size)
-    row_sizes, row_pos = _strip_pixels(design.row_factors, block_size)
-
-    # image dimensions
-    quilt_w = col_pos[-1]
-    quilt_h = row_pos[-1]
-    width = quilt_w + 2 * border
-    height = quilt_h + 2 * border
-    quilt_x, quilt_y = border, border
-
-    # create surface
-    surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, width, height)
-    ctx = cairo.Context(surface)
-
-    # background
-    ctx.set_source_rgb(0.95, 0.93, 0.90)  # off-white linen background
-    ctx.rectangle(0, 0, width, height)
-    ctx.fill()
-
-    # decorative border
-    if border_style is not None:
-        _draw_border(
-            ctx,
-            width,
-            height,
-            border,
-            quilt_x,
-            quilt_y,
-            quilt_w,
-            quilt_h,
-            border_style,
-            design.border_colors,
-            block_size,
-        )
-
-    # render blocks (skip cells covered by mega-blocks). Cache each cell's base
-    # (un-jittered) patches so the seam-stroke pass below reuses them instead of
-    # rebuilding every block's geometry a second time.
-    base_patches = {}
-    for r in range(rows):
-        for c in range(cols):
-            if (r, c) in mega_covered:
-                continue
-            cell = grid[(r, c)]
-            cw, ch = col_sizes[c], row_sizes[r]
-            bx = border + col_pos[c]
-            by = border + row_pos[r]
-
-            if (r, c) in plain_cells:
-                ci = cell["color_map"][0]
-                active_pal = all_palettes[cell.get("palette", 0) % len(all_palettes)]
-                ctx.set_source_rgb(*active_pal[ci])
-                ctx.rectangle(bx, by, cw, ch)
-                ctx.fill()
-                continue
-
-            # Generate pattern in square coords (block_size), scale to cell (cw × ch)
-            cell_seed = seed * 10000 + r * 1000 + c
-            base = _block_patches(cell, block_size, n_colors, cell_seed)
-            base_patches[(r, c)] = base
-            patches = _jitter_patches(base, block_size, wonky, cell_seed) if wonky > 0 else base
-            sx, sy = cw / block_size, ch / block_size
-            color_map = cell["color_map"]
-            active_pal = all_palettes[cell.get("palette", 0) % len(all_palettes)]
-            _fill_patches(ctx, patches, bx, by, sx, sy, color_map, active_pal, n_colors)
-
-    # grid lines (seam lines between blocks)
-    # interior seam lines of mega-blocks are skipped
-    mega_skip_rows = {r + 1 for r, _ in mega_tl}
-    mega_skip_cols = {c + 1 for _, c in mega_tl}
-    ctx.set_source_rgba(0, 0, 0, 0.15)
-    ctx.set_line_width(1.0)
-    for r in range(rows + 1):
-        if r in mega_skip_rows:
-            continue
-        y = border + row_pos[min(r, rows)]
-        ctx.move_to(border, y)
-        ctx.line_to(border + quilt_w, y)
-        ctx.stroke()
-    for c in range(cols + 1):
-        if c in mega_skip_cols:
-            continue
-        x = border + col_pos[min(c, cols)]
-        ctx.move_to(x, border)
-        ctx.line_to(x, border + quilt_h)
-        ctx.stroke()
-
-    # tile boundary lines (heavier seams between tiles)
-    if tile_size is not None:
-        ctx.set_source_rgba(0, 0, 0, 0.4)
-        ctx.set_line_width(2.5)
-        for tr in range(math.ceil(rows / tile_size) + 1):
-            ri = min(tr * tile_size, rows)
-            y = border + row_pos[ri]
-            ctx.move_to(border, y)
-            ctx.line_to(border + quilt_w, y)
-            ctx.stroke()
-        for tc in range(math.ceil(cols / tile_size) + 1):
-            ci = min(tc * tile_size, cols)
-            x = border + col_pos[ci]
-            ctx.move_to(x, border)
-            ctx.line_to(x, border + quilt_h)
-            ctx.stroke()
-
-    # render mega-blocks (after grid lines so they paint over interior seams)
-    mega_base = {}
-    for mr, mc in mega_tl:
-        cell = grid[(mr, mc)]
-        bx = border + col_pos[mc]
-        by = border + row_pos[mr]
-        mw = col_sizes[mc] + col_sizes[mc + 1]
-        mh = row_sizes[mr] + row_sizes[mr + 1]
-        mega_sq = 2 * block_size  # square coord size for pattern
-
-        cell_seed = seed * 10000 + mr * 1000 + mc + 500
-        base = _block_patches(cell, mega_sq, n_colors, cell_seed)
-        mega_base[(mr, mc)] = base
-        patches = _jitter_patches(base, mega_sq, wonky, cell_seed) if wonky > 0 else base
-        sx, sy = mw / mega_sq, mh / mega_sq
-        color_map = cell["color_map"]
-        active_pal = all_palettes[cell.get("palette", 0) % len(all_palettes)]
-        _fill_patches(ctx, patches, bx, by, sx, sy, color_map, active_pal, n_colors)
-
-    # patch seam lines (within blocks) — skip mega-covered, draw mega seams after
-    ctx.set_source_rgba(0, 0, 0, 0.08)
-    ctx.set_line_width(0.5)
-    for r in range(rows):
-        for c in range(cols):
-            if (r, c) in mega_covered or (r, c) in plain_cells:
-                continue
-            cw, ch = col_sizes[c], row_sizes[r]
-            bx = border + col_pos[c]
-            by = border + row_pos[r]
-            sx, sy = cw / block_size, ch / block_size
-
-            # seams trace the un-jittered base outline, reusing the fill pass's build
-            _stroke_patches(ctx, base_patches[(r, c)], bx, by, sx, sy)
-
-    for mr, mc in mega_tl:
-        bx = border + col_pos[mc]
-        by = border + row_pos[mr]
-        mw = col_sizes[mc] + col_sizes[mc + 1]
-        mh = row_sizes[mr] + row_sizes[mr + 1]
-        mega_sq = 2 * block_size
-        sx, sy = mw / mega_sq, mh / mega_sq
-
-        _stroke_patches(ctx, mega_base[(mr, mc)], bx, by, sx, sy)
-
-    # color wash — semi-transparent tint over entire quilt area
-    if wash_alpha > 0:
-        ctx.set_source_rgba(*design.wash_color, wash_alpha)
-        ctx.rectangle(quilt_x, quilt_y, quilt_w, quilt_h)
-        ctx.fill()
-
-    # thread quilting overlay
-    if quilt_stitch is not None:
-        _draw_quilt_stitching(ctx, quilt_x, quilt_y, quilt_w, quilt_h, quilt_stitch, block_size)
-
-    # save or return bytes. Finish the surface promptly so the underlying
-    # cairo C buffer is released rather than lingering until GC — under a
-    # long-lived web worker these large transient buffers ratchet RSS upward.
-    try:
-        if output is None:
-            buf = io.BytesIO()
-            surface.write_to_png(buf)
-            return buf.getvalue()
-        os.makedirs(os.path.dirname(output) or ".", exist_ok=True)
-        surface.write_to_png(output)
-        # No print here: this is the library path. /pattern renders to a temp
-        # file per request, so a print would put a line of noise (and a temp
-        # path) into the production log on every download. main() prints.
-        return (width, height)
-    finally:
-        surface.finish()
+    return paint(design, block_size, border, output)
 
 
 def main():
