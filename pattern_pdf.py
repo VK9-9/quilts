@@ -168,9 +168,30 @@ def _block_key(pieces):
     return tuple(sorted((poly_key(poly), repr(color)) for poly, color in pieces))
 
 
+def _is_applique(color):
+    """Literal-RGB pieces (cherry_blossom's petals, branch and centers) are
+    appliqué embellishment, not pieces cut from the palette's fabrics."""
+    return isinstance(color, tuple)
+
+
+def _design_key(pieces, span, pattern_idx):
+    """What makes two blocks the same design: their cut (palette-fabric)
+    pieces, at the same span.
+
+    Appliqué pieces don't count — cherry_blossom scatters its petals randomly
+    per cell, so including them made every cherry block its own design (one
+    21x21 quilt: ~200 pages). Blocks that carry appliqué also key on their
+    pattern, or a cherry block would merge with a plain square of its
+    background fabric.
+    """
+    cut = [(poly, color) for poly, color in pieces if not _is_applique(color)]
+    has_applique = len(cut) < len(pieces)
+    return (span, pattern_idx if has_applique else None, _block_key(cut))
+
+
 def _extract_unique_blocks(design):
-    """Group the quilt's blocks into designs: cells whose colored pieces match
-    up to a quarter-turn share one design.
+    """Group the quilt's blocks into designs: cells whose cut pieces match up
+    to a quarter-turn share one design (appliqué is free — see _design_key).
 
     Cells are compared by the pieces actually painted (quilt.cell_patches with
     each cell's own seed), not by (pattern, rotation) bookkeeping. That
@@ -183,8 +204,9 @@ def _extract_unique_blocks(design):
     Returns (blocks, placements, fabrics):
       blocks — design dicts, most-used first: kind ("block" | "plain"),
         pattern_idx (None for plain), pattern_name, span, count, rotations
-        (quarter-turns in use), ref (pieces at 0°, for the rotation page) and
-        polygons (pieces as the first cell has them, for the block page)
+        (quarter-turns in use), applique (has free appliqué pieces), ref
+        (pieces at 0°, for the rotation page) and polygons (pieces as the
+        first cell has them, for the block page — appliqué shown as an example)
       placements — {(r, c): (block, quarter_turns)} per placed block's
         top-left cell; cells a mega-block covers are omitted
       fabrics — the hex colors piece color indices refer to
@@ -201,24 +223,27 @@ def _extract_unique_blocks(design):
         span = 2 if mega else 1
         base = _colored_pieces(design, r, c, fabrics, mega=mega)
         nominal = 0 if plain else cell["rotation"]
+        pattern_idx = None if plain else cell["pattern"]
         pieces = _rotate_polygons(base, nominal, _PATTERN_UNITS)
-        key = (span, _block_key(pieces))
+        key = _design_key(pieces, span, pattern_idx)
 
         block = by_key.get(key)
         if block is None:
             block = {
                 "kind": "plain" if plain else "block",
-                "pattern_idx": None if plain else cell["pattern"],
+                "pattern_idx": pattern_idx,
                 "pattern_name": "solid square"
                 if plain
                 else BLOCK_PATTERNS[cell["pattern"]].__name__,
                 "span": span,
                 "count": 0,
                 "rotations": set(),
+                "applique": any(_is_applique(color) for _poly, color in base),
                 "ref": base,
                 "polygons": pieces,
                 "_keys": [
-                    (span, _block_key(_rotate_polygons(base, k, _PATTERN_UNITS))) for k in range(4)
+                    _design_key(_rotate_polygons(base, k, _PATTERN_UNITS), span, pattern_idx)
+                    for k in range(4)
                 ],
             }
             blocks.append(block)
@@ -946,6 +971,12 @@ def _draw_block_page(
         info_y - info_offset - 13,
         f'Dashed = cut line (+{seam_allowance:.2f}" seam allowance)',
     )
+    if block.get("applique"):
+        c.drawString(
+            info_x,
+            info_y - info_offset - 26,
+            "? = appliqué: placement varies from block to block, place freely",
+        )
 
     # --- Individual pieces section ---
     pieces_top = ay - 15

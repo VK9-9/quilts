@@ -158,23 +158,31 @@ def _painted_key(design, r, c, mega):
             )
             for poly, ci in cell_patches(design, r, c, 100, mega=mega)
         ]
-    return _block_key(pieces)
+    return _cut_key(pieces)
+
+
+def _cut_key(pieces):
+    """Key of a block's cut pieces only. Literal-RGB appliqué (cherry_blossom)
+    is placed freely, so the PDF deliberately doesn't pin it per cell."""
+    return _block_key([(poly, color) for poly, color in pieces if not isinstance(color, tuple)])
 
 
 def _assert_pdf_describes_every_cell(params):
     """Each placement, drawn as the PDF instructs (the design's reference
-    rotated by the labelled turns, in the listed fabrics), must be the block
-    the painter draws in that cell."""
+    rotated by the labelled turns, in the listed fabrics), must have exactly
+    the cut pieces the painter draws in that cell."""
     design = _design_for(params)
     blocks, placements, fabrics = _extract_unique_blocks(design)
     for (r, c), (blk, turn) in placements.items():
-        described = [
-            (poly, color if isinstance(color, tuple) else fabrics[color])
-            for poly, color in _rotate_polygons(blk["ref"], turn, 100)
-        ]
+        described = _cut_key(
+            [
+                (poly, color if isinstance(color, tuple) else fabrics[color])
+                for poly, color in _rotate_polygons(blk["ref"], turn, 100)
+            ]
+        )
         # pytest.fail, not a bare assert: on failure pytest would diff these
         # large nested tuples, which takes minutes and looks like a hang.
-        if _block_key(described) != _painted_key(design, r, c, blk["span"] == 2):
+        if described != _painted_key(design, r, c, blk["span"] == 2):
             pytest.fail(
                 f"cell {(r, c)}: PDF says design {blk['pattern_name']} turned "
                 f"{turn * 90}°, which is not what the render draws there"
@@ -230,6 +238,27 @@ class TestExtractUniqueBlocks:
     def test_palette_mix(self):
         params = _base_params(rows=12, cols=12, palette_mix="honey oak", seed=5)
         _assert_pdf_describes_every_cell(params)
+
+    def test_cherry_blossom_groups_by_cut_pieces_not_petals(self):
+        """Petals scatter randomly per cell; keying on them gave every cherry
+        cell its own design (~200 pages for a 21x21 quilt). Appliqué is free,
+        so cherry blocks group by their cut background like any other block."""
+        params = _base_params(
+            rows=21,
+            cols=21,
+            symmetry="partial",
+            palette="tide pool",
+            seed=11,
+            plain_frac=0.25,
+            mega_frac=0.25,
+        )
+        blocks, _ = _assert_pdf_describes_every_cell(params)
+        cherry = [b for b in blocks if b["pattern_name"] == "cherry_blossom"]
+        assert cherry, "seed 11 should use cherry_blossom"
+        assert all(b["applique"] for b in cherry)
+        assert len(cherry) <= 2 * len(_hex_palette(_design_for(params)))
+        # never merged with a plain square of the same background fabric
+        assert all(b["kind"] == "block" for b in cherry)
 
 
 class TestEdgeLengths:
