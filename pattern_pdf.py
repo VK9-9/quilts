@@ -7,7 +7,6 @@ multi-page PDF with cover, assembly diagram, and per-block cutting patterns.
 # pylint: disable=too-many-lines
 import math
 import os
-import random
 import tempfile
 
 from reportlab.lib.pagesizes import letter
@@ -16,7 +15,7 @@ from reportlab.pdfgen import canvas as rl_canvas
 
 from blocks import BLOCK_PATTERNS
 from palettes import hex_to_rgb, rgb_to_hex
-from quilt import paint
+from quilt import cell_patches, paint, patch_rgb
 from quilt_id import encode
 from render_params import plan_from_params
 
@@ -114,116 +113,129 @@ def _hex_palette(design):
     return [rgb_to_hex(c) for c in design.palette_colors]
 
 
-def _canonicalize_polygon(pts):
-    """Canonicalize a polygon's vertex list for rotation-invariant comparison.
+_PATTERN_UNITS = 100  # block geometry is extracted in [0, 100] pattern units
+_SQUARE = [(0, 0), (100, 0), (100, 100), (0, 100)]
 
-    Tries all 4 rotations (0/90/180/270) and both winding directions,
-    translates each to bounding-box origin, and returns the
-    lexicographically smallest result.
+
+def _fabric_list(design):
+    """Every fabric the quilt can use, as hex strings.
+
+    The primary palette comes first, so on single-palette quilts the letters
+    A, B, ... mean exactly what they always have; second-palette colors not
+    already listed follow.
     """
+    fabrics = _hex_palette(design)
+    for palette in design.palettes[1:]:
+        for rgb in palette:
+            if rgb_to_hex(rgb) not in fabrics:
+                fabrics.append(rgb_to_hex(rgb))
+    return fabrics
 
-    def _normalize_and_order(verts):
-        xs = [px for px, _py in verts]
-        ys = [_py for _px, _py in verts]
-        min_x, min_y = min(xs), min(ys)
-        normed = [(round(px - min_x, 2), round(py - min_y, 2)) for px, py in verts]
-        idx = normed.index(min(normed))
-        return tuple(normed[idx:] + normed[:idx])
 
-    # find bounding box center for rotation
-    xs = [px for px, _py in pts]
-    ys = [_py for _px, _py in pts]
-    cx = (max(xs) + min(xs)) / 2
-    cy = (max(ys) + min(ys)) / 2
+def _colored_pieces(design, r, c, fabrics, mega=False):
+    """The block at (r, c) before its rotation, each piece colored by fabric.
 
-    candidates = []
-    for rot in range(4):
-        if rot == 0:
-            rotated = list(pts)
+    Colors resolve through quilt.patch_rgb — the painter's own rule — into the
+    cell's palette (the second one on two-palette quilts). Literal RGB pieces
+    (cherry_blossom's petals) keep their tuple. Plain cells are one square.
+    """
+    cell = design.grid[(r, c)]
+    palette = design.palettes[cell.get("palette", 0) % len(design.palettes)]
+    if not mega and (r, c) in design.plain_cells:
+        fill = rgb_to_hex(palette[cell["color_map"][0]])
+        return [(list(_SQUARE), fabrics.index(fill))]
+    pieces = []
+    for poly, ci in cell_patches(design, r, c, _PATTERN_UNITS, mega=mega, rotate=False):
+        if isinstance(ci, tuple):
+            pieces.append((poly, ci))
         else:
-            rotated = []
-            for px, py in pts:
-                dx, dy = px - cx, py - cy
-                for _ in range(rot):
-                    dx, dy = -dy, dx
-                rotated.append((cx + dx, cy + dy))
-        candidates.append(_normalize_and_order(rotated))
-        candidates.append(_normalize_and_order(list(reversed(rotated))))
-
-    return min(candidates)
+            rgb = patch_rgb(ci, cell["color_map"], palette, design.n_colors)
+            pieces.append((poly, fabrics.index(rgb_to_hex(rgb))))
+    return pieces
 
 
-def _shape_signature(polygons):
-    """Create a hashable signature for a set of polygon shapes, ignoring colors.
+def _block_key(pieces):
+    """Identity of a colored block, independent of piece order and of where
+    each polygon's vertex list starts. Coordinates are rounded so geometry
+    reached by different float paths (a rotated variant vs. a differently
+    seeded base) still compares equal."""
 
-    Canonicalizes each polygon and sorts the set for order independence.
+    def poly_key(poly):
+        pts = [(round(x, 4), round(y, 4)) for x, y in poly]
+        start = pts.index(min(pts))
+        return tuple(pts[start:] + pts[:start])
+
+    return tuple(sorted((poly_key(poly), repr(color)) for poly, color in pieces))
+
+
+def _extract_unique_blocks(design):
+    """Group the quilt's blocks into designs: cells whose colored pieces match
+    up to a quarter-turn share one design.
+
+    Cells are compared by the pieces actually painted (quilt.cell_patches with
+    each cell's own seed), not by (pattern, rotation) bookkeeping. That
+    bookkeeping merged different blocks with the same piece shapes (pinwheel,
+    hourglass and bow tie are all four equal triangles), described every
+    half-square triangle with one fixed diagonal whatever the cell drew, and
+    couldn't see second-palette colors. Plain cells become solid-square designs
+    and mega-blocks designs of span 2.
+
+    Returns (blocks, placements, fabrics):
+      blocks — design dicts, most-used first: kind ("block" | "plain"),
+        pattern_idx (None for plain), pattern_name, span, count, rotations
+        (quarter-turns in use), ref (pieces at 0°, for the rotation page) and
+        polygons (pieces as the first cell has them, for the block page)
+      placements — {(r, c): (block, quarter_turns)} per placed block's
+        top-left cell; cells a mega-block covers are omitted
+      fabrics — the hex colors piece color indices refer to
     """
-    shapes = sorted(_canonicalize_polygon(poly) for poly, _color_idx in polygons)
-    return tuple(shapes)
+    fabrics = _fabric_list(design)
+    blocks = []
+    by_key = {}
+    placements = {}
+    for (r, c), cell in design.grid.items():
+        mega = (r, c) in design.mega_tl
+        if (r, c) in design.mega_covered and not mega:
+            continue
+        plain = not mega and (r, c) in design.plain_cells
+        span = 2 if mega else 1
+        base = _colored_pieces(design, r, c, fabrics, mega=mega)
+        nominal = 0 if plain else cell["rotation"]
+        pieces = _rotate_polygons(base, nominal, _PATTERN_UNITS)
+        key = (span, _block_key(pieces))
 
-
-def _extract_unique_blocks(grid, n_colors):
-    """Find unique block designs in the grid, grouping by cut-piece geometry.
-
-    Blocks that are rotations of the same pattern but produce identical
-    cut pieces (e.g. rotationally symmetric patterns) are merged into
-    one entry.
-
-    Returns list of dicts:
-        {"pattern_idx": int, "rotation": int, "count": int,
-         "polygons": [(polygon, color_idx), ...],
-         "variants": [(pattern_idx, rotation, count), ...]}
-    """
-    # First pass: collect all (pattern, rotation) combos with counts
-    combos = {}
-    for cell in grid.values():
-        key = (cell["pattern"], cell["rotation"])
-        if key in combos:
-            combos[key]["count"] += 1
-        else:
-            pat_fn = BLOCK_PATTERNS[cell["pattern"]]
-            # Fixed-seed rng: blocks with internal randomness (HST diagonal,
-            # cherry blossom) vary per cell in the render, which a per-design
-            # diagram can't enumerate — draw one stable representative instead
-            # of whatever the ambient RNG state happened to be.
-            polygons = pat_fn(0, 0, 100, n_colors, random.Random(0))
-            rotated = _rotate_polygons(polygons, cell["rotation"], 100)
-            # remap raw color indices through cell's color_map
-            color_map = cell.get("color_map")
-            if color_map:
-                rotated = [
-                    (poly, color_map[ci] if isinstance(ci, int) and ci < len(color_map) else ci)
-                    for poly, ci in rotated
-                ]
-            combos[key] = {
-                "pattern_idx": cell["pattern"],
-                "pattern_name": pat_fn.__name__,
-                "rotation": cell["rotation"],
-                "count": 1,
-                "polygons": rotated,
-                "color_map": color_map,
+        block = by_key.get(key)
+        if block is None:
+            block = {
+                "kind": "plain" if plain else "block",
+                "pattern_idx": None if plain else cell["pattern"],
+                "pattern_name": "solid square"
+                if plain
+                else BLOCK_PATTERNS[cell["pattern"]].__name__,
+                "span": span,
+                "count": 0,
+                "rotations": set(),
+                "ref": base,
+                "polygons": pieces,
+                "_keys": [
+                    (span, _block_key(_rotate_polygons(base, k, _PATTERN_UNITS))) for k in range(4)
+                ],
             }
+            blocks.append(block)
+            for k in block["_keys"]:
+                by_key.setdefault(k, block)
 
-    # Second pass: group by shape signature (identical cut pieces)
-    groups = {}
-    for key, combo in combos.items():
-        sig = _shape_signature(combo["polygons"])
-        if sig in groups:
-            g = groups[sig]
-            g["count"] += combo["count"]
-            g["variants"].append((combo["pattern_idx"], combo["rotation"], combo["count"]))
-        else:
-            groups[sig] = {
-                "pattern_idx": combo["pattern_idx"],
-                "pattern_name": combo["pattern_name"],
-                "rotation": combo["rotation"],
-                "count": combo["count"],
-                "polygons": combo["polygons"],
-                "color_map": combo["color_map"],
-                "variants": [(combo["pattern_idx"], combo["rotation"], combo["count"])],
-            }
+        # Prefer the cell's nominal rotation when it describes the cell — a
+        # symmetric block looks the same several ways, and the nominal one is
+        # what the quilter would expect — else the first quarter-turn that does.
+        turns = [k for k, k_key in enumerate(block["_keys"]) if k_key == key]
+        turn = nominal if nominal in turns else turns[0]
+        block["count"] += 1
+        block["rotations"].add(turn)
+        placements[(r, c)] = (block, turn)
 
-    return sorted(groups.values(), key=lambda b: (-b["count"], b["pattern_idx"]))
+    blocks.sort(key=lambda b: (-b["count"], b["kind"] != "block", b["pattern_idx"] or 0))
+    return blocks, placements, fabrics
 
 
 def _rotate_polygons(polygons, rotation, size):
@@ -329,9 +341,17 @@ def _draw_cover_page(
     c.showPage()
 
 
+def _block_title(blk):
+    """Human name for a design, e.g. 'bow tie' or 'star (2x2 mega-block)'."""
+    name = blk["pattern_name"].replace("_", " ")
+    if blk["span"] > 1:
+        name += f" ({blk['span']}x{blk['span']} mega-block)"
+    return name
+
+
 def _draw_assembly_page(
     c,
-    grid,
+    placements,
     unique_blocks,
     params,  # pylint: disable=too-many-locals
     _quilt_w,
@@ -339,19 +359,19 @@ def _draw_assembly_page(
     _block_w_in,
     _block_h_in,
 ):
-    """Draw assembly diagram showing block placement in the grid."""
+    """Draw assembly diagram showing block placement in the grid.
+
+    Each placed block is labelled with its design number and the quarter-turns
+    that orient the design's reference drawing (see the rotation page) to match
+    it. Mega-blocks are drawn as one 2x2 square.
+    """
     rows = params["rows"]
     cols = params.get("cols", rows)
 
     c.setFont("Helvetica-Bold", 16)
     c.drawCentredString(PAGE_W / 2, PAGE_H - MARGIN - 25, "Assembly Diagram")
 
-    # build a label map: (pattern_idx, rotation) -> design number
-    # each group may contain multiple variants (rotations with same cut pieces)
-    design_map = {}
-    for i, blk in enumerate(unique_blocks):
-        for pat_idx, rot, _cnt in blk["variants"]:
-            design_map[(pat_idx, rot)] = i + 1
+    design_nums = {id(blk): i + 1 for i, blk in enumerate(unique_blocks)}
 
     # fit grid into printable area
     max_cell = min(PRINTABLE_W / cols, (PRINTABLE_H - 50) / rows)
@@ -378,29 +398,29 @@ def _draw_assembly_page(
     c.setFont("Helvetica", max(5, min(8, cell_size / 3)))
     for r in range(rows):
         for col in range(cols):
-            cell = grid.get((r, col))
-            if not cell:
+            placed = placements.get((r, col))
+            if placed is None:  # covered by a mega-block anchored elsewhere
                 continue
+            blk, turn = placed
+            size = cell_size * blk["span"]
             x = ox + col * cell_size
-            y = oy + (rows - 1 - r) * cell_size
-
-            key = (cell["pattern"], cell["rotation"])
-            design_num = design_map.get(key, 0)
+            y = oy + (rows - r - blk["span"]) * cell_size
+            design_num = design_nums[id(blk)]
 
             # fill
             dc = design_colors[(design_num - 1) % len(design_colors)]
             c.setFillColorRGB(*dc)
             c.setStrokeColorRGB(0.5, 0.5, 0.5)
-            c.rect(x, y, cell_size, cell_size, fill=1, stroke=1)
+            c.rect(x, y, size, size, fill=1, stroke=1)
 
             # label
             c.setFillColorRGB(0, 0, 0)
-            rot_label = ["", "↻90", "↻180", "↻270"][cell["rotation"]]
+            rot_label = ["", "↻90", "↻180", "↻270"][turn]
             label = f"#{design_num}"
-            c.drawCentredString(x + cell_size / 2, y + cell_size / 2 + 2, label)
+            c.drawCentredString(x + size / 2, y + size / 2 + 2, label)
             if rot_label:
                 c.setFont("Helvetica", max(4, min(6, cell_size / 4)))
-                c.drawCentredString(x + cell_size / 2, y + cell_size / 2 - 8, rot_label)
+                c.drawCentredString(x + size / 2, y + size / 2 - 8, rot_label)
                 c.setFont("Helvetica", max(5, min(8, cell_size / 3)))
 
     # legend below grid
@@ -408,10 +428,9 @@ def _draw_assembly_page(
     c.setFont("Helvetica", 9)
     for i, blk in enumerate(unique_blocks):
         design_num = i + 1
-        name = blk["pattern_name"].replace("_", " ")
         count = blk["count"]
-        rots = sorted(set(rot for _, rot, _ in blk["variants"]))
-        line = f"#{design_num}: {name}"
+        rots = sorted(blk["rotations"])
+        line = f"#{design_num}: {_block_title(blk)}"
         if len(rots) > 1:
             rot_strs = [f"{r * 90}\u00b0" for r in rots]
             line += f" (rotations: {', '.join(rot_strs)})"
@@ -805,8 +824,13 @@ def _draw_block_thumbnail(c, polygons, palette_colors, pos, display_size):
         c.drawPath(path, fill=1, stroke=1)
 
 
-def _draw_rotation_summary(c, unique_blocks, palette_colors, n_colors):  # pylint: disable=too-many-locals
-    """Draw a page showing each unique block in all 4 rotations."""
+def _draw_rotation_summary(c, unique_blocks, palette_colors):  # pylint: disable=too-many-locals
+    """Draw a page showing each pieced design in all 4 rotations.
+
+    Each design's 0° drawing is its reference orientation; the assembly page's
+    turn labels are quarter-turns from it. Solid squares look the same every
+    way, so they're left off.
+    """
     bm = 0.35 * inch
     c.setFont("Helvetica-Bold", 16)
     c.drawCentredString(PAGE_W / 2, PAGE_H - bm - 20, "Block Rotations")
@@ -819,19 +843,11 @@ def _draw_rotation_summary(c, unique_blocks, palette_colors, n_colors):  # pylin
     y = PAGE_H - bm - 50
 
     for blk in unique_blocks:
+        if blk["kind"] == "plain":
+            continue
         design_num = blk["_design_num"]
-        name = blk["pattern_name"].replace("_", " ")
-        pat_idx = blk["pattern_idx"]
-        pat_fn = BLOCK_PATTERNS[pat_idx]
-        # Same fixed-seed representative as _extract_unique_blocks, so the
-        # rotation page shows the same geometry the block pages do.
-        base_polygons = pat_fn(0, 0, 100, n_colors, random.Random(0))
-        color_map = blk.get("color_map")
-        if color_map:
-            base_polygons = [
-                (poly, color_map[ci] if isinstance(ci, int) and ci < len(color_map) else ci)
-                for poly, ci in base_polygons
-            ]
+        name = _block_title(blk)
+        base_polygons = blk["ref"]
 
         if y - row_height < bm:
             c.showPage()
@@ -869,9 +885,9 @@ def _draw_block_page(
 ):
     """Draw one block's pattern page with assembled view and individual pieces."""
     design_num = block["_design_num"]
-    name = block["pattern_name"].replace("_", " ")
+    name = _block_title(block)
     polygons = block["polygons"]
-    variants = block.get("variants", [])
+    rotations = sorted(block["rotations"])
     pattern_size = 100  # polygons generated at size=100
     bm = 0.35 * inch  # tighter margins for block pages
 
@@ -918,9 +934,8 @@ def _draw_block_page(
     c.drawString(info_x, info_y, f'Finished: {block_w_in:.2f}" x {block_h_in:.2f}"')
     c.drawString(info_x, info_y - 13, f"Count: {block['count']} blocks")
     info_offset = 26
-    if len(variants) > 1:
-        rots = sorted(set(rot for _, rot, _ in variants))
-        rot_strs = [f"{r * 90}\u00b0" for r in rots]
+    if len(rotations) > 1:
+        rot_strs = [f"{r * 90}\u00b0" for r in rotations]
         c.drawString(
             info_x, info_y - info_offset, f"Rotations: {', '.join(rot_strs)} (same pieces)"
         )
@@ -1291,12 +1306,11 @@ def _draw_block_breakdown(c, unique_blocks, bm, y):  # pylint: disable=too-many-
     c.setFont("Helvetica", 9)
     for blk in unique_blocks:
         design_num = blk["_design_num"]
-        name = blk["pattern_name"].replace("_", " ")
+        name = _block_title(blk)
         count = blk["count"]
-        variants = blk.get("variants", [])
+        rots = sorted(blk["rotations"])
         title = f"Block #{design_num}: {name}"
-        if len(variants) > 1:
-            rots = sorted(set(r for _, r, _ in variants))
+        if len(rots) > 1:
             rot_strs = [f"{r * 90}\u00b0" for r in rots]
             title += f" (rotations: {', '.join(rot_strs)})"
         title += f" \u00d7 {count}"
@@ -1398,11 +1412,9 @@ def generate_pattern_pdf(
 
     design = _design_for(params)
     grid = design.grid
-    palette_colors = _hex_palette(design)
-    n_colors = len(palette_colors)
 
-    # find unique blocks
-    unique_blocks = _extract_unique_blocks(grid, n_colors)
+    # find unique blocks; palette_colors is every fabric they're cut from
+    unique_blocks, placements, palette_colors = _extract_unique_blocks(design)
     for i, blk in enumerate(unique_blocks):
         blk["_design_num"] = i + 1
 
@@ -1427,15 +1439,17 @@ def generate_pattern_pdf(
 
         if params["symmetry"] != "bargello":
             _draw_assembly_page(
-                c, grid, unique_blocks, params, quilt_w, quilt_h, block_w_in, block_h_in
+                c, placements, unique_blocks, params, quilt_w, quilt_h, block_w_in, block_h_in
             )
-            _draw_rotation_summary(c, unique_blocks, palette_colors, n_colors)
+            _draw_rotation_summary(c, unique_blocks, palette_colors)
 
         if params["symmetry"] == "bargello":
+            # Primary palette only: bargello cells never use a second palette,
+            # and the strip colors index it modulo its own length.
             _draw_bargello_pages(
                 c,
                 grid,
-                palette_colors,
+                _hex_palette(design),
                 params,
                 quilt_w,
                 quilt_h,
@@ -1445,7 +1459,10 @@ def generate_pattern_pdf(
             )
         else:
             for blk in unique_blocks:
-                _draw_block_page(c, blk, palette_colors, block_w_in, block_h_in, seam_allowance)
+                span = blk["span"]
+                _draw_block_page(
+                    c, blk, palette_colors, block_w_in * span, block_h_in * span, seam_allowance
+                )
 
         if params["symmetry"] != "bargello":
             _draw_cutting_summary(

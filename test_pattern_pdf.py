@@ -11,9 +11,8 @@ from pattern_pdf import (
     _human_color_name,
     _design_for,
     _hex_palette,
-    _canonicalize_polygon,
-    _shape_signature,
     _extract_unique_blocks,
+    _block_key,
     _rotate_polygons,
     _edge_lengths_inches,
     _label_position,
@@ -125,35 +124,6 @@ class TestDesignFor:
         assert design.n_colors == 4
 
 
-class TestCanonicalizePolygon:
-    def test_square(self):
-        sq = [(0, 0), (10, 0), (10, 10), (0, 10)]
-        canon = _canonicalize_polygon(sq)
-        assert len(canon) == 4
-
-    def test_rotation_invariant(self):
-        sq1 = [(0, 0), (10, 0), (10, 10), (0, 10)]
-        sq2 = [(10, 0), (10, 10), (0, 10), (0, 0)]
-        assert _canonicalize_polygon(sq1) == _canonicalize_polygon(sq2)
-
-    def test_winding_invariant(self):
-        cw = [(0, 0), (10, 0), (10, 10), (0, 10)]
-        ccw = list(reversed(cw))
-        assert _canonicalize_polygon(cw) == _canonicalize_polygon(ccw)
-
-
-class TestShapeSignature:
-    def test_same_shapes_same_sig(self):
-        polys1 = [([(0, 0), (10, 0), (10, 10)], 0)]
-        polys2 = [([(0, 0), (10, 0), (10, 10)], 1)]  # diff color, same shape
-        assert _shape_signature(polys1) == _shape_signature(polys2)
-
-    def test_diff_shapes_diff_sig(self):
-        tri = [([(0, 0), (10, 0), (10, 10)], 0)]
-        sq = [([(0, 0), (10, 0), (10, 10), (0, 10)], 0)]
-        assert _shape_signature(tri) != _shape_signature(sq)
-
-
 class TestRotatePolygons:
     def test_identity(self):
         polys = [([(0, 0), (10, 0), (10, 10)], 0)]
@@ -168,13 +138,98 @@ class TestRotatePolygons:
         assert abs(ry - 10) < 0.001
 
 
+def _painted_key(design, r, c, mega):
+    """The block at (r, c) exactly as the painter draws it, colors as hex."""
+    from palettes import rgb_to_hex
+    from quilt import cell_patches, patch_rgb
+
+    cell = design.grid[(r, c)]
+    palette = design.palettes[cell.get("palette", 0) % len(design.palettes)]
+    if not mega and (r, c) in design.plain_cells:
+        fill = rgb_to_hex(palette[cell["color_map"][0]])
+        pieces = [([(0, 0), (100, 0), (100, 100), (0, 100)], fill)]
+    else:
+        pieces = [
+            (
+                poly,
+                ci
+                if isinstance(ci, tuple)
+                else rgb_to_hex(patch_rgb(ci, cell["color_map"], palette, design.n_colors)),
+            )
+            for poly, ci in cell_patches(design, r, c, 100, mega=mega)
+        ]
+    return _block_key(pieces)
+
+
+def _assert_pdf_describes_every_cell(params):
+    """Each placement, drawn as the PDF instructs (the design's reference
+    rotated by the labelled turns, in the listed fabrics), must be the block
+    the painter draws in that cell."""
+    design = _design_for(params)
+    blocks, placements, fabrics = _extract_unique_blocks(design)
+    for (r, c), (blk, turn) in placements.items():
+        described = [
+            (poly, color if isinstance(color, tuple) else fabrics[color])
+            for poly, color in _rotate_polygons(blk["ref"], turn, 100)
+        ]
+        # pytest.fail, not a bare assert: on failure pytest would diff these
+        # large nested tuples, which takes minutes and looks like a hang.
+        if _block_key(described) != _painted_key(design, r, c, blk["span"] == 2):
+            pytest.fail(
+                f"cell {(r, c)}: PDF says design {blk['pattern_name']} turned "
+                f"{turn * 90}°, which is not what the render draws there"
+            )
+    placed_area = sum(blk["span"] ** 2 for blk, _ in placements.values())
+    assert placed_area == design.rows * design.cols, "every cell covered exactly once"
+    return blocks, fabrics
+
+
 class TestExtractUniqueBlocks:
     def test_groups_by_shape(self):
-        design = _design_for(_base_params())
-        blocks = _extract_unique_blocks(design.grid, design.n_colors)
-        assert len(blocks) >= 1
-        total = sum(b["count"] for b in blocks)
-        assert total == 16  # 4×4
+        blocks, _fabrics = _assert_pdf_describes_every_cell(_base_params())
+        assert sum(b["count"] for b in blocks) == 16  # 4×4
+
+    def test_different_blocks_with_the_same_piece_shapes_stay_separate(self):
+        """bow_tie and pinwheel are both four equal triangles; grouping by piece
+        shapes merged them, so the PDF said to sew every block as one of them.
+        These are the "Flower — Medallion" preset's params."""
+        params = _base_params(
+            rows=16, cols=16, symmetry="flower", palette="cherry blossom", seed=1006
+        )
+        blocks, _ = _assert_pdf_describes_every_cell(params)
+        names = {b["pattern_name"] for b in blocks}
+        assert {"bow_tie", "pinwheel"} <= names
+
+    def test_second_palette_colors_are_listed_and_used(self):
+        """palette_2 cells draw from the second palette; the color key used to
+        list only the primary, mislabelling ~half the quilt's pieces."""
+        params = _base_params(
+            rows=16, cols=16, symmetry="partial", palette_2="wildflower", seed=2003
+        )
+        blocks, fabrics = _assert_pdf_describes_every_cell(params)
+        assert len(fabrics) > 4
+        used = {col for b in blocks for _p, col in b["polygons"] if not isinstance(col, tuple)}
+        assert max(used) >= 4, "no piece is cut from a second-palette fabric"
+
+    @pytest.mark.parametrize("seed", range(1, 40))
+    def test_half_square_triangle_orientation_matches_render(self, seed):
+        """Each HST cell draws its diagonal from its own seed; the PDF used one
+        fixed representative, so ~45% of HST turn labels were wrong."""
+        params = _base_params(rows=8, cols=8, symmetry="mirror", seed=seed)
+        _assert_pdf_describes_every_cell(params)
+
+    def test_plain_cells_and_mega_blocks(self):
+        params = _base_params(
+            rows=12, cols=12, symmetry="partial", plain_frac=0.2, mega_frac=0.3, seed=77
+        )
+        blocks, _ = _assert_pdf_describes_every_cell(params)
+        kinds = {(b["kind"], b["span"]) for b in blocks}
+        assert ("plain", 1) in kinds
+        assert ("block", 2) in kinds
+
+    def test_palette_mix(self):
+        params = _base_params(rows=12, cols=12, palette_mix="honey oak", seed=5)
+        _assert_pdf_describes_every_cell(params)
 
 
 class TestEdgeLengths:
