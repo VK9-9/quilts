@@ -108,13 +108,20 @@ def _trace_polygon(ctx, poly, bx, by, sx, sy):  # pylint: disable=too-many-argum
     ctx.close_path()
 
 
+def patch_rgb(color_idx, color_map, palette, n_colors):
+    """The RGB a patch is filled with: its block color index mapped through the
+    cell's color_map into the cell's palette, or a literal RGB tuple as-is
+    (cherry_blossom's petals). Shared with pattern_pdf so the sewing pattern
+    names the fabric the painter actually used."""
+    if isinstance(color_idx, tuple):
+        return color_idx
+    return palette[color_map[color_idx % n_colors]]
+
+
 def _fill_patches(ctx, patches, bx, by, sx, sy, color_map, active_pal, n_colors):  # pylint: disable=too-many-arguments,too-many-positional-arguments
     """Fill each patch with its mapped palette color (or a literal RGB tuple)."""
     for poly, color_idx in patches:
-        if isinstance(color_idx, tuple):
-            rgb = color_idx
-        else:
-            rgb = active_pal[color_map[color_idx % n_colors]]
+        rgb = patch_rgb(color_idx, color_map, active_pal, n_colors)
         ctx.set_source_rgb(*rgb)
         _trace_polygon(ctx, poly, bx, by, sx, sy)
         ctx.fill()
@@ -674,15 +681,19 @@ def _cell_seed(design, r, c, mega=False):
     return design.seed * 10000 + r * 1000 + c + (500 if mega else 0)
 
 
-def cell_patches(design, r, c, size, mega=False):
+def cell_patches(design, r, c, size, mega=False, rotate=True):
     """Base (un-jittered) patches for the block anchored at (r, c).
 
     In square [0, size] coords: pattern → rotate, seeded per cell. With
-    mega=True, size is the 2x2 mega-block's square. The single source of block
-    geometry for both the painter and the sewing pattern.
+    mega=True, size is the 2x2 mega-block's square. rotate=False returns the
+    cell's own geometry (same seed, so the same random draws) before its
+    rotation is applied. The single source of block geometry for both the
+    painter and the sewing pattern.
     """
-    seed = _cell_seed(design, r, c, mega)
-    return _block_patches(design.grid[(r, c)], size, design.n_colors, seed)
+    cell = design.grid[(r, c)]
+    if not rotate:
+        cell = dict(cell, rotation=0)
+    return _block_patches(cell, size, design.n_colors, _cell_seed(design, r, c, mega))
 
 
 def _cell_palette(design, cell):
