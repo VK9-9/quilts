@@ -20,6 +20,7 @@ import io
 import math
 import os
 import random
+from dataclasses import dataclass
 
 import cairo
 
@@ -533,6 +534,166 @@ def _resolve_palettes(palette_name, palette_mix, palette_name_2, max_colors, col
     return [palette_colors], 1
 
 
+@dataclass(frozen=True)
+class QuiltDesign:  # pylint: disable=too-many-instance-attributes
+    """Every random decision behind one quilt, resolved — no pixels.
+
+    plan_quilt builds this; render_quilt paints it and pattern_pdf describes
+    it. Both read the same decisions rather than each replaying the RNG stream,
+    which is how the sewing pattern used to drift from the picture (plain cells,
+    mega-blocks and mixed palettes were all invisible to the PDF's replay).
+
+    Container fields are shared, not copied — treat them as read-only.
+    """
+
+    seed: int
+    rows: int
+    cols: int
+    symmetry: str
+    palettes: list  # [primary, second?] — each a list of RGB tuples
+    grid: dict  # (r, c) -> {"pattern", "palette", "rotation", "color_map", ...}
+    allowed_patterns: list  # pattern indices in use, or None for all
+    tile_size: int  # None unless "none" symmetry tiles a template
+    plain_cells: set  # cells drawn as one solid color
+    mega_tl: set  # top-left corners of 2x2 mega-blocks
+    mega_covered: set  # every cell a mega-block covers
+    border_style: str  # None for no decorative border
+    border_colors: list  # [c1, c2] RGB, or None without a border
+    wash_alpha: float
+    wash_color: tuple  # RGB, or None without a wash
+    quilt_stitch: str  # None for no stitch overlay
+    wonky: float
+
+    @property
+    def palette_colors(self):
+        """The primary palette — what border, wash and plain fills draw from."""
+        return self.palettes[0]
+
+    @property
+    def n_colors(self):
+        """Colors in the primary palette; every color_map has this length."""
+        return len(self.palettes[0])
+
+
+def _pick_plain_cells(rng, rows, cols, symmetry, plain_frac):
+    """Cells drawn as one solid color: all of them for bargello, plus a
+    random plain_frac of the rest."""
+    plain_cells = set()
+    if symmetry == "bargello":
+        plain_cells = {(r, c) for r in range(rows) for c in range(cols)}
+    if plain_frac > 0.0:
+        for r in range(rows):
+            for c in range(cols):
+                if rng.random() < plain_frac:
+                    plain_cells.add((r, c))
+    return plain_cells
+
+
+def _pick_mega_blocks(rng, rows, cols, mega_frac):
+    """Greedily select non-overlapping 2x2 regions.
+
+    Returns (mega_tl, mega_covered): top-left corners, and all covered cells.
+    """
+    mega_tl = set()
+    mega_covered = set()
+    if mega_frac > 0.0 and rows >= 2 and cols >= 2:
+        candidates = [(r, c) for r in range(rows - 1) for c in range(cols - 1)]
+        rng.shuffle(candidates)
+        for r, c in candidates:
+            covers = {(r, c), (r + 1, c), (r, c + 1), (r + 1, c + 1)}
+            if not covers & mega_covered and rng.random() < mega_frac:
+                mega_tl.add((r, c))
+                mega_covered |= covers
+    return mega_tl, mega_covered
+
+
+def plan_quilt(
+    rows,
+    cols,
+    symmetry,
+    chaos,
+    palette_name,
+    seed,
+    max_patterns=None,
+    max_colors=None,
+    tile_size=None,
+    tile_variation=0.05,
+    border_style=None,
+    mega_frac=0.0,
+    plain_frac=0.0,
+    quilt_stitch=None,
+    wash_alpha=0.0,
+    palette_name_2=None,
+    palette_mix=None,
+    wonky=0.0,
+):
+    """Resolve every random decision for a quilt into a QuiltDesign.
+
+    The main RNG is consumed in a fixed order — grid, plain cells, mega-blocks,
+    border colors, wash color — and that order *is* the seed → quilt mapping:
+    every saved rating, shared quilt ID and gallery image depends on it. The
+    goldens in test_golden_render.py pin it. Color selection runs on a forked
+    RNG so changing n_colors doesn't shift the layout.
+    """
+    if seed is None:
+        seed = random.randint(0, 2**31)
+    rng = random.Random(seed)
+    color_rng = random.Random(rng.randint(0, 2**31))
+
+    all_palettes, n_palettes = _resolve_palettes(
+        palette_name, palette_mix, palette_name_2, max_colors, color_rng
+    )
+    palette_colors = all_palettes[0]
+    n_colors = len(palette_colors)
+
+    # Non-trivial symmetries bypass tiling — they use SYMMETRY_MODES layouts.
+    if symmetry != "none":
+        tile_size = None
+
+    grid, allowed = _build_grid(
+        rng,
+        rows,
+        cols,
+        symmetry,
+        chaos,
+        max_patterns,
+        n_colors,
+        n_palettes,
+        tile_size,
+        tile_variation,
+    )
+    plain_cells = _pick_plain_cells(rng, rows, cols, symmetry, plain_frac)
+    mega_tl, mega_covered = _pick_mega_blocks(rng, rows, cols, mega_frac)
+
+    border_colors = None
+    if border_style is not None:
+        border_colors = [
+            palette_colors[rng.randint(0, n_colors - 1)],
+            palette_colors[rng.randint(0, n_colors - 1)],
+        ]
+    wash_color = palette_colors[rng.randint(0, n_colors - 1)] if wash_alpha > 0 else None
+
+    return QuiltDesign(
+        seed=seed,
+        rows=rows,
+        cols=cols,
+        symmetry=symmetry,
+        palettes=all_palettes,
+        grid=grid,
+        allowed_patterns=allowed,
+        tile_size=tile_size,
+        plain_cells=plain_cells,
+        mega_tl=mega_tl,
+        mega_covered=mega_covered,
+        border_style=border_style,
+        border_colors=border_colors,
+        wash_alpha=wash_alpha,
+        wash_color=wash_color,
+        quilt_stitch=quilt_stitch,
+        wonky=wonky,
+    )
+
+
 def render_quilt(
     rows,
     cols,
@@ -558,59 +719,34 @@ def render_quilt(
     strippy=0.0,
 ):
     """Generate and render a quilt to an image file."""
-    if seed is None:
-        seed = random.randint(0, 2**31)
-    rng = random.Random(seed)
-
-    # Fork a separate RNG for color selection so changing n_colors
-    # doesn't shift the main RNG sequence (patterns/layout stay stable).
-    color_rng = random.Random(rng.randint(0, 2**31))
-
-    all_palettes, n_palettes = _resolve_palettes(
-        palette_name, palette_mix, palette_name_2, max_colors, color_rng
+    design = plan_quilt(
+        rows=rows,
+        cols=cols,
+        symmetry=symmetry,
+        chaos=chaos,
+        palette_name=palette_name,
+        seed=seed,
+        max_patterns=max_patterns,
+        max_colors=max_colors,
+        tile_size=tile_size,
+        tile_variation=tile_variation,
+        border_style=border_style,
+        mega_frac=mega_frac,
+        plain_frac=plain_frac,
+        quilt_stitch=quilt_stitch,
+        wash_alpha=wash_alpha,
+        palette_name_2=palette_name_2,
+        palette_mix=palette_mix,
+        wonky=wonky,
     )
-    palette_colors = all_palettes[0]
-    n_colors = len(palette_colors)
-
-    # Non-trivial symmetries bypass tiling — they use SYMMETRY_MODES layouts.
-    # (kept here too because tile_size drives the tile-boundary lines below.)
-    if symmetry != "none":
-        tile_size = None
-
-    grid, _allowed = _build_grid(
-        rng,
-        rows,
-        cols,
-        symmetry,
-        chaos,
-        max_patterns,
-        n_colors,
-        n_palettes,
-        tile_size,
-        tile_variation,
-    )
-
-    # plain blocks: random cells rendered as solid color (no pattern)
-    plain_cells = set()
-    if symmetry == "bargello":
-        plain_cells = {(r, c) for r in range(rows) for c in range(cols)}
-    if plain_frac > 0.0:
-        for r in range(rows):
-            for c in range(cols):
-                if rng.random() < plain_frac:
-                    plain_cells.add((r, c))
-
-    # mega-blocks: greedily select non-overlapping 2x2 regions
-    mega_tl = set()  # top-left corners of mega-blocks
-    mega_covered = set()  # all 4 cells covered by mega-blocks
-    if mega_frac > 0.0 and rows >= 2 and cols >= 2:
-        candidates = [(r, c) for r in range(rows - 1) for c in range(cols - 1)]
-        rng.shuffle(candidates)
-        for r, c in candidates:
-            covers = {(r, c), (r + 1, c), (r, c + 1), (r + 1, c + 1)}
-            if not covers & mega_covered and rng.random() < mega_frac:
-                mega_tl.add((r, c))
-                mega_covered |= covers
+    seed = design.seed
+    all_palettes = design.palettes
+    n_colors = design.n_colors
+    tile_size = design.tile_size
+    grid = design.grid
+    plain_cells = design.plain_cells
+    mega_tl = design.mega_tl
+    mega_covered = design.mega_covered
 
     # widen border when decorative style is active
     if border_style is not None:
@@ -639,9 +775,6 @@ def render_quilt(
 
     # decorative border
     if border_style is not None:
-        # pick 2 border colors from palette
-        border_c1 = palette_colors[rng.randint(0, n_colors - 1)]
-        border_c2 = palette_colors[rng.randint(0, n_colors - 1)]
         _draw_border(
             ctx,
             width,
@@ -652,7 +785,7 @@ def render_quilt(
             quilt_w,
             quilt_h,
             border_style,
-            [border_c1, border_c2],
+            design.border_colors,
             block_size,
         )
 
@@ -771,8 +904,7 @@ def render_quilt(
 
     # color wash — semi-transparent tint over entire quilt area
     if wash_alpha > 0:
-        wash_rgb = palette_colors[rng.randint(0, n_colors - 1)]
-        ctx.set_source_rgba(*wash_rgb, wash_alpha)
+        ctx.set_source_rgba(*design.wash_color, wash_alpha)
         ctx.rectangle(quilt_x, quilt_y, quilt_w, quilt_h)
         ctx.fill()
 
