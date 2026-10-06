@@ -297,3 +297,61 @@ class TestPolicySnapshot:
         assert ex.start_round() == 2
         assert "policy" not in ex.rounds[0]
         assert "policy" in ex.rounds[1]
+
+
+class TestClipNofilterArm:
+    """R24 A/B: exploit suggestions split between CLIP-over-the-param-model's-
+    shortlist and CLIP-over-random-candidates, to measure the pre-filter."""
+
+    class _Model:
+        def __init__(self, log):
+            self.log = log
+
+        def predict_proba(self, x):
+            self.log.append(len(x))
+            p = np.linspace(0.01, 0.99, len(x))
+            return np.column_stack([1 - p, p])
+
+    @pytest.fixture
+    def explorer(self, tmp_path, monkeypatch):
+        import sys
+        import types
+
+        fake_clip = types.ModuleType("clip_embed")
+        fake_clip.embed_images = lambda pngs: np.zeros((len(pngs), 512), dtype=np.float32)
+        monkeypatch.setitem(sys.modules, "clip_embed", fake_clip)
+        monkeypatch.setattr("sampler._render_small", lambda params, block_size: b"")
+        ex = QuiltExplorer(str(tmp_path / "r.json"))
+        ex.param_calls, ex.clip_calls = [], []
+        ex.model = self._Model(ex.param_calls)
+        ex.clip_model = self._Model(ex.clip_calls)
+        return ex
+
+    def test_nofilter_arm_skips_the_param_model(self, explorer, monkeypatch):
+        monkeypatch.setattr("sampler.CLIP_NOFILTER_PROB", 1.0)
+        pick = explorer.suggest_params(explore_prob=0.0)
+        assert pick["_source"] == "exploit_clip_nofilter"
+        assert explorer.param_calls == [], "param model must not shape the nofilter shortlist"
+        assert explorer.clip_calls == [30], "CLIP still scores a 30-candidate shortlist"
+
+    def test_filtered_arm_is_unchanged(self, explorer, monkeypatch):
+        monkeypatch.setattr("sampler.CLIP_NOFILTER_PROB", 0.0)
+        pick = explorer.suggest_params(explore_prob=0.0)
+        assert pick["_source"] == "exploit_clip"
+        assert len(explorer.param_calls) == 1 and explorer.param_calls[0] > 30
+        assert explorer.clip_calls == [30]
+
+    def test_live_split_produces_both_arms(self, explorer):
+        sources = {explorer.suggest_params(explore_prob=0.0)["_source"] for _ in range(60)}
+        assert sources == {"exploit_clip", "exploit_clip_nofilter"}
+
+    def test_param_only_fallback_without_clip(self, explorer, monkeypatch):
+        """No CLIP model yet: there's nothing to A/B, so no nofilter arm."""
+        monkeypatch.setattr("sampler.CLIP_NOFILTER_PROB", 1.0)
+        explorer.clip_model = None
+        assert explorer.suggest_params(explore_prob=0.0)["_source"] == "exploit_param"
+
+    def test_policy_records_the_split(self):
+        from sampler import CLIP_NOFILTER_PROB
+
+        assert current_policy()["clip_nofilter_prob"] == CLIP_NOFILTER_PROB

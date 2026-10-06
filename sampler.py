@@ -103,6 +103,12 @@ N_COLORS_WEIGHTS = {4: 40, 5: 45, 6: 15}
 EXPLORE_PROB = 0.3
 # Random candidates the param model scores per exploit suggestion.
 _N_CANDIDATES = 200
+# A/B from R24: share of exploit suggestions where CLIP chooses among a random
+# _CLIP_TOP_N of the candidates instead of the param model's top _CLIP_TOP_N.
+# Both models were at or below chance on R23 walk-forward (param AUC 0.352),
+# so this measures whether the param pre-filter earns its keep: compare
+# exploit_clip vs exploit_clip_nofilter like rates within the same round.
+CLIP_NOFILTER_PROB = 0.5
 
 # max fraction of candidates that can use any single palette value
 MAX_PALETTE_FRAC = 0.10
@@ -327,6 +333,7 @@ def current_policy():
         "proven_palettes": dict(_PROVEN_PALETTES),
         "proven_symmetries": dict(_PROVEN_SYMMETRIES),
         "explore_prob": EXPLORE_PROB,
+        "clip_nofilter_prob": CLIP_NOFILTER_PROB,
         "n_candidates": _N_CANDIDATES,
         "max_palette_frac": MAX_PALETTE_FRAC,
         "clip_top_n": _CLIP_TOP_N,
@@ -517,6 +524,8 @@ class QuiltExplorer:  # pylint: disable=too-many-instance-attributes
         Otherwise uses a two-stage pipeline:
           1. param_model pre-filters 200 candidates → top _CLIP_TOP_N
           2. clip_model renders+embeds top candidates, picks highest predicted
+        With probability CLIP_NOFILTER_PROB, stage 1 is replaced by a random
+        _CLIP_TOP_N of the same candidates (_source "exploit_clip_nofilter").
         Falls back to param-only if clip_model is not yet active.
         """
         rng = random.Random()
@@ -539,26 +548,33 @@ class QuiltExplorer:  # pylint: disable=too-many-instance-attributes
                 filtered.append(c)
         candidates = filtered if filtered else candidates
 
-        # stage 1: param model scores all candidates
-        features = np.array([params_to_features(c, self.vocab) for c in candidates])
-        param_probs = self.model.predict_proba(features)[:, 1]
+        # A/B arm: CLIP picks from random candidates, skipping the param model,
+        # to measure whether its pre-filter helps at all (see CLIP_NOFILTER_PROB).
+        if self.clip_model is not None and rng.random() < CLIP_NOFILTER_PROB:
+            top_candidates = rng.sample(candidates, min(_CLIP_TOP_N, len(candidates)))
+            source = "exploit_clip_nofilter"
+        else:
+            # stage 1: param model scores all candidates
+            features = np.array([params_to_features(c, self.vocab) for c in candidates])
+            param_probs = self.model.predict_proba(features)[:, 1]
 
-        if self.clip_model is None:
-            pick = candidates[int(np.argmax(param_probs))]
-            pick["_source"] = "exploit_param"
-            return pick
+            if self.clip_model is None:
+                pick = candidates[int(np.argmax(param_probs))]
+                pick["_source"] = "exploit_param"
+                return pick
 
-        # stage 2: render + embed top N, pick best by CLIP model
-        top_indices = np.argsort(param_probs)[-_CLIP_TOP_N:]
-        top_candidates = [candidates[i] for i in top_indices]
+            top_indices = np.argsort(param_probs)[-_CLIP_TOP_N:]
+            top_candidates = [candidates[i] for i in top_indices]
+            source = "exploit_clip"
 
+        # stage 2: render + embed the shortlist, pick best by CLIP model
         png_list = [_render_small(c, block_size=_CLIP_CANDIDATE_BLOCK_SIZE) for c in top_candidates]
         from clip_embed import embed_images  # pylint: disable=import-outside-toplevel
 
         embs = embed_images(png_list)
         clip_probs = self.clip_model.predict_proba(embs)[:, 1]
         pick = top_candidates[int(np.argmax(clip_probs))]
-        pick["_source"] = "exploit_clip"
+        pick["_source"] = source
         return pick
 
     def stats(self):
