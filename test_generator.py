@@ -279,7 +279,14 @@ class TestPatternRoute:
 
     @pytest.mark.parametrize(
         "query",
-        ["strippy=0.3", "wonky=0.04", "plain_frac=0.2", "mega_frac=0.15", "palette_mix=wisteria"],
+        [
+            "strippy=0.3",
+            "wonky=0.04",
+            "plain_frac=0.2",
+            "mega_frac=0.15",
+            "palette_mix=wisteria",
+            "palette_2=wildflower",
+        ],
     )
     def test_pattern_refuses_unreconstructable_params(self, client, query):
         """The PDF reconstruction can't represent these (generator.PATTERN_UNSUPPORTED);
@@ -291,7 +298,7 @@ class TestPatternRoute:
     def test_pattern_allows_zeroed_unsupported_params(self, client):
         resp = client.get(
             "/pattern?seed=42&symmetry=rotational&palette=ocean+breeze&rows=4"
-            "&strippy=0&wonky=0&plain_frac=0&mega_frac=0&palette_mix="
+            "&strippy=0&wonky=0&plain_frac=0&mega_frac=0&palette_mix=&palette_2="
         )
         assert resp.status_code == 200
         assert resp.data[:5] == b"%PDF-"

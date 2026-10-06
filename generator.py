@@ -264,11 +264,12 @@ _PARAM_BOUNDS = {
 
 # Params the PDF pattern reconstruction cannot represent yet: strippy/wonky
 # change the geometry the templates describe, plain_frac/mega_frac select cells
-# the reconstruction never sees, and palette_mix hybridizes the colors the
-# color key is built from. Generating anyway emits a confidently wrong pattern
+# the reconstruction never sees, palette_mix hybridizes the colors the color
+# key is built from, and palette_2 cells draw from a second palette the color
+# key doesn't list. Generating anyway emits a confidently wrong pattern
 # (wrong piece counts / colors), so /pattern refuses these and create.html
 # greys out the button — it reads this list via the template context.
-PATTERN_UNSUPPORTED = ("strippy", "wonky", "plain_frac", "mega_frac", "palette_mix")
+PATTERN_UNSUPPORTED = ("strippy", "wonky", "plain_frac", "mega_frac", "palette_mix", "palette_2")
 
 # Default value for every control the /create UI binds. This is the single
 # source of truth: the query-string parser falls back to it, and complete_params()
