@@ -479,19 +479,25 @@ def build_layout(
     return grid, allowed, palette_colors, rng
 
 
-def _build_strip_sizes(n, base_size, variation, rng):
-    """Generate n strip sizes with seeded variation around base_size.
+def _strip_factors(n, variation, rng):
+    """Relative widths of n strips, each 1 ± variation (all 1.0 when off).
 
-    Returns (sizes, positions) where sizes[i] is the pixel size of strip i
-    and positions[i] is the cumulative pixel offset.
+    Stored on the design as factors rather than pixels: pixel sizes depend on
+    block_size, so storing them would tie the design to one output resolution
+    and leave nothing resolution-free for the PDF to measure in inches.
     """
     if variation <= 0:
-        sizes = [base_size] * n
-    else:
-        sizes = []
-        for _ in range(n):
-            factor = 1.0 + rng.uniform(-variation, variation)
-            sizes.append(max(1, round(base_size * factor)))
+        return tuple(1.0 for _ in range(n))
+    return tuple(1.0 + rng.uniform(-variation, variation) for _ in range(n))
+
+
+def _strip_pixels(factors, base_size):
+    """Pixel sizes and cumulative offsets for strips at the given block size.
+
+    Returns (sizes, positions): sizes[i] is strip i's width in pixels and
+    positions[i] its offset, with positions[-1] the total span.
+    """
+    sizes = [max(1, round(base_size * f)) for f in factors]
     positions = [0]
     for s in sizes:
         positions.append(positions[-1] + s)
@@ -563,6 +569,8 @@ class QuiltDesign:  # pylint: disable=too-many-instance-attributes
     wash_color: tuple  # RGB, or None without a wash
     quilt_stitch: str  # None for no stitch overlay
     wonky: float
+    col_factors: tuple  # relative column widths (strippy); all 1.0 when off
+    row_factors: tuple  # relative row heights
 
     @property
     def palette_colors(self):
@@ -626,6 +634,7 @@ def plan_quilt(
     palette_name_2=None,
     palette_mix=None,
     wonky=0.0,
+    strippy=0.0,
 ):
     """Resolve every random decision for a quilt into a QuiltDesign.
 
@@ -633,7 +642,8 @@ def plan_quilt(
     border colors, wash color — and that order *is* the seed → quilt mapping:
     every saved rating, shared quilt ID and gallery image depends on it. The
     goldens in test_golden_render.py pin it. Color selection runs on a forked
-    RNG so changing n_colors doesn't shift the layout.
+    RNG so changing n_colors doesn't shift the layout, and strip widths on
+    their own seed+7777 stream (columns, then rows).
     """
     if seed is None:
         seed = random.randint(0, 2**31)
@@ -673,6 +683,10 @@ def plan_quilt(
         ]
     wash_color = palette_colors[rng.randint(0, n_colors - 1)] if wash_alpha > 0 else None
 
+    strip_rng = random.Random(seed + 7777)
+    col_factors = _strip_factors(cols, strippy, strip_rng)
+    row_factors = _strip_factors(rows, strippy, strip_rng)
+
     return QuiltDesign(
         seed=seed,
         rows=rows,
@@ -691,6 +705,8 @@ def plan_quilt(
         wash_color=wash_color,
         quilt_stitch=quilt_stitch,
         wonky=wonky,
+        col_factors=col_factors,
+        row_factors=row_factors,
     )
 
 
@@ -738,6 +754,7 @@ def render_quilt(
         palette_name_2=palette_name_2,
         palette_mix=palette_mix,
         wonky=wonky,
+        strippy=strippy,
     )
     seed = design.seed
     all_palettes = design.palettes
@@ -753,9 +770,8 @@ def render_quilt(
         border = max(border, int(block_size * 0.75))
 
     # strippy grid: varying row heights and column widths
-    strip_rng = random.Random(seed + 7777)
-    col_sizes, col_pos = _build_strip_sizes(cols, block_size, strippy, strip_rng)
-    row_sizes, row_pos = _build_strip_sizes(rows, block_size, strippy, strip_rng)
+    col_sizes, col_pos = _strip_pixels(design.col_factors, block_size)
+    row_sizes, row_pos = _strip_pixels(design.row_factors, block_size)
 
     # image dimensions
     quilt_w = col_pos[-1]
