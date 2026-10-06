@@ -279,14 +279,7 @@ class TestPatternRoute:
 
     @pytest.mark.parametrize(
         "query",
-        [
-            "strippy=0.3",
-            "wonky=0.04",
-            "plain_frac=0.2",
-            "mega_frac=0.15",
-            "palette_mix=wisteria",
-            "palette_2=wildflower",
-        ],
+        ["strippy=0.3", "wonky=0.04"],
     )
     def test_pattern_refuses_unreconstructable_params(self, client, query):
         """The PDF reconstruction can't represent these (generator.PATTERN_UNSUPPORTED);
@@ -297,8 +290,20 @@ class TestPatternRoute:
 
     def test_pattern_allows_zeroed_unsupported_params(self, client):
         resp = client.get(
-            "/pattern?seed=42&symmetry=rotational&palette=ocean+breeze&rows=4"
-            "&strippy=0&wonky=0&plain_frac=0&mega_frac=0&palette_mix=&palette_2="
+            "/pattern?seed=42&symmetry=rotational&palette=ocean+breeze&rows=4&strippy=0&wonky=0"
+        )
+        assert resp.status_code == 200
+        assert resp.data[:5] == b"%PDF-"
+
+    @pytest.mark.parametrize(
+        "query",
+        ["plain_frac=0.2", "mega_frac=0.15", "palette_mix=wisteria", "palette_2=wildflower"],
+    )
+    def test_pattern_supports_planned_design_features(self, client, query):
+        """Once gated; the PDF now describes the planned QuiltDesign, which
+        carries plain cells, mega-blocks and both palettes."""
+        resp = client.get(
+            f"/pattern?seed=42&symmetry=rotational&palette=ocean+breeze&rows=14&{query}"
         )
         assert resp.status_code == 200
         assert resp.data[:5] == b"%PDF-"
