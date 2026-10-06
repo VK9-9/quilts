@@ -71,7 +71,37 @@ PARAM_SPACE = {
     "n_patterns": (2, 2),
     "tile_size": (4, 10),  # small tiles (1-3) disliked
     "tile_variation": (0.0, 0.3),
+    # Optional features: the range drawn from when FEATURE_PROBS switches it on.
+    "mega_frac": (0.1, 0.25),
+    "plain_frac": (0.1, 0.4),
+    "wash_alpha": (0.04, 0.18),
+    "wonky": (0.02, 0.06),
+    "strippy": (0.2, 0.35),
 }
+
+# Chance each optional feature is switched on in a random sample. Named here
+# rather than inline in sample_random_params so current_policy() can snapshot
+# them into each round — reconstructing what distribution generated a round
+# shouldn't take git archaeology.
+FEATURE_PROBS = {
+    "border_style": 0.35,
+    "mega_frac": 0.05,
+    "plain_frac": 0.15,
+    "quilt_stitch": 0.98,
+    "wash_alpha": 0.15,
+    "palette_2": 0.05,
+    "palette_mix": 0.05,
+    "wonky": 0.10,
+    "strippy": 0.15,
+}
+
+# Relative weights for n_colors (all palettes have 6).
+N_COLORS_WEIGHTS = {4: 40, 5: 45, 6: 15}
+
+# Chance suggest_params returns a fully random (explore) sample.
+EXPLORE_PROB = 0.3
+# Random candidates the param model scores per exploit suggestion.
+_N_CANDIDATES = 200
 
 # max fraction of candidates that can use any single palette value
 MAX_PALETTE_FRAC = 0.10
@@ -113,14 +143,37 @@ _CLIP_EMBED_BLOCK_SIZE = 16
 _CLIP_TOP_N = 30
 
 
+_PARAM_MODEL_KWARGS = {"n_estimators": 50, "max_depth": 3, "random_state": 42}
+_CLIP_MODEL_KWARGS = {"max_iter": 1000, "C": 1.0, "random_state": 42}
+
+
 _DROP_STITCHES = {"crosshatch"}
-_STITCH_STYLES = [s for s in QUILT_STITCH_STYLES if s not in _DROP_STITCHES]
+# Sampling weight per stitch style; anything not dropped defaults to 1.0.
+_STITCH_WEIGHTS = {
+    s: {"sashiko_asanoha": 0.5}.get(s, 1.0) for s in QUILT_STITCH_STYLES if s not in _DROP_STITCHES
+}
+_DROP_BORDERS = {"stripes"}
+_BORDER_WEIGHTS = {b: {"solid": 2.0}.get(b, 1.0) for b in BORDER_STYLES if b not in _DROP_BORDERS}
 
 
-def _weighted_stitch(rng):
-    """Pick a stitch style, downweighting sashiko_asanoha."""
-    weights = [0.5 if s == "sashiko_asanoha" else 1.0 for s in _STITCH_STYLES]
-    return rng.choices(_STITCH_STYLES, weights=weights)[0]
+def _weighted_choice(rng, weights):
+    """Draw one key of `weights` with probability proportional to its value."""
+    return rng.choices(list(weights), weights=list(weights.values()))[0]
+
+
+def _maybe(rng, feature, draw, off):
+    """Return draw() with probability FEATURE_PROBS[feature], else `off`.
+
+    The gate is drawn before the value, matching the inline
+    `draw() if rng.random() < p else off` this replaced — the order is part of
+    the seed → params mapping.
+    """
+    return draw() if rng.random() < FEATURE_PROBS[feature] else off
+
+
+def _uniform(rng, feature, digits=2):
+    """Draw a rounded value from PARAM_SPACE[feature]."""
+    return round(rng.uniform(*PARAM_SPACE[feature]), digits)
 
 
 def _pick_palette(rng, explore_only=False):
@@ -151,28 +204,25 @@ def sample_random_params(rng=None, explore_only=False):
         )
         if not explore_only
         else rng.choice(_BASE_SYMMETRIES),
-        "chaos": round(rng.uniform(*PARAM_SPACE["chaos"]), 2),
+        "chaos": _uniform(rng, "chaos"),
         "palette": _pick_palette(rng, explore_only=explore_only),
         "n_patterns": rng.randint(*PARAM_SPACE["n_patterns"]),
-        "n_colors": rng.choices([4, 5, 6], weights=[40, 45, 15])[0],
+        "n_colors": _weighted_choice(rng, N_COLORS_WEIGHTS),
         "tile_size": rng.randint(*PARAM_SPACE["tile_size"]),
-        "tile_variation": round(rng.uniform(*PARAM_SPACE["tile_variation"]), 2),
-        "border_style": (
-            rng.choices(
-                [b for b in BORDER_STYLES if b != "stripes"],
-                weights=[2.0 if b == "solid" else 1.0 for b in BORDER_STYLES if b != "stripes"],
-            )[0]
-            if rng.random() < 0.35
-            else "none"
+        "tile_variation": _uniform(rng, "tile_variation"),
+        "border_style": _maybe(
+            rng, "border_style", lambda: _weighted_choice(rng, _BORDER_WEIGHTS), "none"
         ),
-        "mega_frac": round(rng.uniform(0.1, 0.25), 2) if rng.random() < 0.05 else 0.0,
-        "plain_frac": round(rng.uniform(0.1, 0.4), 2) if rng.random() < 0.15 else 0.0,
-        "quilt_stitch": _weighted_stitch(rng) if rng.random() < 0.98 else None,
-        "wash_alpha": round(rng.uniform(0.04, 0.18), 2) if rng.random() < 0.15 else 0.0,
-        "palette_2": rng.choice(PALETTE_NAMES) if rng.random() < 0.05 else None,
-        "palette_mix": rng.choice(PALETTE_NAMES) if rng.random() < 0.05 else None,
-        "wonky": round(rng.uniform(0.02, 0.06), 3) if rng.random() < 0.10 else 0.0,
-        "strippy": round(rng.uniform(0.2, 0.35), 2) if rng.random() < 0.15 else 0.0,
+        "mega_frac": _maybe(rng, "mega_frac", lambda: _uniform(rng, "mega_frac"), 0.0),
+        "plain_frac": _maybe(rng, "plain_frac", lambda: _uniform(rng, "plain_frac"), 0.0),
+        "quilt_stitch": _maybe(
+            rng, "quilt_stitch", lambda: _weighted_choice(rng, _STITCH_WEIGHTS), None
+        ),
+        "wash_alpha": _maybe(rng, "wash_alpha", lambda: _uniform(rng, "wash_alpha"), 0.0),
+        "palette_2": _maybe(rng, "palette_2", lambda: rng.choice(PALETTE_NAMES), None),
+        "palette_mix": _maybe(rng, "palette_mix", lambda: rng.choice(PALETTE_NAMES), None),
+        "wonky": _maybe(rng, "wonky", lambda: _uniform(rng, "wonky", digits=3), 0.0),
+        "strippy": _maybe(rng, "strippy", lambda: _uniform(rng, "strippy"), 0.0),
         "seed": rng.randint(0, 2**31),
     }
 
@@ -379,11 +429,7 @@ class QuiltExplorer:  # pylint: disable=too-many-instance-attributes
             self.clip_model = None
             return
 
-        self.model = GradientBoostingClassifier(
-            n_estimators=50,
-            max_depth=3,
-            random_state=42,
-        )
+        self.model = GradientBoostingClassifier(**_PARAM_MODEL_KWARGS)
         self.model.fit(features, y)
 
         # Train CLIP model on ratings that have valid (non-zero) embeddings.
@@ -399,10 +445,10 @@ class QuiltExplorer:  # pylint: disable=too-many-instance-attributes
             x_valid = emb[valid]
             y_valid = y_emb[valid]
             if len(x_valid) >= 10 and len(set(y_valid)) >= 2:
-                self.clip_model = LogisticRegression(max_iter=1000, C=1.0, random_state=42)
+                self.clip_model = LogisticRegression(**_CLIP_MODEL_KWARGS)
                 self.clip_model.fit(x_valid, y_valid)
 
-    def suggest_params(self, explore_prob=0.3):  # pylint: disable=too-many-locals
+    def suggest_params(self, explore_prob=EXPLORE_PROB):  # pylint: disable=too-many-locals
         """Suggest a new parameter set.
 
         With probability explore_prob, returns fully random params.
@@ -420,7 +466,7 @@ class QuiltExplorer:  # pylint: disable=too-many-instance-attributes
 
         # generate candidates with palette diversity cap
         # explore_only=True excludes proven palettes from exploitation candidates
-        candidates = [sample_random_params(rng, explore_only=True) for _ in range(200)]
+        candidates = [sample_random_params(rng, explore_only=True) for _ in range(_N_CANDIDATES)]
         max_per_palette = max(1, int(len(candidates) * MAX_PALETTE_FRAC))
         palette_counts = {}
         filtered = []
