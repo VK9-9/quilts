@@ -195,6 +195,64 @@ GOLDEN_CASES = {
         "seed": 1003,
         "quilt_stitch": "sashiko_wave",
     },
+    # The three cases below pin main-RNG draw order across every post-grid
+    # consumer — plain cells → mega-blocks → border colors → wash color — plus
+    # the color-RNG order base → mix → second palette, ahead of the plan/paint
+    # split (docs-notes/ARCHITECTURE_REVIEW_2026-10.md §1), which moves all of
+    # them out of render_quilt.
+    "mega_strippy_wonky_checker": {
+        "rows": 16,
+        "cols": 16,
+        "symmetry": "partial",
+        "chaos": 0.4,
+        "palette": "tide pool",
+        "n_patterns": 2,
+        "n_colors": 4,
+        "tile_size": 6,
+        "tile_variation": 0.1,
+        "seed": 1012,
+        "mega_frac": 0.25,
+        "plain_frac": 0.2,
+        "strippy": 0.3,
+        "wonky": 0.04,
+        "border_style": "checkerboard",
+        "wash_alpha": 0.1,
+        "quilt_stitch": "grid",
+    },
+    "mix_and_second_palette_piano": {
+        "rows": 16,
+        "cols": 16,
+        "symmetry": "rotational",
+        "chaos": 0.3,
+        "palette": "bluebell",
+        "palette_mix": "honey oak",
+        "palette_2": "wisteria",
+        "n_patterns": 2,
+        "n_colors": 5,
+        "tile_size": 6,
+        "tile_variation": 0.1,
+        "seed": 1013,
+        "border_style": "piano_keys",
+        "wash_alpha": 0.08,
+        "quilt_stitch": "diagonal",
+    },
+    "mega_stripes_border": {
+        "rows": 14,
+        "cols": 18,
+        "symmetry": "stripe",
+        "chaos": 0.3,
+        "palette": "sea glass",
+        "n_patterns": 2,
+        "n_colors": 6,
+        "tile_size": 6,
+        "tile_variation": 0.1,
+        "seed": 1014,
+        "mega_frac": 0.15,
+        "plain_frac": 0.1,
+        "border_style": "stripes",
+        "wash_alpha": 0.06,
+        "quilt_stitch": "sashiko_asanoha",
+    },
 }
 
 
@@ -227,6 +285,9 @@ GOLDEN_HASHES = {
     "strippy_wonky": "58d0d8b636ba1f2809472872b2f6a86328e94d14c72eed633b3cc078687bb3fe",
     "flower_medallion": "ac1ccce4e9a23ab1e02c509539149b2d65b036adc07b7cad374e8cab88a5efa9",
     "mirror_geometric": "5843fb79ec821c6a93bb8dd0a65d54d757dbdd07fa2ec74832e684eceaf77024",
+    "mega_strippy_wonky_checker": "4c5fd46016e8dcf55477e8b45718f7a5edef47ac891a9cacb7a43ed473560684",
+    "mix_and_second_palette_piano": "85008ceef7b8062e97c46d73625c51521b657460b5d0b5ab4faec9111ab90731",
+    "mega_stripes_border": "881ab9f9b3cbbb8605a0108bb5448eb038bfa6936dfc6bd2da069f9507ee8515",
 }
 
 _BLOCK_SIZE = 20
