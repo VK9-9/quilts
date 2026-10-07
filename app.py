@@ -40,9 +40,9 @@ def _generator_link(params):
 
 # The Flask dev server is threaded, so two requests can mutate explorer state
 # (ratings list, embeddings array, model) concurrently. Serialize all mutations
-# AND model reads: _retrain swaps self.vocab before fitting/swapping the models,
-# so an unlocked /next racing a /rate can encode candidates with the new vocab
-# against the old model — a feature-dimension mismatch that 500s predict_proba.
+# AND model reads: _retrain clears clip_model before refitting it, so an
+# unlocked /next racing a /rate could read the model mid-retrain, or the
+# embeddings array while add_rating is growing it.
 _explorer_lock = threading.Lock()
 
 

@@ -1,4 +1,4 @@
-"""Tests for sampler.py — parameter sampling and the preference-model encoder."""
+"""Tests for sampler.py — parameter sampling and the CLIP preference loop."""
 
 import random
 
@@ -17,129 +17,13 @@ from sampler import (
     PALETTE_NAMES,
     PARAM_SPACE,
     SYMMETRY_NAMES,
-    build_feature_vocab,
     current_policy,
-    feature_names,
-    params_to_features,
     sample_random_params,
 )
 
 
-def _rating(liked=True, **params):
-    base = {
-        "rows": 16,
-        "cols": 16,
-        "symmetry": "partial",
-        "chaos": 0.3,
-        "palette": "ocean breeze",
-        "n_patterns": 2,
-        "n_colors": 4,
-        "tile_size": 6,
-        "tile_variation": 0.1,
-    }
-    base.update(params)
-    return {"params": base, "liked": liked}
-
-
-class TestFeatureVocab:
-    """The encoder must represent the whole ratings history, not just what is
-    currently samplable.
-
-    _retrain fits on every rating ever made. Encoding over the post-drop set
-    collapsed every retired or deleted value into one all-zero block, which
-    (because values are retired for underperforming) was a large, uniformly
-    disliked bucket that no candidate can ever fall into at prediction time.
-    """
-
-    def test_covers_values_deleted_from_palettes_py(self):
-        gone = "a palette that no longer exists"
-        assert gone not in {p[0] for p in PALETTES}
-        vocab = build_feature_vocab([_rating(palette=gone)])
-        assert gone in vocab["palette"]
-
-    def test_covers_values_dropped_from_sampling(self):
-        """A value retired from sampling but still defined must stay encodable."""
-        vocab = build_feature_vocab()
-        still_defined = _DROP_PALETTES & {p[0] for p in PALETTES}
-        for name in still_defined:
-            assert name in vocab["palette"], f"retired palette {name} missing from vocab"
-        for name in _DROP_SYMMETRY:
-            assert name in vocab["symmetry"], f"retired symmetry {name} missing from vocab"
-
-    def test_covers_every_palette_the_history_mentions(self):
-        """Including ones since deleted from palettes.py — 25 of them, today."""
-        retired = sorted(_DROP_PALETTES)
-        vocab = build_feature_vocab([_rating(palette=name) for name in retired])
-        for name in retired:
-            assert name in vocab["palette"], f"history palette {name} missing from vocab"
-
-    def test_no_categorical_block_is_all_zero(self):
-        """Every row must land in exactly one bucket of every categorical."""
-        ratings = [
-            _rating(palette="storm", symmetry="mirror"),
-            _rating(palette="a deleted palette", symmetry="none"),
-            _rating(palette="ocean breeze", symmetry="bargello", border_style="solid"),
-            _rating(palette="lavender fields", symmetry="partial", border_style=None),
-        ]
-        vocab = build_feature_vocab(ratings)
-        names = feature_names(vocab)
-        rows = np.array([params_to_features(r["params"], vocab) for r in ratings])
-        for prefix in ("pal_", "sym_", "brd_"):
-            idx = [i for i, n in enumerate(names) if n.startswith(prefix)]
-            block = rows[:, idx]
-            assert (block.sum(axis=1) == 1).all(), f"{prefix} block is not one-hot"
-
-    def test_retired_and_active_palettes_stay_distinguishable(self):
-        """Two different retired palettes must not encode identically.
-
-        This is the actual defect: they both produced an all-zero palette block,
-        so the model could not tell them apart from each other or from a value
-        it had never seen.
-        """
-        ratings = [_rating(palette="storm"), _rating(palette="terracotta")]
-        vocab = build_feature_vocab(ratings)
-        a = params_to_features(ratings[0]["params"], vocab)
-        b = params_to_features(ratings[1]["params"], vocab)
-        assert not np.array_equal(a, b)
-
-    def test_names_match_vector_length(self):
-        vocab = build_feature_vocab([_rating(palette="gone")])
-        assert len(feature_names(vocab)) == len(params_to_features(_rating()["params"], vocab))
-
-    def test_vocab_order_is_deterministic(self):
-        ratings = [_rating(palette="zeta"), _rating(palette="alpha")]
-        assert build_feature_vocab(ratings) == build_feature_vocab(list(reversed(ratings)))
-
-    def test_absent_border_style_encodes_as_none(self):
-        vocab = build_feature_vocab()
-        explicit = params_to_features(_rating(border_style="none")["params"], vocab)
-        absent = params_to_features(_rating()["params"], vocab)
-        assert np.array_equal(explicit, absent)
-
-    def test_widens_as_history_grows(self):
-        narrow = build_feature_vocab()
-        wide = build_feature_vocab([_rating(palette="brand new palette")])
-        assert len(wide["palette"]) == len(narrow["palette"]) + 1
-
-
-class TestParamsToFeatures:
-    def test_is_finite_and_float(self):
-        vec = params_to_features(sample_random_params(random.Random(0)))
-        assert vec.dtype == np.float64
-        assert np.isfinite(vec).all()
-
-    def test_tolerates_missing_optional_params(self):
-        """Old records predate wonky/strippy/wash_alpha and must still encode."""
-        params_to_features({"symmetry": "partial", "palette": "ocean breeze"})
-
-    def test_same_vocab_gives_stable_encoding(self):
-        vocab = build_feature_vocab()
-        p = sample_random_params(random.Random(3))
-        assert np.array_equal(params_to_features(p, vocab), params_to_features(p, vocab))
-
-
 class TestSampling:
-    """Dropping a value must affect sampling only — never the encoder."""
+    """Dropped values are never sampled; proven winners only while exploring."""
 
     @pytest.mark.parametrize("seed", range(60))
     def test_never_samples_dropped_values(self, seed):
@@ -175,12 +59,11 @@ class TestSampling:
 
 
 class TestTrainingWindow:
-    """Both models train on a recent-rounds window, not all history.
+    """The CLIP model trains on a recent-rounds window, not all history.
 
-    Rounds 1-13 predate quilt stitching and the sampler's tuning, so
-    "quilt_stitch == 0" acted as a proxy for "rated before R7" and took 0.70 of
-    the param model's importance while being constant at prediction time.
-    Walk-forward AUC over R18-R22: 0.554 on all history vs 0.605 from R14.
+    Rounds 1-13 come from a different generative space and a differently
+    calibrated rater (stitching didn't exist before R7). Walk-forward AUC over
+    R18-R22: 0.598 on all history vs 0.620 from R14 for CLIP.
     """
 
     def _explorer(self, tmp_path, n_ratings, rounds):
@@ -196,6 +79,9 @@ class TestTrainingWindow:
             )
         )
         (tmp_path / "r_rounds.json").write_text(json.dumps(rounds))
+        # Nonzero stand-in embeddings, one per rating, so the CLIP model fits.
+        rng = np.random.default_rng(0)
+        np.save(tmp_path / "r_embeddings.npy", rng.normal(size=(n_ratings, 512)).astype(np.float32))
         return QuiltExplorer(str(data))
 
     @staticmethod
@@ -216,7 +102,7 @@ class TestTrainingWindow:
         ex = self._explorer(tmp_path, 300, self._rounds([0, 150]))
         assert ex.training_start() == 0
         assert ex.stats()["train_from_round"] == 1
-        assert ex.model is not None, "fallback must still produce a usable model"
+        assert ex.clip_model is not None, "fallback must still produce a usable model"
 
     def test_window_excludes_earlier_ratings_from_the_fit(self, tmp_path):
         rounds = self._rounds([i * 100 for i in range(20)])
@@ -224,29 +110,26 @@ class TestTrainingWindow:
         assert ex.stats()["trained_on"] == 2000 - ex.training_start()
         assert ex.stats()["trained_on"] < ex.stats()["total"]
 
-    def test_vocab_describes_the_window_not_all_history(self, tmp_path):
-        """Values only seen before the window shouldn't hold all-zero columns."""
-        import json
+    def test_clip_model_fits_exactly_the_window(self, tmp_path, monkeypatch):
+        """Labels and embeddings must slice at the same index, or they mis-pair."""
+        from sklearn.linear_model import LogisticRegression
 
-        data = tmp_path / "r.json"
-        rows = [
-            {"params": sample_random_params(random.Random(i)), "liked": i % 3 != 0}
-            for i in range(2000)
-        ]
-        rows[0]["params"]["palette"] = "a palette only in the early history"
-        data.write_text(json.dumps(rows))
-        (tmp_path / "r_rounds.json").write_text(
-            json.dumps(self._rounds([i * 100 for i in range(20)]))
+        fitted = []
+        real_fit = LogisticRegression.fit
+        monkeypatch.setattr(
+            LogisticRegression,
+            "fit",
+            lambda self, x, y: fitted.append(len(x)) or real_fit(self, x, y),
         )
-        ex = QuiltExplorer(str(data))
-        assert "a palette only in the early history" not in ex.vocab["palette"]
-
-    def test_clip_and_param_windows_agree(self, tmp_path):
-        """Both models must slice at the same index or labels mis-pair."""
         rounds = self._rounds([i * 100 for i in range(20)])
         ex = self._explorer(tmp_path, 2000, rounds)
-        start = ex.training_start()
-        assert len(ex.ratings[start:]) == ex.stats()["trained_on"]
+        assert fitted[-1] == 2000 - ex.training_start() == ex.stats()["trained_on"]
+
+    def test_no_clip_model_without_embeddings(self, tmp_path):
+        """Too few embedded ratings: nothing to fit, so suggestions explore."""
+        ex = QuiltExplorer(str(tmp_path / "empty.json"))
+        assert ex.clip_model is None
+        assert ex.suggest_params()["_source"] == "explore"
 
 
 class TestPolicySnapshot:
@@ -299,16 +182,18 @@ class TestPolicySnapshot:
         assert "policy" in ex.rounds[1]
 
 
-class TestClipNofilterArm:
-    """R24 A/B: exploit suggestions split between CLIP-over-the-param-model's-
-    shortlist and CLIP-over-random-candidates, to measure the pre-filter."""
+class TestSuggest:
+    """Exploit picks: CLIP scores a random 30 of the palette-capped candidates.
 
-    class _Model:
-        def __init__(self, log):
-            self.log = log
+    This is exactly R24's winning nofilter arm (the param-model shortlist it
+    beat was removed), so it keeps that arm's _source label for pooling."""
+
+    class _Clip:
+        def __init__(self):
+            self.calls = []
 
         def predict_proba(self, x):
-            self.log.append(len(x))
+            self.calls.append(len(x))
             p = np.linspace(0.01, 0.99, len(x))
             return np.column_stack([1 - p, p])
 
@@ -322,36 +207,29 @@ class TestClipNofilterArm:
         monkeypatch.setitem(sys.modules, "clip_embed", fake_clip)
         monkeypatch.setattr("sampler._render_small", lambda params, block_size: b"")
         ex = QuiltExplorer(str(tmp_path / "r.json"))
-        ex.param_calls, ex.clip_calls = [], []
-        ex.model = self._Model(ex.param_calls)
-        ex.clip_model = self._Model(ex.clip_calls)
+        ex.clip_model = self._Clip()
         return ex
 
-    def test_nofilter_arm_skips_the_param_model(self, explorer, monkeypatch):
-        monkeypatch.setattr("sampler.CLIP_NOFILTER_PROB", 1.0)
+    def test_exploit_scores_a_random_shortlist_of_30(self, explorer):
         pick = explorer.suggest_params(explore_prob=0.0)
         assert pick["_source"] == "exploit_clip_nofilter"
-        assert explorer.param_calls == [], "param model must not shape the nofilter shortlist"
-        assert explorer.clip_calls == [30], "CLIP still scores a 30-candidate shortlist"
+        assert explorer.clip_model.calls == [30]
 
-    def test_filtered_arm_is_unchanged(self, explorer, monkeypatch):
-        monkeypatch.setattr("sampler.CLIP_NOFILTER_PROB", 0.0)
-        pick = explorer.suggest_params(explore_prob=0.0)
-        assert pick["_source"] == "exploit_clip"
-        assert len(explorer.param_calls) == 1 and explorer.param_calls[0] > 30
-        assert explorer.clip_calls == [30]
+    def test_exploit_never_returns_a_proven_winner(self, explorer):
+        """Proven winners are explore-only injections, never exploit picks."""
+        for _ in range(20):
+            pick = explorer.suggest_params(explore_prob=0.0)
+            assert pick["palette"] != "lavender fields" and pick["symmetry"] != "bargello"
 
-    def test_live_split_produces_both_arms(self, explorer):
-        sources = {explorer.suggest_params(explore_prob=0.0)["_source"] for _ in range(60)}
-        assert sources == {"exploit_clip", "exploit_clip_nofilter"}
+    def test_explore_prob_one_always_explores(self, explorer):
+        assert explorer.suggest_params(explore_prob=1.0)["_source"] == "explore"
+        assert explorer.clip_model.calls == []
 
-    def test_param_only_fallback_without_clip(self, explorer, monkeypatch):
-        """No CLIP model yet: there's nothing to A/B, so no nofilter arm."""
-        monkeypatch.setattr("sampler.CLIP_NOFILTER_PROB", 1.0)
+    def test_explores_until_a_clip_model_exists(self, explorer):
         explorer.clip_model = None
-        assert explorer.suggest_params(explore_prob=0.0)["_source"] == "exploit_param"
+        assert explorer.suggest_params(explore_prob=0.0)["_source"] == "explore"
 
-    def test_policy_records_the_split(self):
-        from sampler import CLIP_NOFILTER_PROB
-
-        assert current_policy()["clip_nofilter_prob"] == CLIP_NOFILTER_PROB
+    def test_policy_records_the_random_shortlist(self):
+        policy = current_policy()
+        assert policy["exploit_shortlist"] == "random"
+        assert "param_model" not in policy

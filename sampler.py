@@ -3,13 +3,15 @@
 Maintains a history of rated quilts, trains a model to predict preference,
 and samples new parameters balancing exploration vs exploitation.
 
-Two preference models run in parallel:
-  - param_model: GradientBoostingClassifier on parameter vectors (fast)
-  - clip_model:  LogisticRegression on CLIP image embeddings (visual)
+The preference model is a LogisticRegression on CLIP image embeddings of the
+rated quilts. suggest_params() either explores (fully random params) or
+renders a random shortlist of candidates, embeds them, and returns the one the
+CLIP model likes best.
 
-suggest_params() uses a two-stage pipeline:
-  1. param_model scores 200 random candidates → keep top 30
-  2. clip_model renders those 30 at low-res, embeds, picks best predicted
+A second, parameter-vector model (GradientBoosting on one-hot params) used to
+pre-filter that shortlist. The R24 A/B showed it added nothing (91.0% liked
+without it vs 90.4% with, p=1.00) while concentrating picks on one palette, so
+it was removed — see ANALYSIS.md, Round 24.
 """
 
 import json
@@ -19,7 +21,6 @@ import subprocess
 import time
 
 import numpy as np
-from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.linear_model import LogisticRegression
 
 from palettes import PALETTES
@@ -101,19 +102,14 @@ N_COLORS_WEIGHTS = {4: 40, 5: 45, 6: 15}
 
 # Chance suggest_params returns a fully random (explore) sample.
 EXPLORE_PROB = 0.3
-# Random candidates the param model scores per exploit suggestion.
+# Palette-capped random candidates generated per exploit suggestion; CLIP
+# scores a random _CLIP_TOP_N of them. (Exactly R24's tested nofilter arm.)
 _N_CANDIDATES = 200
-# A/B from R24: share of exploit suggestions where CLIP chooses among a random
-# _CLIP_TOP_N of the candidates instead of the param model's top _CLIP_TOP_N.
-# Both models were at or below chance on R23 walk-forward (param AUC 0.352),
-# so this measures whether the param pre-filter earns its keep: compare
-# exploit_clip vs exploit_clip_nofilter like rates within the same round.
-CLIP_NOFILTER_PROB = 0.5
 
 # max fraction of candidates that can use any single palette value
 MAX_PALETTE_FRAC = 0.10
 
-# Train both models on ratings from this round onward, not on all history.
+# Train the CLIP model on ratings from this round onward, not on all history.
 #
 # Rounds 1-13 come from a different generative space and a differently
 # calibrated rater: quilt stitching did not exist until R7, so R1-R6 (1914
@@ -135,6 +131,7 @@ MAX_PALETTE_FRAC = 0.10
 #   R14+             0.605        0.620   <- best for both
 #   R17+             0.603        0.580
 #
+# (The param model has since been removed; its column is kept as evidence.)
 # Re-derive this as rounds accumulate: the floor trades era-consistency against
 # sample size, and R17+ already loses to R14+ on CLIP for want of data.
 _TRAIN_FROM_ROUND = 14
@@ -146,11 +143,10 @@ _MIN_TRAINING_RATINGS = 200
 _CLIP_CANDIDATE_BLOCK_SIZE = 8
 # block_size used when embedding a rated quilt
 _CLIP_EMBED_BLOCK_SIZE = 16
-# number of top param-scored candidates to render+embed for CLIP scoring
+# number of candidates to render+embed for CLIP scoring per exploit suggestion
 _CLIP_TOP_N = 30
 
 
-_PARAM_MODEL_KWARGS = {"n_estimators": 50, "max_depth": 3, "random_state": 42}
 _CLIP_MODEL_KWARGS = {"max_iter": 1000, "C": 1.0, "random_state": 42}
 
 
@@ -234,85 +230,6 @@ def sample_random_params(rng=None, explore_only=False):
     }
 
 
-_NUMERIC_FEATURES = [
-    ("rows", 0),
-    ("chaos", 0.0),
-    ("n_patterns", 0),
-    ("n_colors", 0),
-    ("tile_size", 0),
-    ("tile_variation", 0.0),
-    ("mega_frac", 0.0),
-    ("plain_frac", 0.0),
-    ("wash_alpha", 0.0),
-    ("wonky", 0.0),
-    ("strippy", 0.0),
-]
-_FLAG_FEATURES = ["quilt_stitch", "palette_2", "palette_mix"]
-# Categorical params that get one-hot encoded, and the currently-samplable
-# values for each. build_feature_vocab widens these with whatever the ratings
-# history actually contains.
-_CATEGORICAL_BASE = {
-    "border_style": ["none"] + BORDER_STYLES,
-    "symmetry": list(SYMMETRY_MODES),
-    "palette": [p[0] for p in PALETTES],
-}
-
-
-def build_feature_vocab(ratings=()):
-    """Build the one-hot vocabulary, covering history as well as the live space.
-
-    _retrain fits on every rating ever recorded, so the encoder has to be able
-    to represent values that have since been retired from sampling — or deleted
-    from palettes.py outright, which is true of 25 palettes in the current
-    history. Encoding over only the samplable set collapsed all of them into a
-    single all-zero block: 27% of ratings landed there, and because values get
-    retired precisely for underperforming, that block carried a 27% like rate
-    against 65% for everything else. That taught the model a large, uniformly
-    negative bucket it can never meet again at prediction time, biased the base
-    rate the predicted probabilities are calibrated against, and made every
-    palette indicator partly encode "not retired" rather than "liked".
-
-    Values are sorted so the encoding depends only on the vocabulary's contents,
-    not on dict or file ordering.
-    """
-    vocab = {}
-    for key, base in _CATEGORICAL_BASE.items():
-        seen = {r["params"].get(key) for r in ratings}
-        vocab[key] = sorted(set(base) | {v for v in seen if v is not None})
-    return vocab
-
-
-def params_to_features(params, vocab=None):
-    """Convert a param dict to a numeric feature vector for the model.
-
-    `vocab` must be the same mapping used for every other row in a fit — pass
-    the one build_feature_vocab returned for the training set.
-    """
-    vocab = vocab if vocab is not None else build_feature_vocab()
-    features = [params.get(name, default) for name, default in _NUMERIC_FEATURES]
-    features += [1.0 if params.get(name) else 0.0 for name in _FLAG_FEATURES]
-    for key in _CATEGORICAL_BASE:
-        # border_style is the one categorical whose "off" state is a real value
-        # rather than an absent key, so normalise None to it.
-        actual = params.get(key)
-        if key == "border_style" and actual is None:
-            actual = "none"
-        features += [1.0 if actual == v else 0.0 for v in vocab[key]]
-    return np.array(features, dtype=np.float64)
-
-
-_CATEGORICAL_PREFIXES = {"border_style": "brd", "symmetry": "sym", "palette": "pal"}
-
-
-def feature_names(vocab=None):
-    """Names matching params_to_features' output, for reporting importances."""
-    vocab = vocab if vocab is not None else build_feature_vocab()
-    names = [name for name, _default in _NUMERIC_FEATURES] + list(_FLAG_FEATURES)
-    for key in _CATEGORICAL_BASE:
-        names += [f"{_CATEGORICAL_PREFIXES[key]}_{v}" for v in vocab[key]]
-    return names
-
-
 def current_policy():
     """Snapshot of everything that shapes what the scorer shows, as plain JSON.
 
@@ -333,7 +250,7 @@ def current_policy():
         "proven_palettes": dict(_PROVEN_PALETTES),
         "proven_symmetries": dict(_PROVEN_SYMMETRIES),
         "explore_prob": EXPLORE_PROB,
-        "clip_nofilter_prob": CLIP_NOFILTER_PROB,
+        "exploit_shortlist": "random",
         "n_candidates": _N_CANDIDATES,
         "max_palette_frac": MAX_PALETTE_FRAC,
         "clip_top_n": _CLIP_TOP_N,
@@ -341,7 +258,6 @@ def current_policy():
         "clip_embed_block_size": _CLIP_EMBED_BLOCK_SIZE,
         "train_from_round": _TRAIN_FROM_ROUND,
         "min_training_ratings": _MIN_TRAINING_RATINGS,
-        "param_model": dict(_PARAM_MODEL_KWARGS),
         "clip_model": dict(_CLIP_MODEL_KWARGS),
     }
 
@@ -388,12 +304,7 @@ class QuiltExplorer:  # pylint: disable=too-many-instance-attributes
         self.embeddings = np.zeros((0, 512), dtype=np.float32)
         self.rounds = []
         self._load()
-        self.model = None  # param model
         self.clip_model = None  # CLIP embedding model
-        # One-hot vocabulary for the current fit. Rebuilt on every retrain so a
-        # newly-seen palette widens it, and held on the instance so scoring a
-        # candidate encodes identically to how the training rows were encoded.
-        self.vocab = build_feature_vocab()
         self._retrain()
 
     def _load(self):
@@ -481,56 +392,40 @@ class QuiltExplorer:  # pylint: disable=too-many-instance-attributes
         return start
 
     def _retrain(self):
-        """Retrain both preference models on the current training window."""
-        start = self.training_start()
-        window = self.ratings[start:]
-        # Vocabulary describes the training distribution, so values that only
-        # appear before the window don't occupy permanently-zero columns.
-        self.vocab = build_feature_vocab(window)
-        if len(window) < 10:
-            self.model = None
-            self.clip_model = None
-            return
-        features = np.array([params_to_features(r["params"], self.vocab) for r in window])
-        y = np.array([1 if r["liked"] else 0 for r in window])
-        if len(set(y)) < 2:
-            self.model = None
-            self.clip_model = None
-            return
-
-        self.model = GradientBoostingClassifier(**_PARAM_MODEL_KWARGS)
-        self.model.fit(features, y)
-
-        # Train CLIP model on ratings that have valid (non-zero) embeddings.
-        # Reset first so a prior fit is dropped if the CLIP data no longer
-        # qualifies (otherwise suggest_params keeps using a stale model).
+        """Retrain the CLIP preference model on the current training window."""
+        # Reset first so a prior fit is dropped if the data no longer qualifies
+        # (otherwise suggest_params keeps using a stale model).
         self.clip_model = None
-        # Clamp to the aligned prefix in case embeddings and ratings ever differ.
+        start = self.training_start()
+        y = np.array([1 if r["liked"] else 0 for r in self.ratings[start:]])
+        # Train on ratings that have valid (non-zero) embeddings, clamped to the
+        # aligned prefix in case embeddings and ratings ever differ.
         n_emb = min(len(self.embeddings) - start, len(y))
-        if n_emb >= 10:
-            emb = self.embeddings[start : start + n_emb]
-            y_emb = y[:n_emb]
-            valid = np.linalg.norm(emb, axis=1) > 0
-            x_valid = emb[valid]
-            y_valid = y_emb[valid]
-            if len(x_valid) >= 10 and len(set(y_valid)) >= 2:
-                self.clip_model = LogisticRegression(**_CLIP_MODEL_KWARGS)
-                self.clip_model.fit(x_valid, y_valid)
+        if n_emb < 10:
+            return
+        emb = self.embeddings[start : start + n_emb]
+        valid = np.linalg.norm(emb, axis=1) > 0
+        x_valid = emb[valid]
+        y_valid = y[:n_emb][valid]
+        if len(x_valid) >= 10 and len(set(y_valid)) >= 2:
+            self.clip_model = LogisticRegression(**_CLIP_MODEL_KWARGS)
+            self.clip_model.fit(x_valid, y_valid)
 
-    def suggest_params(self, explore_prob=EXPLORE_PROB):  # pylint: disable=too-many-locals
+    def suggest_params(self, explore_prob=EXPLORE_PROB):
         """Suggest a new parameter set.
 
-        With probability explore_prob, returns fully random params.
-        Otherwise uses a two-stage pipeline:
-          1. param_model pre-filters 200 candidates → top _CLIP_TOP_N
-          2. clip_model renders+embeds top candidates, picks highest predicted
-        With probability CLIP_NOFILTER_PROB, stage 1 is replaced by a random
-        _CLIP_TOP_N of the same candidates (_source "exploit_clip_nofilter").
-        Falls back to param-only if clip_model is not yet active.
+        With probability explore_prob — and always, until there is a CLIP model
+        to exploit with — returns fully random params. Otherwise renders and
+        embeds a random _CLIP_TOP_N of _N_CANDIDATES palette-capped candidates
+        and returns the one the CLIP model likes best.
+
+        The _source "exploit_clip_nofilter" is R24's A/B label for exactly this
+        procedure, kept so R24's arm and later rounds pool directly; historical
+        "exploit_clip" rows came from the removed param-model shortlist.
         """
         rng = random.Random()
 
-        if self.model is None or rng.random() < explore_prob:
+        if self.clip_model is None or rng.random() < explore_prob:
             params = sample_random_params(rng)
             params["_source"] = "explore"
             return params
@@ -548,33 +443,13 @@ class QuiltExplorer:  # pylint: disable=too-many-instance-attributes
                 filtered.append(c)
         candidates = filtered if filtered else candidates
 
-        # A/B arm: CLIP picks from random candidates, skipping the param model,
-        # to measure whether its pre-filter helps at all (see CLIP_NOFILTER_PROB).
-        if self.clip_model is not None and rng.random() < CLIP_NOFILTER_PROB:
-            top_candidates = rng.sample(candidates, min(_CLIP_TOP_N, len(candidates)))
-            source = "exploit_clip_nofilter"
-        else:
-            # stage 1: param model scores all candidates
-            features = np.array([params_to_features(c, self.vocab) for c in candidates])
-            param_probs = self.model.predict_proba(features)[:, 1]
-
-            if self.clip_model is None:
-                pick = candidates[int(np.argmax(param_probs))]
-                pick["_source"] = "exploit_param"
-                return pick
-
-            top_indices = np.argsort(param_probs)[-_CLIP_TOP_N:]
-            top_candidates = [candidates[i] for i in top_indices]
-            source = "exploit_clip"
-
-        # stage 2: render + embed the shortlist, pick best by CLIP model
-        png_list = [_render_small(c, block_size=_CLIP_CANDIDATE_BLOCK_SIZE) for c in top_candidates]
+        shortlist = rng.sample(candidates, min(_CLIP_TOP_N, len(candidates)))
+        png_list = [_render_small(c, block_size=_CLIP_CANDIDATE_BLOCK_SIZE) for c in shortlist]
         from clip_embed import embed_images  # pylint: disable=import-outside-toplevel
 
-        embs = embed_images(png_list)
-        clip_probs = self.clip_model.predict_proba(embs)[:, 1]
-        pick = top_candidates[int(np.argmax(clip_probs))]
-        pick["_source"] = source
+        clip_probs = self.clip_model.predict_proba(embed_images(png_list))[:, 1]
+        pick = shortlist[int(np.argmax(clip_probs))]
+        pick["_source"] = "exploit_clip_nofilter"
         return pick
 
     def stats(self):
@@ -587,7 +462,6 @@ class QuiltExplorer:  # pylint: disable=too-many-instance-attributes
             "total": len(self.ratings),
             "liked": liked,
             "disliked": len(self.ratings) - liked,
-            "model_active": self.model is not None,
             "clip_model_active": self.clip_model is not None,
             "embeddings_count": len(self.embeddings),
             "trained_on": len(self.ratings) - start,
@@ -605,11 +479,3 @@ class QuiltExplorer:  # pylint: disable=too-many-instance-attributes
         else:
             result["round"] = None
         return result
-
-    def feature_importance(self):
-        """Return feature importances if param model is trained."""
-        if self.model is None:
-            return None
-        names = feature_names(self.vocab)
-        importances = self.model.feature_importances_
-        return sorted(zip(names, importances), key=lambda x: -x[1])
