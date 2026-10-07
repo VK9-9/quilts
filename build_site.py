@@ -289,7 +289,10 @@ def generate_variations(symmetry, members, n, rng):
     # that renders as a different quilt than the PNG filed under that ID.
     row_lo = min(max(ROWS_RANGE[0], min(p["rows"] for p in members)), ROWS_RANGE[1])  # pylint: disable=nested-min-max
     row_hi = min(max(ROWS_RANGE[0], max(p["rows"] for p in members)), ROWS_RANGE[1])  # pylint: disable=nested-min-max
-    encodable_palettes = list(_ENCODABLE_PALETTES)
+    # sorted, not list(): a set of strings iterates in an order that changes
+    # with Python's per-process hash seed, so rng.choice over it picked
+    # different palettes on every run and --seed couldn't reproduce a gallery.
+    encodable_palettes = sorted(_ENCODABLE_PALETTES)
 
     variations = []
     for _ in range(n):

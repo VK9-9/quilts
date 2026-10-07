@@ -198,3 +198,31 @@ class TestMisc:
     def test_params_summary_includes_optional_fields_only_when_set(self):
         assert "mega_frac" not in params_summary(_params())
         assert "mega_frac" in params_summary(_params(mega_frac=0.15))
+
+
+def test_variations_reproducible_across_processes():
+    """Same --seed, same gallery, in any process. The encodable-palette pool was
+    a set of strings, whose iteration order follows Python's per-process hash
+    seed, so two builds with --seed 42 chose different palettes."""
+    import os
+    import subprocess
+    import sys
+
+    code = (
+        "import random, build_site as b;"
+        "m = [{'symmetry': 'partial', 'chaos': 0.3, 'rows': 16, 'tile_size': 6}];"
+        "print([v['palette'] for v in b.generate_variations('partial', m, 12, random.Random(42))])"
+    )
+    here = os.path.dirname(os.path.abspath(__file__))
+    outputs = {
+        subprocess.run(
+            [sys.executable, "-c", code],
+            capture_output=True,
+            text=True,
+            cwd=here,
+            env={**os.environ, "PYTHONHASHSEED": seed},
+            check=True,
+        ).stdout
+        for seed in ("1", "2", "3")
+    }
+    assert len(outputs) == 1, f"palette picks vary with the hash seed: {outputs}"
