@@ -94,3 +94,16 @@ def test_drop_palettes_all_still_exist():
     defined = {name for name, _colors in PALETTES}
     stale = sampler._DROP_PALETTES - defined
     assert not stale, f"_DROP_PALETTES names palettes that no longer exist: {sorted(stale)}"
+
+
+def test_samplable_values_are_encodable():
+    """Adding a palette to palettes.py makes it samplable and scorable at once,
+    but it can't appear in a quilt ID (or the generator dropdown) until it is
+    appended to _V2_PALETTES. The scorer's "open in generator" link then
+    silently disappears for every quilt using it. Catch the forgotten append."""
+    unencodable = sorted(
+        (set(sampler.PALETTE_NAMES) | set(sampler._PROVEN_PALETTES)) - set(_V2_PALETTES)
+    )
+    assert not unencodable, f"samplable palettes missing from _V2_PALETTES: {unencodable}"
+    bad_sym = sorted(set(sampler.SYMMETRY_NAMES) - set(_V2_SYMMETRY))
+    assert not bad_sym, f"samplable symmetries missing from _V2_SYMMETRY: {bad_sym}"
