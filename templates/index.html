@@ -68,28 +68,6 @@
     text-align: center;
     margin-bottom: 15px;
   }
-  .importance {
-    font-size: 0.8em;
-    color: #777;
-    max-width: 500px;
-    margin-top: 10px;
-  }
-  .importance h3 { color: #999; margin-bottom: 5px; }
-  .importance .bar-row {
-    display: flex;
-    align-items: center;
-    margin: 2px 0;
-  }
-  .importance .bar-label {
-    width: 140px;
-    text-align: right;
-    padding-right: 8px;
-  }
-  .importance .bar {
-    height: 12px;
-    background: #4a7a4a;
-    border-radius: 2px;
-  }
   .shortcut { font-size: 0.75em; color: #555; }
   .gen-link {
     font-size: 0.85em;
@@ -130,7 +108,6 @@
   <div class="shortcut">Y / N / S &nbsp; or &nbsp; ← / →</div>
   <a class="gen-link" id="gen-link" href="#" target="_blank" rel="noopener">Open in generator &#8599;</a>
   <div class="params" id="params"></div>
-  <div class="importance" id="importance"></div>
 
 <script>
 let currentParams = null;
@@ -169,7 +146,6 @@ async function loadNext() {
   }
 
   updateStats(data.stats);
-  updateImportance(data.importance);
 }
 
 async function rate(liked) {
@@ -205,29 +181,11 @@ function updateStats(stats) {
     html += `<b>${r.label}</b>: ${r.rated} rated (${rPct}% liked) &mdash; `;
   }
   html += `All: ${stats.total} (${pct}% liked)`;
-  if (stats.model_active) {
-    html += ' &mdash; <span class="model-active">param model</span>';
-  }
   if (stats.clip_model_active) {
-    html += ' + <span class="model-active">CLIP model</span>';
+    html += ' &mdash; <span class="model-active">CLIP model</span>';
   }
   html += ' <button class="round-btn" onclick="startRound()">New Round</button>';
   document.getElementById('stats').innerHTML = html;
-}
-
-function updateImportance(imp) {
-  const el = document.getElementById('importance');
-  if (!imp || imp.length === 0) { el.innerHTML = ''; return; }
-  const maxVal = imp[0][1];
-  let html = '<h3>Feature importance</h3>';
-  for (const [name, val] of imp.slice(0, 8)) {
-    const w = Math.round((val / maxVal) * 200);
-    html += `<div class="bar-row">
-      <span class="bar-label">${name}</span>
-      <div class="bar" style="width:${w}px"></div>
-    </div>`;
-  }
-  el.innerHTML = html;
 }
 
 document.addEventListener('keydown', (e) => {

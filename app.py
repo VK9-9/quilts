@@ -60,7 +60,6 @@ def next_quilt():
         payload = {
             "params": params,
             "stats": explorer.stats(),
-            "importance": explorer.feature_importance(),
             "generator_url": _generator_link(params),
         }
     return jsonify(payload)
