@@ -95,14 +95,22 @@ class TestBucketing:
             _params(symmetry="stripe", chaos=0.1),
         ]
         buckets = bucket_families(liked, 10)
-        keys = {(sym, band) for sym, band, _ in buckets}
+        keys = {(sym, band) for sym, band, _, _ in buckets}
         assert keys == {("partial", "calm"), ("partial", "wild"), ("stripe", "calm")}
 
     def test_ranked_by_size(self):
         liked = [_params(symmetry="partial", chaos=0.1)] * 3
         liked += [_params(symmetry="stripe", chaos=0.1)]
-        sizes = [len(m) for _, _, m in bucket_families(liked, 10)]
+        sizes = [len(m) for _, _, m, _ in bucket_families(liked, 10)]
         assert sizes == sorted(sizes, reverse=True)
+
+    def test_indices_point_back_at_members(self):
+        """define_families looks up CLIP embeddings by these indices."""
+        liked = [
+            _params(symmetry=s, chaos=c) for s in ("partial", "stripe") for c in (0.1, 0.8)
+        ] * 2
+        for _sym, _band, members, indices in bucket_families(liked, 10):
+            assert [liked[i] for i in indices] == members
 
     def test_limits_to_n_families(self):
         liked = [_params(symmetry=s, chaos=c) for s in _V2_SYMMETRY for c in (0.1, 0.8)]

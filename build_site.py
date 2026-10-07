@@ -167,18 +167,20 @@ def _chaos_band(chaos):
 def bucket_families(liked, n_families):
     """Group liked quilts by (symmetry, chaos_band) and return top n_families buckets.
 
-    Returns list of (symmetry, chaos_band, members) sorted by bucket size descending.
+    Returns list of (symmetry, chaos_band, members, indices) sorted by bucket
+    size descending; indices[k] is members[k]'s position in `liked`, for
+    looking up its CLIP embedding. The grouping key lives only here.
     Palette is NOT part of the grouping key so variations can show diverse colors.
     """
     buckets = {}
-    for p in liked:
+    for i, p in enumerate(liked):
         key = (p["symmetry"], _chaos_band(p["chaos"]))
-        buckets.setdefault(key, []).append(p)
+        buckets.setdefault(key, []).append(i)
     ranked = sorted(buckets.items(), key=lambda kv: -len(kv[1]))
-    result = []
-    for (sym, band), members in ranked[:n_families]:
-        result.append((sym, band, members))
-    return result
+    return [
+        (sym, band, [liked[i] for i in indices], indices)
+        for (sym, band), indices in ranked[:n_families]
+    ]
 
 
 def representative(members, clip_embeddings=None):
@@ -325,21 +327,17 @@ def define_families(
     name_overrides = name_overrides or {}
     n_clip = len(clip_embeddings) if clip_embeddings is not None else 0
 
-    for sym, _band, members in buckets:
-        auto = unique_name(family_name(_band, members), names_used)
+    for sym, band, members, indices in buckets:
+        auto = unique_name(family_name(band, members), names_used)
         names_used.add(auto)
         slug = unique_slug(auto, slugs_used)
         slugs_used.add(slug)
         name = name_overrides.get(slug, auto)
 
-        # find indices of these members in the liked list for CLIP lookup
+        # members' CLIP embeddings, by their positions in `liked`
         member_clip = None
         if n_clip > 0:
-            member_indices = [
-                i
-                for i, p in enumerate(liked)
-                if p["symmetry"] == sym and _chaos_band(p["chaos"]) == _band and i < n_clip
-            ]
+            member_indices = [i for i in indices if i < n_clip]
             if len(member_indices) >= 3:
                 member_clip = clip_embeddings[member_indices]
                 clip_members = [liked[i] for i in member_indices]
