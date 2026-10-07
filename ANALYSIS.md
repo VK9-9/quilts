@@ -2526,3 +2526,67 @@ Not yet applied — pending review. One knob per round, per the R22 plan.
    anything. This is a within-round comparison, so it doesn't confound #1.
 3. Hold proven-winner injection and the palette-concentration question for
    R24; both are leads, not conclusions.
+
+## Round 24 — ratings 5529-5749
+
+**Records:** 5529-5749 (221 ratings; the target was fixed at **200 before
+scoring**, so the A/B verdict below uses the first 200 and all 221 are shown as
+a check)
+**Overall:** 183/200 liked (91.5%); all 221: 203/221 (91.9%) — new high
+**Params:** identical to R23 except one A/B (policy snapshot, commit c00b99a):
+half of exploit suggestions skip the param model and let CLIP choose from 30
+*random* candidates (`exploit_clip_nofilter`) instead of the param model's
+top 30 (`exploit_clip`). Same 200-candidate pool and palette cap in both arms.
+
+### A/B: does the param model's pre-filter help?
+
+| arm | first 200 | all 221 |
+|-----|-----------|---------|
+| exploit_clip (filtered) | 66/73 (90.4%) | 74/81 (91.4%) |
+| exploit_clip_nofilter | 61/67 (91.0%) | 67/73 (91.8%) |
+| explore (random) | 56/60 (93.3%) | 62/67 (92.5%) |
+
+**nofilter − filtered = +0.6pp, 95% CI −10 to +11pp, Fisher p=1.00.**
+
+Pre-registered rule: nofilter level or better → supports removing the param
+model. It is level. The interval is wide (~70 per arm can only rule out large
+harms), but the point estimate is zero and the walk-forward AUCs agree (R23:
+param 0.352, at or below chance for three rounds).
+
+Random exploration scored at least as well as both model arms. At a ~92% like
+rate the rater likes nearly everything the sampler can produce, so there is
+little room left for any model to add like-rate.
+
+### The param filter is what concentrated palettes
+
+| arm | distinct palettes | most common |
+|-----|-------------------|-------------|
+| exploit_clip (filtered) | 13 | tide pool 29/73 (40%) |
+| exploit_clip_nofilter | 17 | twilight 11/67 (16%) |
+
+The one-palette-per-round collapse seen in R22 (wisteria) and R23 (tide pool)
+comes from the param model's shortlist, not from CLIP. Removing the filter
+costs no like-rate and roughly triples palette diversity among exploit picks —
+so every rating teaches the model more.
+
+### R23's leads, re-checked
+
+- **Proven winners recovered:** bargello 29/30 (97%), lavender fields 26/27
+  (96%), against 91% for everything else (both p=0.48). R23's dip (69%, 79%)
+  did not repeat — read it as noise or short-term fatigue. No action.
+- **plain_frac:** 16/18 (89%) vs 167/182 (92%), −3pp, p=0.65. Same direction
+  for a fifth round but small; still a candidate knob, not urgent.
+
+By symmetry: bargello 29/30, columns 59/64, partial 35/38, stripe 24/27,
+rotational 36/41. ocean breeze took 5 of the 17 dislikes.
+
+### Recommended changes after Round 24
+
+Pending review.
+
+1. **Remove the param model.** Make CLIP-over-random-candidates the exploit
+   path, and delete the GradientBoosting stage with its feature-vocabulary
+   machinery (`build_feature_vocab`, `params_to_features`, the training
+   window for it). Costs no like-rate, removes the code behind the project's
+   worst model bug (the 27% all-zero block), and fixes palette concentration.
+2. Keep everything else fixed for R25 so the change is measured on its own.
