@@ -170,6 +170,13 @@ _V2_BORDER = ["none", "solid", "checkerboard", "piano_keys"]  # 2 bits (same as 
 # 0 = no stitch; 1-4 = style index+1
 _V2_STITCH = ["grid", "diagonal", "sashiko_wave", "sashiko_asanoha"]  # 3 bits → max 7 styles
 
+# Public names for the vocabularies every V2+ ID indexes into. Other modules
+# (the generator's dropdowns, the gallery's encodability check) import these;
+# the _V2_* names stay because the frozen schemas are defined in their terms.
+ENCODABLE_PALETTES = _V2_PALETTES
+ENCODABLE_SYMMETRIES = _V2_SYMMETRY
+ENCODABLE_STITCHES = _V2_STITCH
+
 # wonky: 0=off, 1=0.02, 2=0.04, 3=0.06
 _V2_WONKY = [0.0, 0.02, 0.04, 0.06]  # 2 bits
 

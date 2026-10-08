@@ -19,12 +19,12 @@ sys.path.insert(0, os.path.dirname(__file__))
 from flask import Flask, render_template, request, Response, has_request_context
 from quilt import render_quilt, BORDER_STYLES as _QUILT_BORDER_STYLES
 from quilt_id import (
+    ENCODABLE_PALETTES,
     ENCODABLE_STEP,
+    ENCODABLE_STITCHES,
+    ENCODABLE_SYMMETRIES,
     QUILT_SIZE_INCHES,
     ROWS_RANGE,
-    _V2_PALETTES,
-    _V2_STITCH,
-    _V2_SYMMETRY,
     cols_for,
     decode,
     encode,
@@ -77,10 +77,10 @@ def _inject_build_info():
     }
 
 
-PALETTE_NAMES = _V2_PALETTES
-SYMMETRY_NAMES = _V2_SYMMETRY
+PALETTE_NAMES = ENCODABLE_PALETTES
+SYMMETRY_NAMES = ENCODABLE_SYMMETRIES
 BORDER_STYLES = ["none"] + _QUILT_BORDER_STYLES
-STITCH_STYLES = ["none"] + _V2_STITCH
+STITCH_STYLES = ["none"] + ENCODABLE_STITCHES
 
 # ---------------------------------------------------------------------------
 # Preset families — shown as cards on the landing page.

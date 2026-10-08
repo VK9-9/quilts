@@ -20,12 +20,12 @@ from jinja2 import Environment, BaseLoader
 from sampler import sample_random_params, SYMMETRY_NAMES
 from render_params import params_to_render_kwargs
 from quilt import render_quilt
-from quilt_id import encode, decode, ROWS_RANGE, _V2_PALETTES, _V2_SYMMETRY
+from quilt_id import ENCODABLE_PALETTES, ENCODABLE_SYMMETRIES, ROWS_RANGE, decode, encode
 
 from palettes import PALETTES as _ALL_PALETTES
 
 _RENDERABLE_PALETTES = {p[0] for p in _ALL_PALETTES}
-_ENCODABLE_PALETTES = set(_V2_PALETTES) & _RENDERABLE_PALETTES
+_ENCODABLE_PALETTES = set(ENCODABLE_PALETTES) & _RENDERABLE_PALETTES
 
 
 def nearest_square(n):
@@ -65,7 +65,7 @@ def _encodable(params):
     """
     if params.get("palette") not in _ENCODABLE_PALETTES:
         return False
-    if params.get("symmetry") not in _V2_SYMMETRY:
+    if params.get("symmetry") not in ENCODABLE_SYMMETRIES:
         return False
     try:
         decoded = decode(encode(params))
