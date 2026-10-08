@@ -404,3 +404,22 @@ class TestPresets:
                     f"Preset {key}: card renders {control}="
                     f"{thumb_params[control]} but /create opens at {raw}"
                 )
+
+
+def test_off_grid_query_values_render_what_the_id_describes(client):
+    """A hand-edited URL can carry more precision than a quilt ID stores; the
+    server snaps it, so the rendered quilt and its X-Quilt-Id agree exactly."""
+    import generator
+    from quilt_id import ENCODABLE_STEP, decode, encode
+
+    query = (
+        "seed=42&symmetry=rotational&palette=ocean+breeze&rows=16"
+        "&wonky=0.0371&plain_frac=0.153&mega_frac=0.077&strippy=0.234"
+        "&wash_alpha=0.0555&chaos=0.333&tile_variation=0.1234"
+    )
+    with generator.app.test_request_context("/render?" + query):
+        params = generator._params_from_request()  # pylint: disable=protected-access
+    assert params["wonky"] == 0.037 and params["plain_frac"] == 0.15
+    decoded = decode(client.get("/render?" + query).headers["X-Quilt-Id"])
+    assert {f: decoded[f] for f in ENCODABLE_STEP} == {f: params[f] for f in ENCODABLE_STEP}
+    assert encode(params) == encode(decoded)

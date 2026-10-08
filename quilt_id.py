@@ -499,13 +499,26 @@ def _decode_v2_v3_v4(n, schema):
     }
 
 
+def _from_steps(field, steps):
+    """A V5 fractional field's value from its stored integer step count."""
+    scale = _V5_FINE[field][1]
+    return round(steps / scale, len(str(scale)) - 1)
+
+
+def snap(field, value):
+    """`value` rounded to what a V5 ID stores for `field` — exactly the value
+    decode() returns, so a quilt rendered from the snapped value matches its ID.
+
+    >>> snap("wonky", 0.0371), snap("plain_frac", 0.153)
+    (0.037, 0.15)
+    """
+    return _from_steps(field, round(value * _V5_FINE[field][1]))
+
+
 def _decode_v5(n):
     """Decoder for V5: fractional fields are exact multiples of their step."""
     raw = _unpack(n, _V5_SCHEMA)
-    fine = {
-        field: round(raw[field] / scale, len(str(scale)) - 1)
-        for field, (_bits, scale) in _V5_FINE.items()
-    }
+    fine = {field: _from_steps(field, raw[field]) for field in _V5_FINE}
     return {**_decode_shared(raw), **fine}
 
 

@@ -18,7 +18,16 @@ sys.path.insert(0, os.path.dirname(__file__))
 # pylint: disable=wrong-import-position
 from flask import Flask, render_template, request, Response, has_request_context
 from quilt import render_quilt, BORDER_STYLES as _QUILT_BORDER_STYLES
-from quilt_id import encode, decode, ROWS_RANGE, _V2_PALETTES, _V2_SYMMETRY, _V2_STITCH
+from quilt_id import (
+    ENCODABLE_STEP,
+    ROWS_RANGE,
+    _V2_PALETTES,
+    _V2_STITCH,
+    _V2_SYMMETRY,
+    decode,
+    encode,
+    snap,
+)
 from render_params import params_to_render_kwargs
 # pylint: enable=wrong-import-position
 
@@ -335,6 +344,10 @@ def _params_from_request(defaults=None):
         lo_hi = _PARAM_BOUNDS.get(key)
         if lo_hi is not None and isinstance(v, (int, float)):
             v = max(lo_hi[0], min(v, lo_hi[1]))
+        # Fractional controls render at exactly what their quilt ID stores, so
+        # a hand-edited ?wonky=0.0371 can't draw a quilt its ID doesn't describe.
+        if key in ENCODABLE_STEP and isinstance(v, (int, float)):
+            v = snap(key, v)
         return v
 
     def _choice(key, valid):
