@@ -23,18 +23,25 @@ Version 2: 80 bits → 14 base58 characters (FROZEN)
 Version 3: 81 bits → 14 base58 characters (FROZEN)
     Same as V2 but n_colors expanded from 1 bit to 2 bits (supports 3-6 colors).
 
-Version 4: 102 bits → 18 base58 characters (current)
+Version 4: 102 bits → 18 base58 characters (FROZEN)
     Same as V3 plus strippy(4) wash_alpha(4) palette_2(5) palette_mix(5)
     quilt_size(3).
     Those five are exposed as controls in the generator UI and all change what
     is rendered, but no earlier version carried any of them — so two visibly
     different quilts could share one ID, and the scorer's "open in generator"
-    link resolved to a different quilt than the one being rated. Versions are
-    told apart by length (13/14/18), so V4 needs no probe.
+    link resolved to a different quilt than the one being rated.
+
+Version 5: 115 bits → 20 base58 characters (current)
+    Same fields as V4, but every fractional control (chaos, tile_variation,
+    mega_frac, plain_frac, wonky, strippy, wash_alpha) is stored as an exact
+    multiple of a fine step (0.01; 0.001 for wonky) — see _V5_FINE. V4's
+    coarse steps couldn't hold many values the sliders and sampler produce, so
+    24% of R24's rated quilts reopened as a different quilt. Versions are told
+    apart by length (13/14/18/20), so no probe is needed.
 
 Usage:
     from quilt_id import encode, decode
-    qid = encode(params)          # e.g. "3xKm7pRt2nWqA4Bc9d"
+    qid = encode(params)          # e.g. "3xKm7pRt2nWqA4Bc9dEf"
     params = decode(qid)
 """
 
@@ -215,7 +222,7 @@ _V3_LEN = 14  # ceil(81 / log2(58)) = 14 chars
 
 
 # ---------------------------------------------------------------------------
-# Version 4 schema — current. Adds the five render-affecting controls the
+# Version 4 schema — FROZEN. Adds the five render-affecting controls the
 # generator UI exposes but no earlier version encoded.
 # ---------------------------------------------------------------------------
 
@@ -234,6 +241,60 @@ _V4_SCHEMA = _V3_SCHEMA + [
 
 _V4_TOTAL_BITS = sum(bits for _, bits in _V4_SCHEMA)  # 102
 _V4_LEN = 18  # ceil(102 / log2(58)) = 18 chars
+
+
+# ---------------------------------------------------------------------------
+# Version 5 schema — current. Same fields as V4, but every fractional control
+# is stored as an exact integer multiple of a fine step instead of V4's coarse
+# quantization. V4 couldn't represent many values the generator sliders and
+# the sampler actually produce (wonky 0.01/0.03, plain 0.05/0.15, strippy 0.23,
+# wash 0.05, ...): 24% of R24's rated quilts opened in the generator as a
+# different quilt than the one rated.
+# ---------------------------------------------------------------------------
+
+# field -> (bits, scale): stored as round(value * scale), so the step is
+# 1/scale and the largest encodable value is (2**bits - 1) / scale. This is the
+# single source for what a fractional control can take; generator snaps query
+# values to it and its tests check every slider position against it.
+_V5_FINE = {
+    "chaos": (7, 100),  # 0.00–1.27
+    "tile_variation": (6, 100),  # 0.00–0.63
+    "mega_frac": (6, 100),  # 0.00–0.63
+    "plain_frac": (6, 100),  # 0.00–0.63
+    "wonky": (7, 1000),  # 0.000–0.127
+    "strippy": (6, 100),  # 0.00–0.63
+    "wash_alpha": (5, 100),  # 0.00–0.31
+}
+
+# Exact step and largest encodable value for each fractional control.
+ENCODABLE_STEP = {field: 1 / scale for field, (_bits, scale) in _V5_FINE.items()}
+ENCODABLE_MAX = {field: ((1 << bits) - 1) / scale for field, (bits, scale) in _V5_FINE.items()}
+
+_V5_SCHEMA = [
+    ("version", 4),
+    ("seed", 31),
+    ("palette", 5),
+    ("symmetry", 4),
+    ("chaos", _V5_FINE["chaos"][0]),
+    ("rows", 3),
+    ("n_patterns", 1),
+    ("n_colors", 2),
+    ("tile_size", 4),
+    ("tile_variation", _V5_FINE["tile_variation"][0]),
+    ("border_style", 2),
+    ("mega_frac", _V5_FINE["mega_frac"][0]),
+    ("plain_frac", _V5_FINE["plain_frac"][0]),
+    ("quilt_stitch", 3),
+    ("wonky", _V5_FINE["wonky"][0]),
+    ("strippy", _V5_FINE["strippy"][0]),
+    ("wash_alpha", _V5_FINE["wash_alpha"][0]),
+    ("palette_2", 5),
+    ("palette_mix", 5),
+    ("quilt_size", 3),
+]
+
+_V5_TOTAL_BITS = sum(bits for _, bits in _V5_SCHEMA)  # 115
+_V5_LEN = 20  # ceil(115 / log2(58)) = 20 chars
 
 # rows is a 3-bit field stored as rows-14, and _pack saturates rather than
 # raising — so anything generating params outside this range gets an ID that
@@ -292,8 +353,25 @@ def _palette_ref(name):
     return (_V2_PALETTES.index(name) + 1) if name in _V2_PALETTES else 0
 
 
+def _shared_refs(params):
+    """Index fields stored the same way in V4 and V5: border, stitch, size."""
+    border = params.get("border_style", "none") or "none"
+    stitch = params.get("quilt_stitch") or None
+    stitch_idx = (_V2_STITCH.index(stitch) + 1) if stitch in _V2_STITCH else 0
+    size = params.get("quilt_size") or _V4_DEFAULT_QUILT_SIZE
+    if size not in _V4_QUILT_SIZES:
+        size = _V4_DEFAULT_QUILT_SIZE
+    return _V2_BORDER.index(border), stitch_idx, _V4_QUILT_SIZES.index(size)
+
+
+def _fine(field, value):
+    """A V5 fractional field: (value as an exact multiple of its step, bits)."""
+    bits, scale = _V5_FINE[field]
+    return (round(value * scale), bits)
+
+
 def encode(params):
-    """Encode a params dict to an 18-character quilt ID string (version 4).
+    """Encode a params dict to a 20-character quilt ID string (version 5).
 
     >>> p = {'seed': 12345, 'palette': 'ocean breeze', 'symmetry': 'bargello',
     ...      'chaos': 0.3, 'rows': 16, 'cols': 16, 'n_patterns': 2,
@@ -302,23 +380,19 @@ def encode(params):
     ...      'quilt_stitch': 'sashiko_wave', 'wonky': 0.04}
     >>> qid = encode(p)
     >>> len(qid)
-    18
-    >>> decode(qid)['seed']
-    12345
-    >>> decode(qid)['symmetry']
-    'bargello'
-    >>> decode(qid)['quilt_stitch']
-    'sashiko_wave'
-    >>> abs(decode(qid)['wonky'] - 0.04) < 0.01
-    True
+    20
+    >>> decode(qid)['seed'], decode(qid)['symmetry'], decode(qid)['quilt_stitch']
+    (12345, 'bargello', 'sashiko_wave')
 
-    The controls V3 dropped now survive the round trip:
+    Fractional controls come back exactly — V4 rounded these to coarse steps,
+    so wonky 0.037 or plain 0.15 reopened as a different quilt:
 
-    >>> q = dict(p, strippy=0.35, wash_alpha=0.18, palette_2='thistle',
-    ...          palette_mix='bluebell', quilt_size='queen')
+    >>> q = dict(p, wonky=0.037, plain_frac=0.15, mega_frac=0.05, strippy=0.23,
+    ...          wash_alpha=0.05, palette_2='thistle', palette_mix='bluebell',
+    ...          quilt_size='queen')
     >>> back = decode(encode(q))
-    >>> back['strippy'], back['wash_alpha']
-    (0.35, 0.18)
+    >>> [back[f] for f in ('wonky', 'plain_frac', 'mega_frac', 'strippy', 'wash_alpha')]
+    [0.037, 0.15, 0.05, 0.23, 0.05]
     >>> back['palette_2'], back['palette_mix'], back['quilt_size']
     ('thistle', 'bluebell', 'queen')
 
@@ -326,14 +400,39 @@ def encode(params):
 
     >>> decode('6PpafDL86tkRBR')['n_colors']
     5
+    >>> decode(_encode_v4(p))['wonky']
+    0.04
     """
-    border = params.get("border_style", "none") or "none"
-    stitch = params.get("quilt_stitch") or None
-    stitch_idx = (_V2_STITCH.index(stitch) + 1) if stitch in _V2_STITCH else 0
-    size = params.get("quilt_size") or _V4_DEFAULT_QUILT_SIZE
-    if size not in _V4_QUILT_SIZES:
-        size = _V4_DEFAULT_QUILT_SIZE
+    border_idx, stitch_idx, size_idx = _shared_refs(params)
+    fields = [
+        (5, 4),  # version
+        (params["seed"] & ((1 << 31) - 1), 31),
+        (_V2_PALETTES.index(params["palette"]), 5),
+        (_V2_SYMMETRY.index(params["symmetry"]), 4),
+        _fine("chaos", params["chaos"]),
+        (params["rows"] - 14, 3),
+        (params["n_patterns"] - 1, 1),
+        (params["n_colors"] - 3, 2),
+        (params.get("tile_size", 0), 4),
+        _fine("tile_variation", params.get("tile_variation", 0.0)),
+        (border_idx, 2),
+        _fine("mega_frac", params.get("mega_frac", 0.0)),
+        _fine("plain_frac", params.get("plain_frac", 0.0)),
+        (stitch_idx, 3),
+        _fine("wonky", params.get("wonky", 0.0)),
+        _fine("strippy", params.get("strippy", 0.0)),
+        _fine("wash_alpha", params.get("wash_alpha", 0.0)),
+        (_palette_ref(params.get("palette_2")), 5),
+        (_palette_ref(params.get("palette_mix")), 5),
+        (size_idx, 3),
+    ]
+    return _b58enc(_pack(fields), _V5_LEN)
 
+
+def _encode_v4(params):
+    """Encode to an 18-character V4 ID. FROZEN — kept so tests can mint V4
+    IDs and prove they still decode; nothing should emit V4 any more."""
+    border_idx, stitch_idx, size_idx = _shared_refs(params)
     fields = [
         (4, 4),  # version
         (params["seed"] & ((1 << 31) - 1), 31),
@@ -345,7 +444,7 @@ def encode(params):
         (params["n_colors"] - 3, 2),
         (params.get("tile_size", 0), 4),
         (round(params.get("tile_variation", 0.0) * 100), 5),
-        (_V2_BORDER.index(border), 2),
+        (border_idx, 2),
         (_quantize(params.get("mega_frac", 0.0), 0.10, 0.01, 15), 4),
         (_quantize(params.get("plain_frac", 0.0), 0.10, 0.02, 15), 4),
         (stitch_idx, 3),
@@ -354,40 +453,29 @@ def encode(params):
         (_quantize(params.get("wash_alpha", 0.0), 0.02, 0.02, 10), 4),
         (_palette_ref(params.get("palette_2")), 5),
         (_palette_ref(params.get("palette_mix")), 5),
-        (_V4_QUILT_SIZES.index(size), 3),
+        (size_idx, 3),
     ]
     return _b58enc(_pack(fields), _V4_LEN)
 
 
-def _decode_v2_v3_v4(n, schema):
-    """Shared decoder for the V2/V3/V4 schemas, which share a common prefix.
-
-    V4-only fields fall back to their "off" values for V2/V3 IDs, so callers
-    always get the same dict shape regardless of which version they were handed.
-    """
-    raw = _unpack(n, schema)
+def _decode_shared(raw):
+    """Fields V2-V5 store identically. V4-only fields fall back to their "off"
+    values for V2/V3 IDs, so callers always get the same dict shape."""
     stitch_idx = raw["quilt_stitch"]
     return {
         "seed": raw["seed"],
         "palette": _V2_PALETTES[raw["palette"]],
         "symmetry": _V2_SYMMETRY[raw["symmetry"]],
-        "chaos": round(raw["chaos"] / 100, 2),
         "rows": raw["rows"] + 14,
         "cols": raw["rows"] + 14,
         "n_patterns": raw["n_patterns"] + 1,
         "n_colors": raw["n_colors"] + 3,
         "tile_size": raw["tile_size"],
-        "tile_variation": round(raw["tile_variation"] / 100, 2),
         "border_style": _V2_BORDER[raw["border_style"]],
         "sash_width": 0,
         "cornerstones": False,
         "color_gradient": "none",
-        "mega_frac": _dequantize(raw["mega_frac"], 0.10, 0.01),
-        "plain_frac": _dequantize(raw["plain_frac"], 0.10, 0.02),
         "quilt_stitch": _V2_STITCH[stitch_idx - 1] if stitch_idx else None,
-        "wonky": _V2_WONKY[raw["wonky"]],
-        "strippy": _dequantize(raw.get("strippy", 0), 0.05, 0.05),
-        "wash_alpha": _dequantize(raw.get("wash_alpha", 0), 0.02, 0.02),
         "palette_2": _V2_PALETTES[raw["palette_2"] - 1] if raw.get("palette_2") else None,
         "palette_mix": _V2_PALETTES[raw["palette_mix"] - 1] if raw.get("palette_mix") else None,
         "quilt_size": _V4_QUILT_SIZES[
@@ -396,10 +484,36 @@ def _decode_v2_v3_v4(n, schema):
     }
 
 
+def _decode_v2_v3_v4(n, schema):
+    """Decoder for V2/V3/V4, whose fractional fields use coarse quantization."""
+    raw = _unpack(n, schema)
+    return {
+        **_decode_shared(raw),
+        "chaos": round(raw["chaos"] / 100, 2),
+        "tile_variation": round(raw["tile_variation"] / 100, 2),
+        "mega_frac": _dequantize(raw["mega_frac"], 0.10, 0.01),
+        "plain_frac": _dequantize(raw["plain_frac"], 0.10, 0.02),
+        "wonky": _V2_WONKY[raw["wonky"]],
+        "strippy": _dequantize(raw.get("strippy", 0), 0.05, 0.05),
+        "wash_alpha": _dequantize(raw.get("wash_alpha", 0), 0.02, 0.02),
+    }
+
+
+def _decode_v5(n):
+    """Decoder for V5: fractional fields are exact multiples of their step."""
+    raw = _unpack(n, _V5_SCHEMA)
+    fine = {
+        field: round(raw[field] / scale, len(str(scale)) - 1)
+        for field, (_bits, scale) in _V5_FINE.items()
+    }
+    return {**_decode_shared(raw), **fine}
+
+
 def decode(qid):
     """Decode a quilt ID string back to a params dict.
 
-    V1 (13 chars), V2 (14 chars), and V3 (14 chars) are supported.
+    V1 (13 chars), V2/V3 (14 chars), V4 (18 chars) and V5 (20 chars) are
+    supported; versions are told apart by length.
 
     >>> p = {'seed': 99999, 'palette': 'ocean breeze', 'symmetry': 'bargello',
     ...      'chaos': 0.55, 'rows': 16, 'cols': 16, 'n_patterns': 2,
@@ -455,6 +569,10 @@ def decode(qid):
     if len(qid) == _V4_LEN:
         if n >> (_V4_TOTAL_BITS - 4) == 4:
             return _decode_v2_v3_v4(n, _V4_SCHEMA)
+
+    if len(qid) == _V5_LEN:
+        if n >> (_V5_TOTAL_BITS - 4) == 5:
+            return _decode_v5(n)
 
     raise ValueError(f"Unknown quilt ID version (len={len(qid)})")
 

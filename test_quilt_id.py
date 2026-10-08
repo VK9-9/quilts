@@ -22,6 +22,10 @@ from quilt_id import (
     _V2_SCHEMA,
     _V3_LEN,
     _V4_LEN,
+    _V5_LEN,
+    _V5_FINE,
+    ENCODABLE_MAX,
+    _encode_v4,
     _V4_QUILT_SIZES,
 )
 
@@ -132,16 +136,27 @@ _BASE_PARAMS = {
 }
 
 
-def test_v4_encode_length():
-    assert len(encode(_BASE_PARAMS)) == _V4_LEN
+def test_v5_encode_length():
+    assert len(encode(_BASE_PARAMS)) == _V5_LEN
 
 
-class TestV4RoundTrip:
+def test_v4_ids_still_decode():
+    """V4 is frozen but every shared link and gallery page made before V5
+    carries one, so they must keep decoding."""
+    d = decode(_encode_v4({**_BASE_PARAMS, "strippy": 0.35, "wash_alpha": 0.18, "wonky": 0.04}))
+    assert len(_encode_v4(_BASE_PARAMS)) == _V4_LEN
+    assert (d["strippy"], d["wash_alpha"], d["wonky"]) == (0.35, 0.18, 0.04)
+
+
+class TestRoundTrip:
     """Every control the generator exposes must survive encode -> decode.
 
     V3 carried none of strippy/wash_alpha/palette_2/palette_mix/quilt_size even
     though all five change the render, so visibly different quilts collided on
-    one ID and the scorer's generator link opened a different quilt.
+    one ID and the scorer's generator link opened a different quilt. V4 carried
+    them, but too coarsely: wonky 0.03, plain 0.15 and others came back
+    different, which this class's old slider sweep missed because it only
+    covered strippy and wash.
     """
 
     @pytest.mark.parametrize("strippy", [0.0, 0.05, 0.2, 0.35, 0.6])
@@ -173,51 +188,81 @@ class TestV4RoundTrip:
 
         assert list(QUILT_SIZES) == _V4_QUILT_SIZES
 
-    def test_nothing_the_ui_can_produce_is_lossy(self):
-        """Sweep every slider position and categorical the editor allows."""
+    def test_every_slider_position_round_trips_exactly(self):
+        """Sweep every position of every range slider in the editor template,
+        plus every categorical, and require an exact round trip."""
+        import re
+
         from generator import _DEFAULTS, _PARAM_BOUNDS, complete_params
 
-        encoded_fields = [
-            "seed",
-            "palette",
-            "symmetry",
-            "rows",
-            "n_colors",
-            "tile_size",
-            "border_style",
-            "quilt_stitch",
-            "strippy",
-            "wash_alpha",
-            "palette_2",
-            "palette_mix",
-            "quilt_size",
-        ]
+        import os
+
+        path = os.path.join(os.path.dirname(__file__), "templates", "generator", "create.html")
+        with open(path, encoding="utf-8") as f:
+            html = f.read()
+        sliders = re.findall(r'id="(\w+)" min="([\d.]+)" max="([\d.]+)" step="([\d.]+)"', html)
+        assert {name for name, *_ in sliders} >= set(_V5_FINE), "a fractional slider is missing"
+
         cases = []
-        for name in _V2_PALETTES:
-            cases.append({"palette": name})
-        for name in _V2_SYMMETRY:
-            cases.append({"symmetry": name})
-        for name in _V2_STITCH + [None]:
-            cases.append({"quilt_stitch": name})
-        for rows in range(_PARAM_BOUNDS["rows"][0], _PARAM_BOUNDS["rows"][1] + 1):
-            cases.append({"rows": rows})
-        for n_colors in range(_PARAM_BOUNDS["n_colors"][0], _PARAM_BOUNDS["n_colors"][1] + 1):
-            cases.append({"n_colors": n_colors})
-        for step in range(13):  # strippy slider: 0 to 0.60 in steps of 0.05
-            cases.append({"strippy": round(step * 0.05, 2)})
-        for step in range(11):  # wash slider: 0 to 0.20 in steps of 0.02
-            cases.append({"wash_alpha": round(step * 0.02, 2)})
-        for size in _V4_QUILT_SIZES:
-            cases.append({"quilt_size": size})
+        for name, lo, hi, step in sliders:
+            n = round((float(hi) - float(lo)) / float(step))
+            for k in range(n + 1):
+                value = round(float(lo) + k * float(step), 4)
+                cases.append({name: int(value) if name in ("rows", "tile_size") else value})
+        cases += [{"palette": name} for name in _V2_PALETTES]
+        cases += [{"symmetry": name} for name in _V2_SYMMETRY]
+        cases += [{"quilt_stitch": name} for name in _V2_STITCH + [None]]
+        cases += [{"quilt_size": size} for size in _V4_QUILT_SIZES]
+        lo, hi = _PARAM_BOUNDS["n_colors"]
+        cases += [{"n_colors": n} for n in range(lo, hi + 1)]
 
         for overrides in cases:
             params = complete_params({**_DEFAULTS, **overrides})
             decoded = decode(encode(params))
-            for field in encoded_fields:
-                assert decoded[field] == params[field], (
-                    f"{overrides}: {field} encoded as {decoded[field]!r}, "
-                    f"expected {params[field]!r}"
-                )
+            for field in _ROUND_TRIP_FIELDS:
+                if decoded[field] != params[field]:
+                    pytest.fail(
+                        f"{overrides}: {field} encoded as {decoded[field]!r}, "
+                        f"expected {params[field]!r}"
+                    )
+
+    def test_everything_the_sampler_produces_round_trips_exactly(self):
+        """The scorer's "Open in generator" link encodes the rated params; with
+        V4, 24% of R24's quilts reopened as a different quilt."""
+        import random
+
+        from sampler import sample_random_params
+
+        for seed in range(400):
+            params = sample_random_params(random.Random(seed))
+            decoded = decode(encode(params))
+            bad = [f for f in _ROUND_TRIP_FIELDS if decoded[f] != params.get(f)]
+            if bad:
+                pytest.fail(f"seed {seed}: {bad} changed in the round trip")
+
+    def test_server_bounds_fit_the_encoding(self):
+        """_pack saturates rather than raising, so a value the server accepts
+        but V5 can't hold would silently become a different quilt."""
+        from generator import _PARAM_BOUNDS
+
+        for field, maximum in ENCODABLE_MAX.items():
+            assert _PARAM_BOUNDS[field][1] <= maximum, f"{field} bound exceeds the encoding"
+
+
+_ROUND_TRIP_FIELDS = [
+    "seed",
+    "palette",
+    "symmetry",
+    "rows",
+    "n_patterns",
+    "n_colors",
+    "tile_size",
+    "border_style",
+    "quilt_stitch",
+    "palette_2",
+    "palette_mix",
+    *_V5_FINE,
+]
 
 
 def test_older_versions_still_decode():
