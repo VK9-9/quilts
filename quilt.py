@@ -1,18 +1,8 @@
 """Generative quilt renderer using pycairo.
 
 Usage:
-    python quilts/quilt.py [options]
-
-Options:
-    --rows N          Grid rows (default: 20)
-    --cols N          Grid cols (default: 20)
-    --block-size N    Block size in pixels (default: 60)
-    --symmetry MODE   none|mirror|rotational|stripe|partial (default: partial)
-    --chaos FLOAT     Chaos amount for partial symmetry, 0-1 (default: 0.3)
-    --palette NAME    Palette name, or 'random' (default: random)
-    --seed N          Random seed (default: random)
-    --output FILE     Output filename (default: quilts/out.png)
-    --border N        Border/margin in pixels (default: 20)
+    python quilt.py [options]        # see --help for every flag
+    python quilt_id.py decode <id> --command   # the command for a shared quilt
 """
 
 import argparse
@@ -997,8 +987,9 @@ def render_quilt(
     return paint(design, block_size, border, output)
 
 
-def main():
-    """Parse CLI arguments and render a quilt."""
+def build_parser():
+    """The CLI's argument parser. Every render_quilt design parameter has a
+    flag, so `quilt_id.py decode <id> --command` can reproduce any quilt."""
     parser = argparse.ArgumentParser(description="Generate a quilt image")
     parser.add_argument("--rows", type=int, default=20)
     parser.add_argument("--cols", type=int, default=20)
@@ -1016,7 +1007,10 @@ def main():
         "--n-colors", type=int, default=None, help="Max palette colors to use (default: all)"
     )
     parser.add_argument(
-        "--tile-size", type=int, default=None, help="Blocks per tile side (e.g. 5 for 5x5 tiles)"
+        "--tile-size",
+        type=int,
+        default=None,
+        help="Blocks per tile side (e.g. 5 for 5x5 tiles); 0 means no tiling",
     )
     parser.add_argument(
         "--tile-variation",
@@ -1039,26 +1033,59 @@ def main():
         default=0.0,
         help="Fraction of plain solid-color blocks (default: 0.0)",
     )
-    args = parser.parse_args()
-
-    width, height = render_quilt(
-        rows=args.rows,
-        cols=args.cols,
-        block_size=args.block_size,
-        symmetry=args.symmetry,
-        chaos=args.chaos,
-        palette_name=args.palette,
-        seed=args.seed,
-        output=args.output,
-        border=args.border,
-        max_patterns=args.n_patterns,
-        max_colors=args.n_colors,
-        tile_size=args.tile_size,
-        tile_variation=args.tile_variation,
-        border_style=args.border_style,
-        mega_frac=args.mega_frac,
-        plain_frac=args.plain_frac,
+    parser.add_argument(
+        "--quilt-stitch",
+        default=None,
+        choices=QUILT_STITCH_STYLES,
+        help="Thread-quilting overlay (default: none)",
     )
+    parser.add_argument(
+        "--wash-alpha", type=float, default=0.0, help="Color wash opacity (default: 0.0)"
+    )
+    parser.add_argument("--palette-2", default=None, help="Second palette for a two-palette split")
+    parser.add_argument("--palette-mix", default=None, help="Palette to interleave into the first")
+    parser.add_argument(
+        "--wonky", type=float, default=0.0, help="Improv vertex jitter, 0-0.1 (default: 0.0)"
+    )
+    parser.add_argument(
+        "--strippy", type=float, default=0.0, help="Row/column size variation (default: 0.0)"
+    )
+    return parser
+
+
+def args_to_render_kwargs(args):
+    """render_quilt kwargs for parsed CLI args (tile_size 0 → no tiling, as in
+    render_params; 0 would otherwise divide by zero in the tiling code)."""
+    return {
+        "rows": args.rows,
+        "cols": args.cols,
+        "block_size": args.block_size,
+        "symmetry": args.symmetry,
+        "chaos": args.chaos,
+        "palette_name": args.palette,
+        "seed": args.seed,
+        "output": args.output,
+        "border": args.border,
+        "max_patterns": args.n_patterns,
+        "max_colors": args.n_colors,
+        "tile_size": args.tile_size or None,
+        "tile_variation": args.tile_variation,
+        "border_style": args.border_style,
+        "mega_frac": args.mega_frac,
+        "plain_frac": args.plain_frac,
+        "quilt_stitch": args.quilt_stitch,
+        "wash_alpha": args.wash_alpha,
+        "palette_name_2": args.palette_2,
+        "palette_mix": args.palette_mix,
+        "wonky": args.wonky,
+        "strippy": args.strippy,
+    }
+
+
+def main():
+    """Parse CLI arguments and render a quilt."""
+    args = build_parser().parse_args()
+    width, height = render_quilt(**args_to_render_kwargs(args))
     print(f"Saved to {args.output} ({width}x{height})")
 
 

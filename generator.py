@@ -20,10 +20,12 @@ from flask import Flask, render_template, request, Response, has_request_context
 from quilt import render_quilt, BORDER_STYLES as _QUILT_BORDER_STYLES
 from quilt_id import (
     ENCODABLE_STEP,
+    QUILT_SIZE_INCHES,
     ROWS_RANGE,
     _V2_PALETTES,
     _V2_STITCH,
     _V2_SYMMETRY,
+    cols_for,
     decode,
     encode,
     snap,
@@ -242,14 +244,19 @@ PRESETS = {
 _RENDER_BLOCK_SIZE = 36  # ~576px for a 16-row quilt
 _DOWNLOAD_BLOCK_SIZE = 72  # ~1152px for download
 
+_SIZE_LABELS = {
+    "throw": "Throw",
+    "twin": "Twin",
+    "queen": "Queen",
+    "king": "King",
+    "sq6": "Square 6'",
+    "sq8": "Square 8'",
+    "sq10": "Square 10'",
+}
+# (width, height, label); dimensions and order come from quilt_id, which owns
+# them because the quilt_size field encodes an index into this list.
 QUILT_SIZES = {
-    "throw": (50, 65, 'Throw (50" x 65")'),
-    "twin": (65, 85, 'Twin (65" x 85")'),
-    "queen": (85, 108, 'Queen (85" x 108")'),
-    "king": (110, 108, 'King (110" x 108")'),
-    "sq6": (72, 72, 'Square 6\' (72" x 72")'),
-    "sq8": (96, 96, 'Square 8\' (96" x 96")'),
-    "sq10": (120, 120, 'Square 10\' (120" x 120")'),
+    key: (w, h, f'{_SIZE_LABELS[key]} ({w}" x {h}")') for key, (w, h) in QUILT_SIZE_INCHES.items()
 }
 
 
@@ -307,8 +314,7 @@ _DEFAULTS = {
 
 def _cols_for(rows, size_key):
     """Column count that gives `rows` the aspect ratio of the named quilt size."""
-    size_w, size_h, _ = QUILT_SIZES.get(size_key, QUILT_SIZES[_DEFAULTS["quilt_size"]])
-    return round(rows * size_w / size_h)
+    return cols_for(rows, size_key)
 
 
 def complete_params(params):

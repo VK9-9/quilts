@@ -444,3 +444,72 @@ def test_v3_n_colors_roundtrip():
     for nc in [3, 4, 5, 6]:
         p = {**_BASE_PARAMS, "n_colors": nc}
         assert decode(encode(p))["n_colors"] == nc
+
+
+class TestCliCommand:
+    """`quilt_id.py decode <id> --command` must print a quilt.py command that
+    renders the same quilt. It used to cover only the pre-wonky parameter set
+    and always made square quilts, so most current IDs printed a command for
+    a different quilt."""
+
+    _FULL = {
+        **_BASE_PARAMS,
+        "symmetry": "partial",
+        "tile_size": 0,
+        "border_style": "checkerboard",
+        "mega_frac": 0.15,
+        "plain_frac": 0.2,
+        "wash_alpha": 0.07,
+        "palette_2": "thistle",
+        "palette_mix": "bluebell",
+        "wonky": 0.037,
+        "strippy": 0.23,
+        "quilt_size": "throw",
+    }
+
+    @staticmethod
+    def _cli_kwargs(params):
+        from quilt import args_to_render_kwargs, build_parser
+        from quilt_id import command_args
+
+        parsed = build_parser().parse_args(command_args(params) + ["--output", "x.png"])
+        return args_to_render_kwargs(parsed)
+
+    @staticmethod
+    def _design(kwargs):
+        return {k: v for k, v in kwargs.items() if k not in ("block_size", "output", "border")}
+
+    def test_decoded_non_square_size_keeps_its_aspect(self):
+        from generator import _cols_for
+
+        decoded = decode(encode(self._FULL))
+        assert decoded["cols"] == _cols_for(decoded["rows"], "throw") != decoded["rows"]
+
+    def test_command_reproduces_every_render_parameter(self):
+        from render_params import params_to_render_kwargs
+
+        decoded = decode(encode(self._FULL))
+        assert self._design(self._cli_kwargs(decoded)) == self._design(
+            params_to_render_kwargs(decoded)
+        )
+
+    def test_command_reproduces_sampled_quilts(self):
+        import random
+
+        from render_params import params_to_render_kwargs
+        from sampler import sample_random_params
+
+        for seed in range(200):
+            decoded = decode(encode(sample_random_params(random.Random(seed))))
+            cli = self._design(self._cli_kwargs(decoded))
+            if cli != self._design(params_to_render_kwargs(decoded)):
+                pytest.fail(f"seed {seed}: CLI command renders a different quilt")
+
+    def test_command_renders_identical_pixels(self):
+        from quilt import render_quilt
+        from render_params import params_to_render_kwargs
+
+        decoded = decode(encode(self._FULL))
+        cli = self._cli_kwargs(decoded)
+        cli.update(block_size=8, border=15, output=None)
+        assert render_quilt(**cli) == render_quilt(**params_to_render_kwargs(decoded, block_size=8))

@@ -46,6 +46,7 @@ Usage:
 """
 
 import json
+import shlex
 import sys
 
 # Base58 alphabet — no 0/O/I/l to avoid visual confusion
@@ -226,10 +227,31 @@ _V3_LEN = 14  # ceil(81 / log2(58)) = 14 chars
 # generator UI exposes but no earlier version encoded.
 # ---------------------------------------------------------------------------
 
-# Quilt aspect-ratio presets, in generator.QUILT_SIZES order. 3 bits → max 7.
-# test_quilt_id asserts the two stay in step.
-_V4_QUILT_SIZES = ["throw", "twin", "queen", "king", "sq6", "sq8", "sq10"]
+# Finished quilt sizes in inches (width, height). Their order is the wire
+# order of the quilt_size field (3 bits → max 7), so append only. generator
+# adds display labels; decode() derives cols from the aspect ratio.
+QUILT_SIZE_INCHES = {
+    "throw": (50, 65),
+    "twin": (65, 85),
+    "queen": (85, 108),
+    "king": (110, 108),
+    "sq6": (72, 72),
+    "sq8": (96, 96),
+    "sq10": (120, 120),
+}
+_V4_QUILT_SIZES = list(QUILT_SIZE_INCHES)
 _V4_DEFAULT_QUILT_SIZE = "sq8"
+
+
+def cols_for(rows, size):
+    """Column count that gives `rows` the aspect ratio of the named quilt size.
+
+    >>> cols_for(16, "sq8"), cols_for(16, "throw")
+    (16, 12)
+    """
+    width, height = QUILT_SIZE_INCHES.get(size, QUILT_SIZE_INCHES[_V4_DEFAULT_QUILT_SIZE])
+    return round(rows * width / height)
+
 
 _V4_SCHEMA = _V3_SCHEMA + [
     ("strippy", 4),  # 0=off, 1–12 → 0.05–0.60 in steps of 0.05
@@ -462,12 +484,15 @@ def _decode_shared(raw):
     """Fields V2-V5 store identically. V4-only fields fall back to their "off"
     values for V2/V3 IDs, so callers always get the same dict shape."""
     stitch_idx = raw["quilt_stitch"]
+    size = _V4_QUILT_SIZES[raw.get("quilt_size", _V4_QUILT_SIZES.index(_V4_DEFAULT_QUILT_SIZE))]
     return {
         "seed": raw["seed"],
         "palette": _V2_PALETTES[raw["palette"]],
         "symmetry": _V2_SYMMETRY[raw["symmetry"]],
         "rows": raw["rows"] + 14,
-        "cols": raw["rows"] + 14,
+        # From the quilt size, not rows: a throw is 50"x65", so a square cols
+        # here reopened every non-square generator quilt as a different one.
+        "cols": cols_for(raw["rows"] + 14, size),
         "n_patterns": raw["n_patterns"] + 1,
         "n_colors": raw["n_colors"] + 3,
         "tile_size": raw["tile_size"],
@@ -478,9 +503,7 @@ def _decode_shared(raw):
         "quilt_stitch": _V2_STITCH[stitch_idx - 1] if stitch_idx else None,
         "palette_2": _V2_PALETTES[raw["palette_2"] - 1] if raw.get("palette_2") else None,
         "palette_mix": _V2_PALETTES[raw["palette_mix"] - 1] if raw.get("palette_mix") else None,
-        "quilt_size": _V4_QUILT_SIZES[
-            raw.get("quilt_size", _V4_QUILT_SIZES.index(_V4_DEFAULT_QUILT_SIZE))
-        ],
+        "quilt_size": size,
     }
 
 
@@ -590,6 +613,45 @@ def decode(qid):
     raise ValueError(f"Unknown quilt ID version (len={len(qid)})")
 
 
+# (decoded param, quilt.py flag, always emitted). Optional flags are left off
+# when off (None / "none" / 0), matching quilt.py's own defaults.
+_CLI_FLAGS = [
+    ("rows", "--rows", True),
+    ("cols", "--cols", True),
+    ("palette", "--palette", True),
+    ("symmetry", "--symmetry", True),
+    ("chaos", "--chaos", True),
+    ("seed", "--seed", True),
+    ("n_patterns", "--n-patterns", True),
+    ("n_colors", "--n-colors", True),
+    ("tile_size", "--tile-size", False),
+    ("tile_variation", "--tile-variation", True),
+    ("border_style", "--border-style", False),
+    ("mega_frac", "--mega-frac", False),
+    ("plain_frac", "--plain-frac", False),
+    ("quilt_stitch", "--quilt-stitch", False),
+    ("wash_alpha", "--wash-alpha", False),
+    ("palette_2", "--palette-2", False),
+    ("palette_mix", "--palette-mix", False),
+    ("wonky", "--wonky", False),
+    ("strippy", "--strippy", False),
+]
+
+
+def command_args(params):
+    """quilt.py arguments that render `params` (a decoded param dict).
+
+    test_quilt_id runs these through quilt.py's real parser, so a render
+    parameter added to one side but not the other fails a test.
+    """
+    args = []
+    for key, flag, always in _CLI_FLAGS:
+        value = params.get(key)
+        if always or value not in (None, "none", 0, 0.0):
+            args += [flag, str(value)]
+    return args
+
+
 def _decode_cmd(args):
     """Handle the decode subcommand."""
     if len(args) < 1:
@@ -597,27 +659,8 @@ def _decode_cmd(args):
         sys.exit(1)
     params = decode(args[0])
     if "--command" in args:
-        parts = [
-            "python quilt.py",
-            f"--rows {params['rows']}",
-            f"--cols {params['cols']}",
-            f'--palette "{params["palette"]}"',
-            f"--symmetry {params['symmetry']}",
-            f"--chaos {params['chaos']}",
-            f"--seed {params['seed']}",
-            f"--n-patterns {params['n_patterns']}",
-            f"--n-colors {params['n_colors']}",
-            f"--tile-size {params['tile_size']}",
-            f"--tile-variation {params['tile_variation']}",
-        ]
-        if params.get("border_style") and params["border_style"] != "none":
-            parts.append(f"--border-style {params['border_style']}")
-        if params.get("mega_frac", 0.0) > 0.0:
-            parts.append(f"--mega-frac {params['mega_frac']}")
-        if params.get("plain_frac", 0.0) > 0.0:
-            parts.append(f"--plain-frac {params['plain_frac']}")
-        parts.append("--output out.png")
-        print(" \\\n  ".join(parts))
+        cmd = ["python", "quilt.py", *command_args(params), "--output", "out.png"]
+        print(" ".join(shlex.quote(part) for part in cmd))
     else:
         print(json.dumps(params, indent=2))
 
