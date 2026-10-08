@@ -2590,3 +2590,88 @@ Pending review.
    window for it). Costs no like-rate, removes the code behind the project's
    worst model bug (the 27% all-zero block), and fixes palette concentration.
 2. Keep everything else fixed for R25 so the change is measured on its own.
+
+## Round 25 — ratings 5750-5950
+
+**Records:** 5750-5950 (201 ratings; target fixed at ~200 beforehand, so the
+reads below use the first 200 and all 201 agree to within 0.1pp)
+**Overall:** 173/200 liked (86.5%, 95% CI 81-91%)
+**Params:** the CLIP-only loop — the param model removed after R24's A/B.
+Exploit picks are CLIP's favourite of 30 random palette-capped candidates
+(`exploit_clip_nofilter`). Nothing else changed (policy snapshot, commit
+d7cbac2). First round stored with rating ids (`ratings_store`); all 201
+ratings were embedded under their ids.
+
+### Exploit held; "explore" dropped
+
+| arm | R24 | R25 |
+|-----|-----|-----|
+| exploit (CLIP over random 30) | 67/73 (91.8%) | 131/143 (91.6%) |
+| explore | 62/67 (93%) | 42/57 (73.7%) |
+
+R25's exploit rate is indistinguishable from R24's nofilter arm (p=1.00).
+Pooled, the CLIP-only loop stands at **198/216 (91.7%, CI 87-95%)**.
+
+The overall dip (91.5% → 86.5%, p=0.15) is entirely the explore arm.
+
+### "Explore" is not a random baseline
+
+Proven-winner injection puts lavender fields and bargello each into ~50% of
+explore quilts, so most "explore" quilts are injections:
+
+| explore quilts | R23 | R24 | R25 |
+|----------------|-----|-----|-----|
+| lavender + bargello | 5/9 | 14/14 | 19/19 |
+| lavender, not bargello | 10/10 | 16/18 | **5/13** |
+| bargello, not lavender | 6/7 | 17/18 | 15/16 |
+| neither (truly random) | 5/5 | 15/17 | **3/9** |
+
+Only 9 of R25's 57 explore quilts were unconstrained random. Bargello is
+consistently strong (34/35 in R25). Lavender fields without bargello swung
+100% → 89% → 38% over three rounds, and lavender fields was 32 of the 200
+quilts shown (16%) — far more exposure than any other palette, for a palette
+whose own record is now volatile.
+
+### The CLIP model ranks well now
+
+Walk-forward (trained on R14-R24, scoring R25):
+
+| slice | n | dislikes | AUC |
+|-------|---|----------|-----|
+| all R25 | 200 | 27 | **0.873** (95% CI 0.77-0.95) |
+| exploit picks only | 143 | 12 | 0.835 |
+| explore only | 57 | 15 | 0.883 |
+| excluding lavender fields | 168 | 19 | 0.834 |
+
+R23 scored 0.496 (CI 0.29-0.70, 12 dislikes); the intervals don't overlap, so
+this is a real improvement rather than noise, though the cause can't be
+separated: R24's 221 consistent ratings joined the training window, and R25
+has more dislikes to rank. Within its own picks the model still separates
+liked from disliked — its residual misses are quilts it was less sure of.
+
+### Palette spread
+
+Exploit picks used 17 palettes, the most common tide pool at 20/143 (14%) —
+the R22-R24 one-palette collapse (up to 43%) is gone with the param filter.
+
+### Leads (not actions)
+
+- **wonky**: pooled R22-R25 34/45 (76%) vs 89% off, p=0.013. Negative in
+  most rounds, but 8 features were tested here and it doesn't survive
+  correction (Bonferroni α=0.006). Watch.
+- **plain_frac**: 15/16 in R25; pooled p=0.11. The R19-R24 negative signal is
+  fading — retire it as a candidate change.
+- partial 20/29 (69%) after 22/22 in R23 — single-round noise at this n.
+
+### Recommended changes after Round 25
+
+Pending review.
+
+1. **Drop lavender fields' proven-winner status** (keep bargello's). It makes
+   "explore" mostly injections, gives one volatile palette 16% of all
+   exposure, and blurs the only random baseline the loop has. As a normal
+   palette it can still be sampled and exploited on merit.
+2. **R26's planned change** (CLIP candidates rendered at 16px blocks, matching
+   the training embeddings, instead of 8px) touches only exploit picks, while
+   #1 touches only explore — the two arms can be read separately, so both can
+   run in R26 without confounding the exploit comparison.
