@@ -3,6 +3,7 @@
 import random
 
 import numpy as np
+import ratings_store
 import pytest
 
 from layout import SYMMETRY_MODES
@@ -73,7 +74,11 @@ class TestTrainingWindow:
         data.write_text(
             json.dumps(
                 [
-                    {"params": sample_random_params(random.Random(i)), "liked": i % 3 != 0}
+                    {
+                        "id": i,
+                        "params": sample_random_params(random.Random(i)),
+                        "liked": i % 3 != 0,
+                    }
                     for i in range(n_ratings)
                 ]
             )
@@ -81,7 +86,8 @@ class TestTrainingWindow:
         (tmp_path / "r_rounds.json").write_text(json.dumps(rounds))
         # Nonzero stand-in embeddings, one per rating, so the CLIP model fits.
         rng = np.random.default_rng(0)
-        np.save(tmp_path / "r_embeddings.npy", rng.normal(size=(n_ratings, 512)).astype(np.float32))
+        vectors = rng.normal(size=(n_ratings, 512)).astype(np.float32)
+        ratings_store.save_embeddings(str(data), dict(enumerate(vectors)))
         return QuiltExplorer(str(data))
 
     @staticmethod

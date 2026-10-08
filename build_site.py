@@ -23,6 +23,7 @@ from quilt import render_quilt
 from quilt_id import ENCODABLE_PALETTES, ENCODABLE_SYMMETRIES, ROWS_RANGE, decode, encode
 
 from palettes import PALETTES as _ALL_PALETTES
+import ratings_store
 
 _RENDERABLE_PALETTES = {p[0] for p in _ALL_PALETTES}
 _ENCODABLE_PALETTES = set(ENCODABLE_PALETTES) & _RENDERABLE_PALETTES
@@ -80,26 +81,23 @@ def _encodable(params):
 
 
 def load_liked(ratings_path):
-    """Load liked quilts from ratings JSON, filtered to encodable params.
+    """Load liked quilts from the ratings store, filtered to encodable params.
 
-    Returns (params_list, indices_into_ratings) — indices are needed to
-    look up CLIP embeddings from the parallel embeddings array.
+    Returns (params_list, rating_ids) — the ids look up CLIP embeddings.
     """
-    with open(ratings_path, encoding="utf-8") as f:
-        ratings = json.load(f)
-    params, indices = [], []
+    params, ids = [], []
     skipped = 0
-    for i, r in enumerate(ratings):
+    for r in ratings_store.load_ratings(ratings_path):
         if not r["liked"]:
             continue
         if _encodable(r["params"]):
             params.append(r["params"])
-            indices.append(i)
+            ids.append(r["id"])
         else:
             skipped += 1
     if skipped:
         print(f"  (skipping {skipped} liked quilts with retired params)")
-    return params, indices
+    return params, ids
 
 
 def params_to_cluster_features(params):
@@ -120,26 +118,20 @@ def params_to_cluster_features(params):
     return np.array(features, dtype=np.float64)
 
 
-def load_clip_embeddings(ratings_path, indices):
-    """Load CLIP embeddings for the given rating indices.
+def load_clip_embeddings(ratings_path, rating_ids):
+    """CLIP embeddings for the given rating ids, joined by id.
 
-    Returns (embeddings, valid_mask) — valid_mask is False for zero-norm
-    rows (retired palettes that couldn't be rendered) and for indices that
-    fall beyond a short/stale embeddings array.
+    Returns (embeddings, valid_mask): row k belongs to rating_ids[k], and
+    valid_mask is False (with a zero row) for ratings that have no embedding,
+    e.g. retired palettes that can no longer be rendered.
     """
-    emb_path = os.path.splitext(ratings_path)[0] + "_embeddings.npy"
-    all_emb = np.load(emb_path)
-    dim = all_emb.shape[1] if all_emb.ndim == 2 else 512
-    idx = np.asarray(indices, dtype=int)
-    in_range = idx < len(all_emb)
-    if not in_range.all():
-        print(
-            f"WARNING: {(~in_range).sum()} rating indices exceed "
-            f"{len(all_emb)} embeddings; treating them as missing."
-        )
-    emb = np.zeros((len(idx), dim), dtype=all_emb.dtype)
-    emb[in_range] = all_emb[idx[in_range]]
-    valid = np.linalg.norm(emb, axis=1) > 0
+    by_id = ratings_store.load_embeddings(ratings_path)
+    emb = np.zeros((len(rating_ids), ratings_store.EMBED_DIM), dtype=np.float32)
+    valid = np.zeros(len(rating_ids), dtype=bool)
+    for k, rating_id in enumerate(rating_ids):
+        if rating_id in by_id:
+            emb[k] = by_id[rating_id]
+            valid[k] = True
     return emb, valid
 
 
@@ -666,12 +658,12 @@ def main():  # pylint: disable=too-many-locals,too-many-statements,too-many-bran
     if n_variations != args.variations:
         print(f"  (--variations {args.variations} → {n_variations} to make a square grid)")
 
-    liked, liked_indices = load_liked(args.ratings)
+    liked, liked_ids = load_liked(args.ratings)
     print(f"Loaded {len(liked)} liked quilts")
 
     clip_emb = None
     if args.clip:
-        all_emb, valid = load_clip_embeddings(args.ratings, liked_indices)
+        all_emb, valid = load_clip_embeddings(args.ratings, liked_ids)
         # filter out zero-norm embeddings (retired palettes)
         valid_liked = [p for p, v in zip(liked, valid) if v]
         valid_emb = all_emb[valid]

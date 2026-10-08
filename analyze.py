@@ -79,10 +79,10 @@ def round_summary(ratings, rounds):  # pylint: disable=too-many-locals
         liked = sum(1 for r in chunk if r["liked"])
         pct = liked / total * 100
 
-        # explore/exploit breakdown (only available if _source is tracked)
+        # explore/exploit breakdown (recorded from R17 onward)
         sources = defaultdict(lambda: [0, 0])
         for r in chunk:
-            src = r["params"].get("_source", "unknown")
+            src = r.get("source", "unknown")
             sources[src][0] += 1
             if r["liked"]:
                 sources[src][1] += 1
