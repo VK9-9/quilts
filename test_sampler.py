@@ -14,6 +14,8 @@ from sampler import (
     _TRAIN_FROM_ROUND,
     _DROP_STITCHES,
     _DROP_SYMMETRY,
+    _PROVEN_PALETTES,
+    _PROVEN_SYMMETRIES,
     FEATURE_PROBS,
     PALETTE_NAMES,
     PARAM_SPACE,
@@ -47,8 +49,18 @@ class TestSampling:
         """Exploitation candidates must not be able to pick proven winners."""
         for seed in range(60):
             p = sample_random_params(random.Random(seed), explore_only=True)
-            assert p["palette"] != "lavender fields"
-            assert p["symmetry"] != "bargello"
+            assert p["palette"] not in _PROVEN_PALETTES
+            assert p["symmetry"] not in _PROVEN_SYMMETRIES
+
+    def test_lavender_fields_is_an_ordinary_palette(self):
+        """Its proven status was dropped after R25: it competes in exploit
+        candidates and is no longer injected into exploration."""
+        assert "lavender fields" not in _PROVEN_PALETTES
+        exploit = [sample_random_params(random.Random(s), explore_only=True) for s in range(400)]
+        assert any(p["palette"] == "lavender fields" for p in exploit)
+        explore = [sample_random_params(random.Random(s)) for s in range(400)]
+        share = sum(p["palette"] == "lavender fields" for p in explore) / len(explore)
+        assert share < 0.15, f"lavender fields still over-sampled when exploring: {share:.0%}"
 
     def test_proven_winners_still_reachable_when_exploring(self):
         seen = {sample_random_params(random.Random(s))["symmetry"] for s in range(60)}
@@ -225,7 +237,8 @@ class TestSuggest:
         """Proven winners are explore-only injections, never exploit picks."""
         for _ in range(20):
             pick = explorer.suggest_params(explore_prob=0.0)
-            assert pick["palette"] != "lavender fields" and pick["symmetry"] != "bargello"
+            assert pick["palette"] not in _PROVEN_PALETTES
+            assert pick["symmetry"] not in _PROVEN_SYMMETRIES
 
     def test_explore_prob_one_always_explores(self, explorer):
         assert explorer.suggest_params(explore_prob=1.0)["_source"] == "explore"

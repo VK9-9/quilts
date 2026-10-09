@@ -44,8 +44,13 @@ _DROP_PALETTES = {
     "moonstone",
     "coastal fog",
 }
-# Proven palettes: shown at fixed probability instead of normal rotation
-_PROVEN_PALETTES = {"lavender fields": 0.50}
+# Proven palettes: shown at fixed probability during exploration only, and
+# excluded from exploit candidates. Empty since R26: lavender fields held this
+# from R14, but by R25 it was 16% of all quilts shown, its record without
+# bargello had swung 100% → 89% → 38% (R23-R25), and injections crowded truly
+# random quilts out of "explore" (9 of 57 in R25). It's an ordinary palette
+# now, sampled and exploited on merit.
+_PROVEN_PALETTES = {}
 PALETTE_NAMES = [p[0] for p in PALETTES if p[0] not in _DROP_PALETTES]
 _EXPLORE_PALETTES = [p for p in PALETTE_NAMES if p not in _PROVEN_PALETTES]
 _DROP_SYMMETRY = {"flower", "emergent", "mirror", "none"}
