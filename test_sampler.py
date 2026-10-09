@@ -252,3 +252,13 @@ class TestSuggest:
         policy = current_policy()
         assert policy["exploit_shortlist"] == "random"
         assert "param_model" not in policy
+
+
+def test_candidates_are_scored_at_the_training_render_size():
+    """CLIP must judge candidates at the resolution its training embeddings
+    were rendered at (until R25 it scored 8px renders against 16px training)."""
+    from sampler import _CLIP_CANDIDATE_BLOCK_SIZE, _CLIP_EMBED_BLOCK_SIZE
+
+    assert _CLIP_CANDIDATE_BLOCK_SIZE == _CLIP_EMBED_BLOCK_SIZE
+    policy = current_policy()
+    assert policy["clip_candidate_block_size"] == policy["clip_embed_block_size"]

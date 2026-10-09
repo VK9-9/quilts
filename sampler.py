@@ -135,10 +135,14 @@ _TRAIN_FROM_ROUND = 14
 # everything rather than fit on a handful of rows.
 _MIN_TRAINING_RATINGS = 200
 
-# block_size used when rendering candidates for CLIP scoring
-_CLIP_CANDIDATE_BLOCK_SIZE = 8
 # block_size used when embedding a rated quilt
 _CLIP_EMBED_BLOCK_SIZE = 16
+# block_size used when rendering candidates for CLIP scoring. The same as the
+# training renders since R26: until R25 candidates were scored at 8px while the
+# model learned from 16px renders, so it judged blurrier pictures than the ones
+# its labels came from (seams and stitching mostly vanish at 8px). Costs ~0.25s
+# per exploit suggestion (1.2s → 1.45s for 30 candidates).
+_CLIP_CANDIDATE_BLOCK_SIZE = _CLIP_EMBED_BLOCK_SIZE
 # number of candidates to render+embed for CLIP scoring per exploit suggestion
 _CLIP_TOP_N = 30
 
