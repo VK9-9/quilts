@@ -2675,3 +2675,84 @@ Pending review.
    the training embeddings, instead of 8px) touches only exploit picks, while
    #1 touches only explore — the two arms can be read separately, so both can
    run in R26 without confounding the exploit comparison.
+
+## Round 26 — ratings 5951-6153
+
+**Records:** 5951-6153 (203 ratings; target fixed at ~200 beforehand, so the
+reads below use the first 200 — all 203 give 93.6%, same conclusions)
+**Overall:** 188/200 liked (94.0%, 95% CI 90-97%) — best round yet; up from
+R25's 86.5% (p=0.02)
+**Params:** two changes, one per arm (policy snapshot, commit 4157609):
+CLIP candidates scored at 16px blocks (= training render size, was 8px) —
+exploit only; lavender fields no longer a proven palette — explore only.
+
+### Exploit: 16px scoring did not hurt
+
+| arm | pooled R24-R25 (CLIP-only) | R26 |
+|-----|-----|-----|
+| exploit | 198/216 (91.7%) | **137/142 (96.5%)** (CI 92-98%) |
+| explore | — | 51/58 (87.9%) (R25: 42/57, 73.7%) |
+
+Exploit is +4.8pp over the pooled CLIP-only baseline (p=0.08) — the
+pre-registered question was "does 16px scoring regress?", and it doesn't.
+Treat the gain as suggestive, not established.
+
+### Explore: the random baseline recovered
+
+| explore quilts | R24 | R25 | R26 |
+|----------------|-----|-----|-----|
+| bargello (any palette) | 29/30 | 34/35 | **26/26** |
+| lavender, not bargello | 13/14 | 5/13 | 4/6 |
+| neither (truly random) | 14/16 | 3/9 | **21/26** |
+
+With lavender's injection gone, 26 of 58 explore quilts were truly random
+(R25: 9) and they liked at 81%. R25's 33% was a 9-quilt sample. Bargello
+remains the strongest thing in the loop: 26/26 this round, 89/91 over
+R24-R26.
+
+Lavender fields as an ordinary palette: 20/200 quilts (10%, down from 16%),
+17/20 liked. CLIP chose it 12 times on merit (11/12 liked) — it competes
+fine without the injection.
+
+### CLIP model
+
+Walk-forward (trained on R14-R25, 2517 ratings, scoring R26):
+
+| slice | n | dislikes | AUC |
+|-------|---|----------|-----|
+| all R26 | 200 | 12 | **0.774** (CI 0.62-0.91) |
+| exploit picks only | 142 | 5 | 0.636 (CI 0.40-0.85) |
+| explore only | 58 | 7 | 0.826 |
+| excluding bargello | 174 | 12 | 0.786 |
+
+Still well above chance; CI overlaps R25's 0.873. Within its own picks there
+are only 5 dislikes, too few to say anything.
+
+### Palette spread
+
+Exploit picks used 18 palettes; most common tide pool 20/142 (14%) — same
+spread as R25.
+
+### Leads (not actions)
+
+- **wonky**: R26 9/11 (82%) vs 95% off. Pooled R22-R26 43/56 (77%) vs 90%,
+  p=0.005 — now just inside Bonferroni (α=0.006, 8 features). R26 alone,
+  the out-of-sample check on R25's lead, points the same way but isn't
+  significant (p=0.13). The most consistent negative in the loop.
+- **stripe symmetry**: 32/38 (84%) vs 96% for the rest (p=0.012; 5
+  symmetries tested, doesn't survive correction). Pooled R22-R26 144/171
+  (84%) — mildly below average in every round. Watch.
+- **wash_alpha**: 22/26 (85%) vs 95%, p=0.05; pooled p=0.23. Noise so far.
+- **Ceiling**: at 94% the round produced only 12 dislikes. Each further
+  change is harder to measure (a 200-rating round now only detects
+  ~8pp drops), and the model gets few negatives to learn from.
+
+### Recommended changes after Round 26
+
+Pending review.
+
+1. **Keep both R26 changes** — 16px scoring and lavender as an ordinary
+   palette. Neither regressed; both arms improved.
+2. **wonky**: either lower its probability (10% → 5%) or leave it as is.
+   The evidence is now borderline-significant, but it's 5.5% of quilts and
+   a style the user likes.
