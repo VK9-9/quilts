@@ -43,7 +43,10 @@ jobs:
         run: |
           python3 -m venv venv
           venv/bin/pip install --upgrade pip
-          venv/bin/pip install torch --index-url https://download.pytorch.org/whl/cpu
+          # torch and torchvision must come from the same index: a PyPI
+          # torchvision is built against PyPI's CUDA torch and fails to import
+          # against the +cpu build ("operator torchvision::nms does not exist").
+          venv/bin/pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
           venv/bin/pip install -r requirements.txt
 
       # Same gate as `just check`, except fmt only verifies rather than
