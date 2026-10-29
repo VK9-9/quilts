@@ -89,7 +89,7 @@ FEATURE_PROBS = {
     "wash_alpha": 0.15,
     "palette_2": 0.05,
     "palette_mix": 0.05,
-    "wonky": 0.10,
+    "wonky": 0.05,
     "strippy": 0.15,
 }
 
