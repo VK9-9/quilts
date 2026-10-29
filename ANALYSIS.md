@@ -2676,10 +2676,10 @@ Pending review.
    #1 touches only explore — the two arms can be read separately, so both can
    run in R26 without confounding the exploit comparison.
 
-## Round 26 — ratings 5951-6153
+## Round 26 — ratings 5951-6183
 
-**Records:** 5951-6153 (203 ratings; target fixed at ~200 beforehand, so the
-reads below use the first 200 — all 203 give 93.6%, same conclusions)
+**Records:** 5951-6183 (233 ratings; target fixed at ~200 beforehand, so the
+reads below use the first 200 — see "Overflow" for the other 33)
 **Overall:** 188/200 liked (94.0%, 95% CI 90-97%) — best round yet; up from
 R25's 86.5% (p=0.02)
 **Params:** two changes, one per arm (policy snapshot, commit 4157609):
@@ -2746,6 +2746,28 @@ spread as R25.
 - **Ceiling**: at 94% the round produced only 12 dislikes. Each further
   change is harder to measure (a 200-rating round now only detects
   ~8pp drops), and the model gets few negatives to learn from.
+
+### Overflow: ratings 201-233 (added 2026-10-29)
+
+33 more ratings were made under the same policy before R27 started. They
+don't change the pre-registered read, which uses the first 200; they serve
+as a check that the result holds.
+
+| | first 200 | overflow 33 | all 233 |
+|-|-----|-----|-----|
+| overall | 188/200 (94.0%) | 29/33 (87.9%) | 217/233 (93.1%) |
+| exploit | 137/142 | 19/22 | 156/164 (95.1%) |
+| explore | 51/58 | 10/11 | 61/69 (88.4%) |
+| bargello (explore) | 26/26 | 6/6 | 32/32 |
+| wonky on | 9/11 | 3/4 | 12/15 (80%) |
+
+Three of the four overflow dislikes were exploit `columns` quilts (sea
+glass, thistle, indigo dye), all within 15 ratings of each other. Over the
+whole round `columns` was 79/86 (92%), and pooled R22-R26 it was 243/264
+(92%) vs 89% for the rest (p=0.13), so this cluster is noise. Worth
+noting, though: `columns` makes up 37% of R26 (86/233), and 70 of those
+86 were CLIP picks. The model leans on it heavily. That isn't a problem
+while it likes at 92%, but it is the main concentration in the exploit arm.
 
 ### Recommended changes after Round 26
 
