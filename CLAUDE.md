@@ -41,8 +41,8 @@ just backup        # snapshot data/ to iCloud (timestamped tarball, keeps 30)
                    # run after every scoring round — ratings.json is irreplaceable
 ```
 
-The deploy scripts (`deploy-site.sh`, `deploy-railway.sh`) still exist and can be
-called directly; `just` is the preferred front door.
+`just deploy` / `just deploy-static` wrap `deploy-railway.sh` / `deploy-site.sh`; use the
+recipes rather than calling the scripts directly.
 
 ## Key Architecture
 
